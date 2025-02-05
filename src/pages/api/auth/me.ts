@@ -1,46 +1,34 @@
+// src/pages/api/auth/me.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-
 import { verify } from 'jsonwebtoken';
+import dbConnect from '../../../lib/db';
+import User from '../../../models/User';
+import cors from '../../../utils/cors';
 
-import cors from 'src/utils/cors';
-
-import { _users, JWT_SECRET } from 'src/_mock/_auth';
-
-// ----------------------------------------------------------------------
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await cors(req, res);
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
   try {
-    await cors(req, res);
-
+    await dbConnect();
     const { authorization } = req.headers;
-
     if (!authorization) {
-      res.status(401).json({
-        message: 'Authorization token missing',
-      });
-      return;
+      return res.status(401).json({ message: 'Authorization token missing' });
     }
-
-    const accessToken = `${authorization}`.split(' ')[1];
-
-    const data = verify(accessToken, JWT_SECRET);
-
-    const userId = typeof data === 'object' ? data?.userId : '';
-
-    const user = _users.find((_user) => _user.id === userId);
-
+    const token = authorization.split(' ')[1];
+    const decoded: any = verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    // Исключаем поле passwordHash из возвращаемых данных
+    const user = await User.findById(userId).select('-passwordHash');
     if (!user) {
-      res.status(401).json({
-        message: 'Invalid authorization token',
-      });
-      return;
+      return res.status(401).json({ message: 'Invalid authorization token' });
     }
-
-    res.status(200).json({ user });
-  } catch (error) {
-    console.error('[Auth API]: ', error);
-    res.status(500).json({
-      message: 'Internal server error',
-    });
+    return res.status(200).json({ user });
+  } catch (error: any) {
+    console.error('[Me API]', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }

@@ -1,57 +1,44 @@
+// src/pages/api/auth/sign-up.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-
+import dbConnect from '../../../lib/db';
+import User, { IUser } from '../../../models/User';
+// @ts-ignore
+import bcrypt from 'bcrypt';
 import { sign } from 'jsonwebtoken';
+import cors from '../../../utils/cors';
 
-import cors from 'src/utils/cors';
-
-import { _users, JWT_SECRET, JWT_EXPIRES_IN } from 'src/_mock/_auth';
-
-// ----------------------------------------------------------------------
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await cors(req, res);
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
   try {
-    await cors(req, res);
-
+    await dbConnect();
     const { email, password, firstName, lastName } = req.body;
-
-    const existUser = _users.find((_user) => _user.email === email);
-
-    if (existUser) {
-      res.status(400).json({
-        message: 'There already exists an account with the given email address.',
-      });
-      return;
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
-
-    const user = {
-      id: _users[0].id,
-      displayName: `${firstName} ${lastName}`,
-      email,
-      password,
-      photoURL: null,
-      phoneNumber: null,
-      country: null,
-      address: null,
-      state: null,
-      city: null,
-      zipCode: null,
-      about: null,
-      role: 'user',
-      isPublic: true,
+    // Поиск пользователя по email (удаляем лишние пробелы)
+    const existingUser = await User.findOne({ email: email.trim() });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+    const newUser: Partial<IUser> = {
+      name: `${firstName} ${lastName}`,
+      email: email.trim(),
+      passwordHash,
+      isEmailVerified: false,
     };
-
-    const accessToken = sign({ userId: _users[0].id }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
-
-    res.status(200).json({
-      accessToken,
-      user,
-    });
-  } catch (error) {
-    console.error('[Auth API]: ', error);
-    res.status(500).json({
-      message: 'Internal server error',
-    });
+    const createdUser = await User.create(newUser);
+    const accessToken = sign({ userId: createdUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return res.status(201).json({ accessToken, user: createdUser });
+  } catch (error: any) {
+    console.error('[Sign Up API]', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }

@@ -1,47 +1,42 @@
+// src/pages/api/auth/sign-in.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-
+import dbConnect from '../../../lib/db';
+import User from '../../../models/User';
+// @ts-ignore
+import bcrypt from 'bcrypt';
 import { sign } from 'jsonwebtoken';
+import cors from '../../../utils/cors';
 
-import cors from 'src/utils/cors';
-
-import { _users, JWT_SECRET, JWT_EXPIRES_IN } from 'src/_mock/_auth';
-
-// ----------------------------------------------------------------------
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await cors(req, res);
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
   try {
-    await cors(req, res);
-
+    await dbConnect();
     const { email, password } = req.body;
-
-    const user = _users.find((_user) => _user.email === email);
-
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Missing email or password' });
+    }
+    // Поиск пользователя по email (очищаем от пробелов)
+    const user = await User.findOne({ email: email.trim() });
     if (!user) {
-      res.status(400).json({
-        message: 'There is no user corresponding to the email address.',
-      });
-      return;
+      return res.status(400).json({ message: 'Wrong email or password' });
     }
-
-    if (user?.password !== password) {
-      res.status(400).json({
-        message: 'Wrong password',
-      });
-      return;
+    if (!user.passwordHash) {
+      return res.status(400).json({ message: 'No password set for this user' });
     }
-
-    const accessToken = sign({ userId: user?.id }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
-
-    res.status(200).json({
-      accessToken,
-      user,
-    });
-  } catch (error) {
-    console.error('[Auth API]: ', error);
-    res.status(500).json({
-      message: 'Internal server error',
-    });
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Wrong email or password' });
+    }
+    const accessToken = sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return res.status(200).json({ accessToken, user });
+  } catch (error: any) {
+    console.error('[Sign In API]', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }
