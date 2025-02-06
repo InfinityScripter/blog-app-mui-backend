@@ -1,34 +1,26 @@
+// src/pages/api/post/latest.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-
-import cors from 'src/utils/cors';
-import { paramCase } from 'src/utils/change-case';
-
-import { _posts } from 'src/_mock/_blog';
-
-// ----------------------------------------------------------------------
+import dbConnect from '../../../lib/db';
+import { Post } from '../../../models/Post';
+import { paramCase } from '../../../utils/change-case';
+import cors from '../../../utils/cors';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await dbConnect();
     await cors(req, res);
-
     const { title } = req.query;
-
-    const latestPosts = _posts.filter((_post) => paramCase(_post.title) !== title);
-
-    if (!latestPosts.length) {
-      res.status(404).json({
-        message: 'Posts not found!',
-      });
-      return;
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ message: 'Query parameter "title" is required.' });
     }
-
-    res.status(200).json({
-      latestPosts,
-    });
-  } catch (error) {
-    console.error('[Blog API]: ', error);
-    res.status(500).json({
-      message: 'Internal server error',
-    });
+    const posts = await Post.find({}).sort({ createdAt: -1 }).lean();
+    const latestPosts = posts.filter((p) => paramCase(p.title) !== title);
+    if (latestPosts.length === 0) {
+      return res.status(404).json({ message: 'Posts not found!' });
+    }
+    res.status(200).json({ latestPosts });
+  } catch (error: any) {
+    console.error('[Post Latest API]: ', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
