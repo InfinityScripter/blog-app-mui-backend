@@ -1,9 +1,10 @@
 // src/pages/api/post/details.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../lib/db';
-import { Post } from '../../../models/Post';
-import { paramCase } from '../../../utils/change-case';
-import cors from '../../../utils/cors';
+
+import cors from '@/src/utils/cors';
+import { paramCase } from '@/src/utils/change-case';
+import { Post } from '@/src/models/Post';
+import dbConnect from '@/src/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
