@@ -1,28 +1,23 @@
-// src/pages/api/post/details.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
+// pages/api/post/details.js
+import dbConnect from 'src/lib/db';
+import { Post } from 'src/models/Post';
 
-import cors from '@/src/utils/cors';
-import { paramCase } from '@/src/utils/change-case';
-import { Post } from '@/src/models/Post';
-import dbConnect from '@/src/lib/db';
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await dbConnect();
-    await cors(req, res);
-    const { title } = req.query;
-    if (!title || typeof title !== 'string') {
-      return res.status(400).json({ message: 'Query parameter "title" is required.' });
+export default async function handler(req: any, res: any) {
+  await dbConnect();
+  const { id } = req.query; // изменили на id
+  if (req.method === 'GET') {
+    try {
+      const post = await Post.findById(id);
+      if (!post) {
+        return res.status(404).json({ message: 'Пост не найден' });
+      }
+      return res.status(200).json({ post });
+    } catch (error) {
+      console.error('Ошибка получения деталей поста:', error);
+      return res.status(500).json({ message: 'Внутренняя ошибка сервера' });
     }
-    // Получаем все посты и ищем тот, у которого paramCase(title) совпадает с переданным параметром.
-    const posts = await Post.find({}).lean();
-    const found = posts.find((p) => paramCase(p.title) === title);
-    if (!found) {
-      return res.status(404).json({ message: 'Post not found!' });
-    }
-    res.status(200).json({ post: found });
-  } catch (error: any) {
-    console.error('[Post Details API]: ', error);
-    res.status(500).json({ message: 'Internal server error' });
+  } else {
+    res.setHeader('Allow', ['GET']);
+    return res.status(405).json({ message: `Метод ${req.method} не разрешён` });
   }
 }
