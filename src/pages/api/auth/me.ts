@@ -9,6 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
+  console.log('auth me handler');
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }

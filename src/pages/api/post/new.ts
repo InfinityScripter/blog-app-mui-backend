@@ -5,12 +5,13 @@ import { Post } from '../../../models/Post';
 import cors from '../../../utils/cors';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  await cors(req, res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({ message: 'OK' });
   }
   try {
     await dbConnect();
-    await cors(req, res);
     const {
       title,
       publish,
