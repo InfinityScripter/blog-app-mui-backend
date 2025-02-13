@@ -37,6 +37,7 @@ export interface IPost extends Document {
     metaTitle: string;
     metaDescription: string;
     metaKeywords: string[];
+    userId: mongoose.Types.ObjectId;
     author: {
         name: string;
         avatarUrl: string;
@@ -55,7 +56,7 @@ const ReplyCommentSchema: Schema<IReplyComment> = new Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     message: { type: String, required: true },
     tagUser: { type: String },
-    postedAt: { type: Date, default: Date.now }
+    postedAt: { type: Date, default: Date.now },
 });
 
 const CommentSchema: Schema<IComment> = new Schema({
@@ -64,12 +65,14 @@ const CommentSchema: Schema<IComment> = new Schema({
     avatarUrl: { type: String },
     message: { type: String, required: true },
     postedAt: { type: Date, default: Date.now },
-    users: [{
-        id: { type: String },
-        name: { type: String },
-        avatarUrl: { type: String }
-    }],
-    replyComment: [ReplyCommentSchema]
+    users: [
+        {
+            id: { type: String },
+            name: { type: String },
+            avatarUrl: { type: String },
+        },
+    ],
+    replyComment: [ReplyCommentSchema],
 });
 
 const PostSchema: Schema<IPost> = new Schema(
@@ -77,7 +80,7 @@ const PostSchema: Schema<IPost> = new Schema(
         publish: {
             type: String,
             enum: ['draft', 'published'],
-            default: 'draft'
+            default: 'draft',
         },
         title: { type: String, required: true },
         description: { type: String, required: true },
@@ -87,19 +90,22 @@ const PostSchema: Schema<IPost> = new Schema(
         metaTitle: { type: String },
         metaDescription: { type: String },
         metaKeywords: { type: [String], default: [] },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         author: {
             name: { type: String, required: true },
-            avatarUrl: { type: String }
+            avatarUrl: { type: String },
         },
         totalViews: { type: Number, default: 0 },
         totalShares: { type: Number, default: 0 },
         totalComments: { type: Number, default: 0 },
         totalFavorites: { type: Number, default: 0 },
         comments: [CommentSchema],
-        favoritePerson: [{
-            name: { type: String },
-            avatarUrl: { type: String }
-        }]
+        favoritePerson: [
+            {
+                name: { type: String },
+                avatarUrl: { type: String },
+            },
+        ],
     },
     { timestamps: true }
 );

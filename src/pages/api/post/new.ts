@@ -1,8 +1,11 @@
-// src/pages/api/post/new.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../lib/db';
-import { Post } from '../../../models/Post';
-import cors from '../../../utils/cors';
+import { verify } from 'jsonwebtoken';
+import { Post } from '@/src/models/Post';
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
+import cors from '@/src/utils/cors';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -12,6 +15,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await dbConnect();
     await cors(req, res);
 
+    // Извлечение и верификация токена
+    const { authorization } = req.headers;
+    if (!authorization) {
+      return res.status(401).json({ message: 'Отсутствует токен авторизации' });
+    }
+    const token = authorization.split(' ')[1];
+    let decoded: any;
+    try {
+      decoded = verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Неверный токен авторизации' });
+    }
+    // Получаем пользователя по decoded.userId
+    const user = await User.findById(decoded.userId).select('name avatarURL');
+    if (!user) {
+      return res.status(401).json({ message: 'Пользователь не найден' });
+    }
+    const author = { name: user.name, avatarUrl: user.avatarURL };
+
+    // Извлекаем остальные поля из req.body
     const {
       title,
       publish,
@@ -26,26 +49,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       totalFavorites,
       metaDescription,
       description,
-      author,
       favoritePerson,
     } = req.body;
 
-    // Преобразуем теги и metaKeywords в массивы, если они пришли как строки
     const parsedTags =
-      typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()) : tags;
+        typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()) : tags;
     const parsedMetaKeywords =
-      typeof metaKeywords === 'string'
-        ? metaKeywords.split(',').map((k: string) => k.trim())
-        : metaKeywords;
-
-    // Если coverUrl приходит как объект, извлекаем строку из его поля (например, path)
+        typeof metaKeywords === 'string'
+            ? metaKeywords.split(',').map((k: string) => k.trim())
+            : metaKeywords;
     const coverUrlValue =
-      coverUrl && typeof coverUrl === 'object'
-        ? coverUrl.path || 'http://localhost:4444/assets/images/cover/cover-1.webp'
-        : coverUrl || 'http://localhost:4444/assets/images/cover/cover-1.webp';
-
-    // Если author отсутствует или не содержит name – задаем значения по умолчанию
-    const authorInfo = author && author.name ? author : { name: 'Anonymous', avatarUrl: '' };
+        coverUrl && typeof coverUrl === 'object'
+            ? coverUrl.path || 'http://localhost:4444/assets/images/cover/cover-1.webp'
+            : coverUrl || 'http://localhost:4444/assets/images/cover/cover-1.webp';
 
     const newPost = {
       title,
@@ -61,7 +77,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       totalFavorites: totalFavorites || 0,
       metaDescription,
       description,
-      author: authorInfo,
+      author,
+      userId: user._id,
       favoritePerson: favoritePerson || [],
     };
 
