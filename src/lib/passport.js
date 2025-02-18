@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 import passport from 'passport';
-import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
-import {User} from '../models/User';
+import { User } from '../models/User';
 
 dotenv.config();
 
@@ -47,11 +47,11 @@ passport.use(
     )
 );
 
-passport.serializeUser((user: any, done) => {
+passport.serializeUser((user, done) => {
     done(null, user.id);
 });
 
-passport.deserializeUser(async (id: string, done) => {
+passport.deserializeUser(async (id, done) => {
     try {
         const user = await User.findById(id);
         done(null, user);
