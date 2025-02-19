@@ -7,10 +7,7 @@ import User from '@/src/models/User';
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    // // Разрешаем только методы PATCH или PUT
-    // if (req.method !== 'PATCH' && req.method !== 'PUT') {
-    //     return res.status(405).json({ message: 'Method not allowed' });
-    // }
+
     try {
         await dbConnect();
 
