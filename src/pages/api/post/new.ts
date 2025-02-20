@@ -58,10 +58,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         typeof metaKeywords === 'string'
             ? metaKeywords.split(',').map((k: string) => k.trim())
             : metaKeywords;
-    const coverUrlValue =
-        coverUrl && typeof coverUrl === 'object'
-            ? coverUrl.path || 'http://localhost:4444/assets/images/cover/cover-1.webp'
-            : coverUrl || 'http://localhost:4444/assets/images/cover/cover-1.webp';
+
+    // Handle coverUrl from frontend
+    let coverUrlValue = 'http://localhost:4444/assets/images/cover/cover-1.webp';
+    if (coverUrl) {
+        if (typeof coverUrl === 'string') {
+            coverUrlValue = coverUrl;
+        } else if (coverUrl.path) {
+            const fileName = coverUrl.path.split('/').pop();
+            coverUrlValue = `/uploads/${encodeURIComponent(fileName)}`;
+        }
+    }
 
     const newPost = {
       title,

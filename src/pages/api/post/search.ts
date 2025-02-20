@@ -1,7 +1,7 @@
 // src/pages/api/post/search.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '../../../lib/db';
-import { Post } from '../../../models/Post';
+import { Post } from '@/src/models/Post';
 import cors from '../../../utils/cors';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

@@ -68,6 +68,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ? metaKeywords.split(',').map((k: string) => k.trim())
             : metaKeywords;
 
+    // Handle coverUrl from frontend
+    let coverUrlValue = existingPost.coverUrl;
+    if (coverUrl) {
+        if (typeof coverUrl === 'string') {
+            coverUrlValue = coverUrl;
+        } else if (coverUrl.path) {
+            const fileName = coverUrl.path.split('/').pop();
+            coverUrlValue = `/uploads/${encodeURIComponent(fileName)}`;
+        }
+    }
+
     const updatedFields = {
       title,
       publish,
@@ -75,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       content,
       tags: parsedTags || [],
       metaTitle,
-      coverUrl,
+      coverUrl: coverUrlValue,
       totalViews,
       totalShares,
       totalComments,
