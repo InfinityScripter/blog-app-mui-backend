@@ -11,18 +11,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await dbConnect();
     await cors(req, res);
-    let filter = {};
+    
+    let filter: any = {};
     const { authorization } = req.headers;
+    
     if (authorization) {
       try {
         const token = authorization.split(' ')[1];
         const decoded: any = verify(token, JWT_SECRET);
-        // Ограничиваем выборку постов только теми, где поле userId соответствует идентификатору из токена
+        // Для авторизованных пользователей показываем их посты (и draft, и published)
         filter = { userId: decoded.userId };
       } catch (err) {
-        return res.status(401).json({ message: 'Неверный токен авторизации' });
+        // Если токен неверный, показываем только опубликованные посты
+        filter = { publish: 'published' };
       }
+    } else {
+      // Для неавторизованных пользователей показываем только опубликованные посты
+      filter = { publish: 'published' };
     }
+
     const posts = await Post.find(filter).lean();
     res.status(200).json({ posts });
   } catch (error: any) {
