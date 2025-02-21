@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const newPost = {
       title,
-      publish: publish || 'draft',
+      publish: publish,
       metaKeywords: parsedMetaKeywords || [],
       content,
       tags: parsedTags || [],
