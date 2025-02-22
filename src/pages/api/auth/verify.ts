@@ -62,7 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Подтверждаем email
     user.isEmailVerified = true;
+    // @ts-ignore
     user.emailVerificationCode = null;
+    // @ts-ignore
     user.emailVerificationExpires = null;
     await user.save();
 

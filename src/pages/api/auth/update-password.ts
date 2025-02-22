@@ -14,31 +14,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     await dbConnect();
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) {
-      return res.status(400).json({ message: 'Token and new password are required' });
+    const { email, code, password } = req.body;
+
+    console.log('Update password request:', {
+      email,
+      code,
+      hasPassword: !!password,
+    });
+
+    if (!email || !code || !password) {
+      return res.status(400).json({
+        message: 'Email, verification code, and new password are required',
+      });
     }
 
     const user = await User.findOne({
-      passwordResetToken: token,
+      email: email.trim(),
+      passwordResetCode: code,
       passwordResetExpires: { $gt: new Date() },
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired token' });
+      console.log('Invalid reset attempt:', {
+        email,
+        code,
+        found: !!user,
+      });
+      return res.status(400).json({
+        message: 'Invalid or expired reset code',
+      });
     }
 
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    console.log('Valid reset code for user:', {
+      email: user.email,
+      resetCode: user.passwordResetCode,
+      expiresAt: user.passwordResetExpires,
+    });
 
+    // Хэшируем новый пароль
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Обновляем пароль и очищаем код сброса
     user.passwordHash = passwordHash;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
+    // @ts-ignore
+    user.passwordResetCode = null;
+    // @ts-ignore
+    user.passwordResetExpires = null;
     await user.save();
 
-    res.status(200).json({ message: 'Password has been updated successfully' });
-  } catch (error: any) {
-    console.error('[Update Password API]', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.log('Password updated successfully for user:', user.email);
+
+    res.status(200).json({
+      message: 'Password has been updated successfully',
+    });
+  } catch (error) {
+    console.error('[Update Password API Error]:', error);
+    res.status(500).json({
+      message: 'Failed to update password. Please try again later.',
+    });
   }
 }

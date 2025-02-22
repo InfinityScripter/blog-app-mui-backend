@@ -10,7 +10,7 @@ export interface IUser extends Document {
   isEmailVerified?: boolean;
   emailVerificationCode?: string;
   emailVerificationExpires?: Date;
-  passwordResetToken?: string;
+  passwordResetCode?: string;
   passwordResetExpires?: Date;
   lastLogin?: Date;
   failedLoginAttempts?: number;
@@ -40,7 +40,7 @@ const UserSchema = new mongoose.Schema<IUser>(
       default: null, 
       select: false // Скрываем по умолчанию для безопасности
     },
-    passwordResetToken: { 
+    passwordResetCode: { 
       type: String, 
       default: null,
       select: false // Скрываем по умолчанию для безопасности
