@@ -2,24 +2,27 @@ import type { Document, Model } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
 export interface IReplyComment extends Document {
-  userId: mongoose.Types.ObjectId;
-  message: string;
-  tagUser?: string;
-  postedAt: Date;
+  userAvatar: string | undefined;
+  userName: string;
+  id: string; // Client-side ID (UUID) for frontend operations
+  _id?: string; // MongoDB generated ID
+  userId: string; // User ID of the comment creator
+  name: string; // Display name of the commenter
+  avatarUrl: string; // Avatar URL of the commenter
+  message: string; // Comment content
+  tagUser?: string; // Tagged user in reply
+  postedAt: Date; // Comment creation time
 }
 
 export interface IComment extends Document {
-    id: string;
-    name: string;
-    avatarUrl: string;
-    message: string;
-    postedAt: Date;
-    users: Array<{
-        id: string;
-        name: string;
-        avatarUrl: string;
-    }>;
-    replyComment: IReplyComment[];
+    id: string;         // Client-side ID (UUID) for frontend operations
+    _id?: string;       // MongoDB generated ID
+    userId: string;     // User ID of the comment creator
+    name: string;       // Display name of the commenter
+    avatarUrl: string;  // Avatar URL of the commenter
+    message: string;    // Comment content
+    postedAt: Date;     // Comment creation time
+    replyComment: IReplyComment[];  // Nested replies to this comment
 }
 
 export interface IFavoritePerson {
@@ -37,45 +40,42 @@ export interface IPost extends Document {
     metaTitle: string;
     metaDescription: string;
     metaKeywords: string[];
-    userId: mongoose.Types.ObjectId;
-    author: {
-        name: string;
-        avatarUrl: string;
-    };
     totalViews: number;
     totalShares: number;
     totalComments: number;
     totalFavorites: number;
-    comments: IComment[];
     favoritePerson: IFavoritePerson[];
+    comments: IComment[];
+    userId: string;
+    author: {
+        name: string;
+        avatarUrl?: string;
+    };
     createdAt: Date;
     updatedAt: Date;
 }
 
 const ReplyCommentSchema: Schema<IReplyComment> = new Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    id: { type: String, required: true },      // Client-side UUID
+    userId: { type: String, required: true },  // User ID of the comment creator
+    name: { type: String, required: true },
+    avatarUrl: { type: String, required: true },
     message: { type: String, required: true },
     tagUser: { type: String },
     postedAt: { type: Date, default: Date.now },
 });
 
 const CommentSchema: Schema<IComment> = new Schema({
-    id: { type: String, required: true },
+    id: { type: String, required: true },      // Client-side UUID
+    userId: { type: String, required: true },  // User ID of the comment creator
     name: { type: String, required: true },
     avatarUrl: { type: String },
     message: { type: String, required: true },
     postedAt: { type: Date, default: Date.now },
-    users: [
-        {
-            id: { type: String },
-            name: { type: String },
-            avatarUrl: { type: String },
-        },
-    ],
     replyComment: [ReplyCommentSchema],
 });
 
-const PostSchema: Schema<IPost> = new Schema(
+const PostSchema = new Schema<IPost>(
     {
         publish: {
             type: String,
@@ -83,31 +83,36 @@ const PostSchema: Schema<IPost> = new Schema(
             default: 'draft',
         },
         title: { type: String, required: true },
-        description: { type: String, required: true },
-        content: { type: String, required: true },
+        description: { type: String },
+        content: { type: String },
         coverUrl: { type: String },
         tags: { type: [String], default: [] },
         metaTitle: { type: String },
         metaDescription: { type: String },
         metaKeywords: { type: [String], default: [] },
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        author: {
-            name: { type: String, required: true },
-            avatarUrl: { type: String },
-        },
         totalViews: { type: Number, default: 0 },
         totalShares: { type: Number, default: 0 },
         totalComments: { type: Number, default: 0 },
         totalFavorites: { type: Number, default: 0 },
+        favoritePerson: {
+            type: [
+                {
+                    name: { type: String },
+                    avatarUrl: { type: String },
+                },
+            ],
+            default: [],
+        },
         comments: [CommentSchema],
-        favoritePerson: [
-            {
-                name: { type: String },
-                avatarUrl: { type: String },
-            },
-        ],
+        userId: { type: String, required: true },
+        author: {
+            name: { type: String, required: true },
+            avatarUrl: { type: String },
+        },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+    }
 );
 
 export const Post: Model<IPost> =
