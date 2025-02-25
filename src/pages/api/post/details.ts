@@ -15,7 +15,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Invalid post id' });
     }
 
-    const post = await Post.findOne({ _id: id });
+    // Находим пост и увеличиваем счетчик просмотров атомарно
+    const post = await Post.findOneAndUpdate(
+      { _id: id },
+      { $inc: { totalViews: 1 } },
+      { new: true }
+    );
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
