@@ -1,9 +1,7 @@
 import nodemailer from 'nodemailer';
 
 // Функция для генерации 6-значного кода
-const generateVerificationCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // Создаем транспорт с подробным логированием
 const transporter = nodemailer.createTransport({
@@ -20,7 +18,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Проверяем конфигурацию при инициализации
-transporter.verify(function(error, success) {
+transporter.verify((error, success) => {
   if (error) {
     console.error('Email configuration error:', error);
   } else {

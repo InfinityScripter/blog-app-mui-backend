@@ -1,9 +1,11 @@
 // src/pages/api/post/search.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../lib/db';
-import { Post } from '@/src/models/Post';
-import cors from '../../../utils/cors';
+
 import { verify } from 'jsonwebtoken';
+import { Post } from '@/src/models/Post';
+
+import cors from '../../../utils/cors';
+import dbConnect from '../../../lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -16,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cleanQuery = (query ? `${query}` : '').toLowerCase().trim();
     
     // Базовый фильтр
-    let filter: any = {};
+    const filter: any = {};
 
     // Если это поиск в dashboard
     if (dashboard === 'true') {

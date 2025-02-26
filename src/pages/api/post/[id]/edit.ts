@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { verify } from 'jsonwebtoken';
+
 import dbConnect from '@/src/lib/db';
-import { Post } from '@/src/models/Post';
 import User from '@/src/models/User';
+import { verify } from 'jsonwebtoken';
+import { Post } from '@/src/models/Post';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 

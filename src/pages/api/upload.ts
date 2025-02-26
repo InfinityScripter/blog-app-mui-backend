@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import formidable from 'formidable';
+
 import fs from 'fs';
 import path from 'path';
+import formidable from 'formidable';
 import { verify } from 'jsonwebtoken';
+
 import uuidv4 from 'src/utils/uuidv4';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
@@ -33,10 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const form = formidable({
       uploadDir: path.join(process.cwd(), 'public/uploads'),
-      filename: (name, ext, part) => {
+      filename: (name, ext, part) => 
         // Генерируем уникальное имя файла с сохранением расширения
-        return `${uuidv4()}${ext}`;
-      },
+         `${uuidv4()}${ext}`
+      ,
       keepExtensions: true,
     });
 

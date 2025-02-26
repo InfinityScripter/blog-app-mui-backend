@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
+import User from '@/src/models/User';
+
 import dbConnect from 'src/lib/db';
 import { Post } from 'src/models/Post';
-import User from '@/src/models/User';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

@@ -1,9 +1,10 @@
 // src/pages/api/post/list.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { Post } from '@/src/models/Post';
-import { verify } from 'jsonwebtoken';
-import dbConnect from '@/src/lib/db';
+
 import cors from '@/src/utils/cors';
+import dbConnect from '@/src/lib/db';
+import { verify } from 'jsonwebtoken';
+import { Post } from '@/src/models/Post';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -31,12 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const posts = await Post.find(filter).lean();
-    const updatedPosts = posts.map(post => {
-      return {
+    const updatedPosts = posts.map(post => ({
         ...post,
         totalComments: post.comments ? post.comments.length : 0
-      };
-    });
+      }));
     res.status(200).json({ posts: updatedPosts });
   } catch (error: any) {
     console.error('[Post List API]: ', error);

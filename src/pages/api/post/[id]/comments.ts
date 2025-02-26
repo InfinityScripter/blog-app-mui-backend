@@ -1,9 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
+import User from '@/src/models/User';
+import { verify } from 'jsonwebtoken';
+
+import uuidv4 from 'src/utils/uuidv4';
+
 import dbConnect from 'src/lib/db';
 import { Post } from 'src/models/Post';
-import { verify } from 'jsonwebtoken';
-import uuidv4 from 'src/utils/uuidv4';
-import User from '@/src/models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -26,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const userId = String(decoded.userId); // Convert to string for consistent comparison
-        console.log(userId + ' userID is making a comment');
+        console.log(`${userId  } userID is making a comment`);
         // Find the user to get their name and avatarURL
         const user = await User.findOne({ _id: decoded.userId });
         if (!user) {
@@ -59,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 // Adding a new top-level comment
                 const newComment = {
                     id: clientId,           // Frontend UUID for operations
-                    userId: userId,         // String ID of the comment creator
+                    userId,         // String ID of the comment creator
                     name: user.name,
                     avatarUrl: user.avatarURL || '',
                     message,
@@ -76,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
                 const newReply = {
                     id: clientId,           // Frontend UUID for operations
-                    userId: userId,         // String ID of the reply creator
+                    userId,         // String ID of the reply creator
                     name: user.name,
                     avatarUrl: user.avatarURL || '',
                     message,

@@ -1,12 +1,13 @@
 // src/pages/api/auth/google/callback.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import nextConnect from 'next-connect';
 
-import { sign } from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import dbConnect from '../../../../lib/db';
 // @ts-ignore
 import passport from 'passport';
+import { sign } from 'jsonwebtoken';
+import nextConnect from 'next-connect';
+
+import dbConnect from '../../../../lib/db';
 
 dotenv.config();
 
@@ -24,7 +25,7 @@ handler.get(
     passport.authenticate('google', { session: false }),
     (req: any, res) => {
         // При успешной аутентификации создаём JWT и перенаправляем на фронтенд
-        const user = req.user;
+        const {user} = req;
         const token = sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
         res.redirect(`${frontendURL}/auth/success?token=${token}`);

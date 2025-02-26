@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { verify } from 'jsonwebtoken';
-import { Post } from '@/src/models/Post';
+
+import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
-import cors from '@/src/utils/cors';
+import { verify } from 'jsonwebtoken';
+import { Post } from '@/src/models/Post';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -72,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const newPost = {
       title,
-      publish: publish,
+      publish,
       metaKeywords: parsedMetaKeywords || [],
       content,
       tags: parsedTags || [],

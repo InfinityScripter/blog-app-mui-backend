@@ -1,9 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
+
 // @ts-ignore
 import bcrypt from 'bcrypt';
+
 import cors from '../../../utils/cors';
+import dbConnect from '../../../lib/db';
+import User from '../../../models/User';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);

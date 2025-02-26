@@ -1,11 +1,13 @@
 // src/pages/api/auth/sign-in.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
+
 // @ts-ignore
 import bcrypt from 'bcrypt';
 import { sign } from 'jsonwebtoken';
+
 import cors from '../../../utils/cors';
+import dbConnect from '../../../lib/db';
+import User from '../../../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';

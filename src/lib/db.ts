@@ -1,7 +1,7 @@
 // src/lib/db.ts
 import mongoose from 'mongoose';
 
-const MONGO_DB_URI = process.env.MONGO_DB_URI;
+const { MONGO_DB_URI } = process.env;
 if (!MONGO_DB_URI) {
     throw new Error('Please define the MONGO_DB_URI environment variable inside .env.local');
 }
@@ -18,9 +18,7 @@ async function dbConnect() {
     if (!cached.promise) {
         const opts = { bufferCommands: false };
         // @ts-ignore
-        cached.promise = mongoose.connect(MONGO_DB_URI, opts).then((mongoose) => {
-            return mongoose;
-        });
+        cached.promise = mongoose.connect(MONGO_DB_URI, opts).then((mongoose) => mongoose);
     }
     cached.conn = await cached.promise;
     return cached.conn;

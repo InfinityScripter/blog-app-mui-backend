@@ -1,20 +1,21 @@
 // src/pages/api/auth/sign-up.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../lib/db';
-import User, { IUser } from '../../../models/User';
+
 // @ts-ignore
 import bcrypt from 'bcrypt';
 import { sign } from 'jsonwebtoken';
+
 import cors from '../../../utils/cors';
+import dbConnect from '../../../lib/db';
+import type { IUser } from '../../../models/User';
+import User from '../../../models/User';
 import { sendVerificationEmail } from '../../../utils/email';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
 
 // Генерация 6-значного кода
-const generateVerificationCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-    
+
     // Генерируем 6-значный код и устанавливаем срок действия
     const verificationCode = generateVerificationCode();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
@@ -56,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const accessToken = sign({ userId: createdUser._id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
-    
+
     return res.status(201).json({
       message: 'User created successfully. Please check your email for verification code.',
       accessToken,
@@ -69,9 +70,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error: any) {
     console.error('[Sign Up API]', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: 'Internal server error',
-      error: error.message 
+      error: error.message
     });
   }
 }

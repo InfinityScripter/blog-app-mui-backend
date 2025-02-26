@@ -1,5 +1,6 @@
 // src/models/User.ts
-import mongoose, { Document, Model } from 'mongoose';
+import type { Document, Model } from 'mongoose';
+import mongoose from 'mongoose';
 
 export interface IUser extends Document {
   name: string;
@@ -23,30 +24,30 @@ const UserSchema = new mongoose.Schema<IUser>(
     email: { type: String, required: true, trim: true, unique: true },
     passwordHash: {
       type: String,
-      required: function (this: IUser) {
+      required (this: IUser) {
         return !this.googleId;
       },
     },
     googleId: { type: String, sparse: true, unique: true },
     avatarURL: String,
     isEmailVerified: { type: Boolean, default: false },
-    emailVerificationCode: { 
-      type: String, 
-      default: null, 
-      select: false // Скрываем по умолчанию для безопасности
-    },
-    emailVerificationExpires: { 
-      type: Date, 
-      default: null, 
-      select: false // Скрываем по умолчанию для безопасности
-    },
-    passwordResetCode: { 
-      type: String, 
+    emailVerificationCode: {
+      type: String,
       default: null,
       select: false // Скрываем по умолчанию для безопасности
     },
-    passwordResetExpires: { 
-      type: Date, 
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+      select: false // Скрываем по умолчанию для безопасности
+    },
+    passwordResetCode: {
+      type: String,
+      default: null,
+      select: false // Скрываем по умолчанию для безопасности
+    },
+    passwordResetExpires: {
+      type: Date,
       default: null,
       select: false // Скрываем по умолчанию для безопасности
     },

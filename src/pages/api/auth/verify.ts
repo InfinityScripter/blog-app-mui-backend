@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
+import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
-import cors from '../../../utils/cors';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
@@ -26,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const user = await User.findOne({
-      email: email,
+      email,
       isEmailVerified: false,
     }).select('+emailVerificationCode +emailVerificationExpires');
 

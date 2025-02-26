@@ -21,7 +21,7 @@ passport.use(
                 if (!email) {
                     return done(new Error('Email не найден в профиле'), null);
                 }
-                let user = await User.findOne({ email });
+                const user = await User.findOne({ email });
                 if (user) {
                     user.googleId = profile.id;
                     user.isEmailVerified = true;

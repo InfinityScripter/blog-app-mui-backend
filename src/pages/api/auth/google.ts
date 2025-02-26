@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
 import nextConnect from 'next-connect';
-import passport from '../../../lib/passport';
+
 import dbConnect from '../../../lib/db';
+import passport from '../../../lib/passport';
 
 const handler = nextConnect<NextApiRequest, NextApiResponse>();
 

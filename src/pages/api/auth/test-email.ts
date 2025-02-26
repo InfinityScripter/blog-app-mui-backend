@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sendVerificationEmail } from '../../../utils/email';
+
 import cors from '../../../utils/cors';
+import { sendVerificationEmail } from '../../../utils/email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Включаем CORS

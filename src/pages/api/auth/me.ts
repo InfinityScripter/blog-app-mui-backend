@@ -1,9 +1,11 @@
 // src/pages/api/auth/me.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
+
 import { verify } from 'jsonwebtoken';
+
+import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
-import cors from '../../../utils/cors';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -21,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const token = authorization.split(' ')[1];
     const decoded: any = verify(token, JWT_SECRET);
-    const userId = decoded.userId;
+    const {userId} = decoded;
     // Исключаем поле passwordHash из возвращаемых данных
     const user = await User.findById(userId).select('-passwordHash');
     if (!user) {
