@@ -83,17 +83,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     name: user.name,
                     avatarUrl: user.avatarURL || '',
                     message,
-                    tagUser: tagUser || null,
+                    tagUser: tagUser || undefined,
                     postedAt: new Date(),
                 };
                 parentComment.replyComment.push(newReply);
+                // Обновляем totalComments, так как добавили ответ на комментарий
+                post.totalComments = post.comments.reduce((total, comment) => 
+                    total + 1 + (comment.replyComment ? comment.replyComment.length : 0), 0);
             }
 
-            // Save the updated post
-            await post.save();
-
-            // Return the updated post for frontend to update state
-            return res.status(200).json({ message: 'Comment added successfully', post });
+            try {
+                // Save the updated post
+                await post.save();
+                
+                // Return the updated post for frontend to update state
+                return res.status(200).json({ message: 'Comment added successfully', post });
+            } catch (error) {
+                console.warn('[Comment API]:', error);
+                return res.status(500).json({ message: 'Failed to save comment', error: error.message });
+            }
         }
 
         if (req.method === 'PUT') {
