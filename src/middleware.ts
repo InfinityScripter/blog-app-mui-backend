@@ -5,6 +5,7 @@ const allowedOrigins = [
   'http://localhost:3033',
   'http://localhost:7272',
   'https://blog-app-mui-frontend.vercel.app',
+  'https://blog-app-mui-backend.onrender.com',
 ];
 
 const corsHeaders = {
