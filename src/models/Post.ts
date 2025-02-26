@@ -1,136 +1,133 @@
 import type { Document, Model } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-export interface IReplyComment extends Document {
-  userAvatar: string | undefined;
-  userName: string;
-  id: string; // Client-side ID (UUID) for frontend operations
-  _id?: string; // MongoDB generated ID
-  userId: string; // User ID of the comment creator
-  name: string; // Display name of the commenter
-  avatarUrl: string; // Avatar URL of the commenter
-  message: string; // Comment content
-  tagUser?: string; // Tagged user in reply
-  postedAt: Date; // Comment creation time
+// Define interfaces without extending Document
+export interface IReplyComment {
+  userAvatar?: string;
+  userName?: string;
+  id: string;
+  userId: string;
+  name: string;
+  avatarUrl: string;
+  message: string;
+  tagUser?: string;
+  postedAt: Date;
 }
 
-export interface IComment extends Document {
-    id: string;         // Client-side ID (UUID) for frontend operations
-    _id?: string;       // MongoDB generated ID
-    userId: string;     // User ID of the comment creator
-    name: string;       // Display name of the commenter
-    avatarUrl: string;  // Avatar URL of the commenter
-    message: string;    // Comment content
-    postedAt: Date;     // Comment creation time
-    replyComment: IReplyComment[];  // Nested replies to this comment
+export interface IComment {
+  id: string;
+  userId: string;
+  name: string;
+  avatarUrl: string;
+  message: string;
+  postedAt: Date;
+  replyComment: IReplyComment[];
 }
 
 export interface IFavoritePerson {
+  name: string;
+  avatarUrl: string;
+}
+
+// Define the base Post interface
+export interface IPost {
+  publish: 'draft' | 'published';
+  title: string;
+  description: string;
+  content: string;
+  coverUrl: string;
+  tags: string[];
+  metaTitle: string;
+  metaDescription: string;
+  metaKeywords: string[];
+  totalViews: number;
+  totalShares: number;
+  totalComments: number;
+  totalFavorites: number;
+  favoritePerson: IFavoritePerson[];
+  comments: IComment[];
+  userId: string;
+  author: {
     name: string;
-    avatarUrl: string;
+    avatarUrl?: string;
+  };
 }
 
-export interface IPost extends Document {
-    publish: 'draft' | 'published';
-    title: string;
-    description: string;
-    content: string;
-    coverUrl: string;
-    tags: string[];
-    metaTitle: string;
-    metaDescription: string;
-    metaKeywords: string[];
-    totalViews: number;
-    totalShares: number;
-    totalComments: number;
-    totalFavorites: number;
-    favoritePerson: IFavoritePerson[];
-    comments: IComment[];
-    userId: string;
-    author: {
-        name: string;
-        avatarUrl?: string;
-    };
-    createdAt: Date;
-    updatedAt: Date;
+// Define the Document type that will be used with Mongoose
+export interface PostDocument extends Document, IPost {
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const ReplyCommentSchema: Schema<IReplyComment> = new Schema({
-    id: { type: String, required: true },      // Client-side UUID
-    userId: { type: String, required: true },  // User ID of the comment creator
-    name: { type: String, required: true },
-    avatarUrl: { type: String, required: true },
-    message: { type: String, required: true },
-    tagUser: { type: String },
-    postedAt: { type: Date, default: Date.now },
+// Define schemas
+const ReplyCommentSchema = new Schema<IReplyComment>({
+  id: { type: String, required: true },
+  userId: { type: String, required: true },
+  name: { type: String, required: true },
+  avatarUrl: { type: String, required: true },
+  message: { type: String, required: true },
+  tagUser: { type: String },
+  postedAt: { type: Date, default: Date.now },
 });
 
-const CommentSchema: Schema<IComment> = new Schema({
-    id: { type: String, required: true },      // Client-side UUID
-    userId: { type: String, required: true },  // User ID of the comment creator
-    name: { type: String, required: true },
-    avatarUrl: { type: String },
-    message: { type: String, required: true },
-    postedAt: { type: Date, default: Date.now },
-    replyComment: [ReplyCommentSchema],
+const CommentSchema = new Schema<IComment>({
+  id: { type: String, required: true },
+  userId: { type: String, required: true },
+  name: { type: String, required: true },
+  avatarUrl: { type: String },
+  message: { type: String, required: true },
+  postedAt: { type: Date, default: Date.now },
+  replyComment: [ReplyCommentSchema],
 });
 
-const PostSchema = new Schema<IPost>(
-    {
-        publish: {
-            type: String,
-            enum: ['draft', 'published'],
-            default: 'draft',
-        },
-        title: { type: String, required: true },
-        description: { type: String },
-        content: { type: String },
-        coverUrl: { type: String },
-        tags: { type: [String], default: [] },
-        metaTitle: { type: String },
-        metaDescription: { type: String },
-        metaKeywords: { type: [String], default: [] },
-        totalViews: { type: Number, default: 0 },
-        totalShares: { type: Number, default: 0 },
-        totalComments: { type: Number, default: 0 },
-        totalFavorites: { type: Number, default: 0 },
-        favoritePerson: {
-            type: [
-                {
-                    name: { type: String },
-                    avatarUrl: { type: String },
-                },
-            ],
-            default: [],
-        },
-        comments: [CommentSchema],
-        userId: { type: String, required: true },
-        author: {
-            name: { type: String, required: true },
-            avatarUrl: { type: String },
-        },
+const PostSchema = new Schema<PostDocument>(
+  {
+    publish: {
+      type: String,
+      enum: ['draft', 'published'],
+      default: 'draft',
     },
-    {
-        timestamps: true,
-    }
+    title: { type: String, required: true },
+    description: { type: String },
+    content: { type: String },
+    coverUrl: { type: String },
+    tags: { type: [String], default: [] },
+    metaTitle: { type: String },
+    metaDescription: { type: String },
+    metaKeywords: { type: [String], default: [] },
+    totalViews: { type: Number, default: 0 },
+    totalShares: { type: Number, default: 0 },
+    totalComments: { type: Number, default: 0 },
+    totalFavorites: { type: Number, default: 0 },
+    favoritePerson: {
+      type: [
+        {
+          name: { type: String },
+          avatarUrl: { type: String },
+        },
+      ],
+      default: [],
+    },
+    comments: { type: [CommentSchema], default: [] },
+    userId: { type: String, required: true },
+    author: {
+      name: { type: String, required: true },
+      avatarUrl: { type: String },
+    },
+  },
+  {
+    timestamps: true,
+  }
 );
 
-// Add a pre-find middleware to ensure totalComments is set to the comments array length
-PostSchema.pre('find', () => {
-    // We can't modify documents here directly, but we'll handle it in the API layer
-});
-
-PostSchema.pre('findOne', () => {
-    // We can't modify documents here directly, but we'll handle it in the API layer
-});
-
 // Add a pre-save middleware to ensure totalComments is set to the comments array length
-PostSchema.pre('save', function(next) {
-    if (this.comments) {
-        this.totalComments = this.comments.length;
-    }
-    next();
+PostSchema.pre('save', function saveHook(next) {
+  if (this.comments) {
+    this.totalComments = this.comments.length;
+  }
+  next();
 });
 
-export const Post: Model<IPost> =
-    mongoose.models.Post || mongoose.model<IPost>('Post', PostSchema);
+// Create the model
+export const Post: Model<PostDocument> = mongoose.models.Post as Model<PostDocument> || 
+  mongoose.model<PostDocument>('Post', PostSchema);

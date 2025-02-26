@@ -31,15 +31,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     post.totalComments = post.comments.length;
     await post.save();
     // Populate user data for reply comments
-    for (const comment of post.comments) {
-      for (const reply of comment.replyComment) {
-        const user = await User.findOne({ _id: reply.userId });
-        if (user) {
-          reply.userName = user.name;
-          reply.userAvatar = user.avatarURL;
-        }
-      }
-    }
+    const populateUserData = async () => {
+      const userPromises: Promise<void>[] = [];
+
+      post.comments.forEach((comment) => {
+        comment.replyComment.forEach((reply) => {
+          userPromises.push(
+            User.findOne({ _id: reply.userId }).then((user) => {
+              if (user) {
+                reply.userName = user.name;
+                reply.userAvatar = user.avatarURL;
+              }
+            })
+          );
+        });
+      });
+
+      await Promise.all(userPromises);
+    };
+
+    await populateUserData();
 
     res.status(200).json({ post });
   } catch (error) {

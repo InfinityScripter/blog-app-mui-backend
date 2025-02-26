@@ -104,28 +104,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (isReply && parentCommentId) {
                 // Edit reply
-                const parentComment = post.comments.find((comment) => comment.id === parentCommentId);
+                const parentComment = post.comments.find((c) => c.id === parentCommentId);
                 if (!parentComment) {
                     return res.status(404).json({ message: 'Parent comment not found' });
                 }
-                const reply = parentComment.replyComment.find((reply) => reply.id === commentId);
-                if (!reply) {
+                const replyToEdit = parentComment.replyComment.find((r) => r.id === commentId);
+                if (!replyToEdit) {
                     return res.status(404).json({ message: 'Reply not found' });
                 }
-                if (reply.userId !== userId) {
+                if (replyToEdit.userId !== userId) {
                     return res.status(403).json({ message: 'Not authorized to edit this reply' });
                 }
-                reply.message = message;
+                replyToEdit.message = message;
             } else {
                 // Edit main comment
-                const comment = post.comments.find((comment) => comment.id === commentId);
-                if (!comment) {
+                const commentToEdit = post.comments.find((c) => c.id === commentId);
+                if (!commentToEdit) {
                     return res.status(404).json({ message: 'Comment not found' });
                 }
-                if (comment.userId !== userId) {
+                if (commentToEdit.userId !== userId) {
                     return res.status(403).json({ message: 'Not authorized to edit this comment' });
                 }
-                comment.message = message;
+                commentToEdit.message = message;
             }
 
             post.totalComments = post.comments.length;
