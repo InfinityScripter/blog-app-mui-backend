@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 const allowedOrigins = [
   'http://localhost:3033',
   'http://localhost:7272',
-  'https://api-dev-minimal-v6.vercel.app',
   'https://blog-app-mui-frontend.vercel.app',
 ];
 
