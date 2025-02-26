@@ -26,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ message: 'Post not found' });
     }
 
+    post.totalComments = post.comments.length;
+    await post.save();
     // Populate user data for reply comments
     for (const comment of post.comments) {
       for (const reply of comment.replyComment) {

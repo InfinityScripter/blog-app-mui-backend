@@ -67,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     replyComment: [],
                 };
                 post.comments.push(newComment);
+                post.totalComments = post.comments.length;
             } else {
                 // Adding a new reply to a comment
                 const parentComment = post.comments.find((comment) => comment.id === parentCommentId);
@@ -124,6 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 comment.message = message;
             }
 
+            post.totalComments = post.comments.length;
             // Save the updated post
             await post.save();
 
@@ -163,6 +165,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 post.comments.splice(commentIndex, 1);
             }
 
+            post.totalComments = post.comments.length;
             // Save the updated post
             await post.save();
 

@@ -11,10 +11,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await dbConnect();
     await cors(req, res);
-    
+
     let filter: any = {};
     const { authorization } = req.headers;
-    
+
     if (authorization) {
       try {
         const token = authorization.split(' ')[1];
@@ -31,7 +31,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const posts = await Post.find(filter).lean();
-    res.status(200).json({ posts });
+    const updatedPosts = posts.map(post => {
+      return {
+        ...post,
+        totalComments: post.comments ? post.comments.length : 0
+      };
+    });
+    res.status(200).json({ posts: updatedPosts });
   } catch (error: any) {
     console.error('[Post List API]: ', error);
     res.status(500).json({ message: 'Internal server error' });

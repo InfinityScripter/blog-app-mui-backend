@@ -115,5 +115,22 @@ const PostSchema = new Schema<IPost>(
     }
 );
 
+// Add a pre-find middleware to ensure totalComments is set to the comments array length
+PostSchema.pre('find', function() {
+    // We can't modify documents here directly, but we'll handle it in the API layer
+});
+
+PostSchema.pre('findOne', function() {
+    // We can't modify documents here directly, but we'll handle it in the API layer
+});
+
+// Add a pre-save middleware to ensure totalComments is set to the comments array length
+PostSchema.pre('save', function(next) {
+    if (this.comments) {
+        this.totalComments = this.comments.length;
+    }
+    next();
+});
+
 export const Post: Model<IPost> =
     mongoose.models.Post || mongoose.model<IPost>('Post', PostSchema);
