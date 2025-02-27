@@ -74,8 +74,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (typeof coverUrl === 'string') {
             coverUrlValue = coverUrl;
         } else if (coverUrl.path) {
-            const fileName = coverUrl.path.split('/').pop();
-            coverUrlValue = `/uploads/${encodeURIComponent(fileName)}`;
+            // If this is a new file upload, the path will be in the format /api/file/{id}
+            coverUrlValue = coverUrl.path;
         }
     }
 
