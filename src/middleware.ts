@@ -6,38 +6,39 @@ const allowedOrigins = [
   'http://localhost:7272',
   'https://blog-app-mui-frontend.vercel.app',
   'https://blog-app-mui-backend.onrender.com',
+  'https://www.sh0ny.online',
 ];
 
 const corsHeaders = {
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 export function middleware(request: NextRequest) {
-    const origin = request.headers.get('origin') ?? '';
-    const isAllowedOrigin = allowedOrigins.includes(origin);
-    console.log('origin is here', origin);
-    if (request.method === 'OPTIONS') {
-        console.log('preflight request is here' );
-        const preflightHeaders = {
-            ...(isAllowedOrigin && { 'Access-Control-Allow-Origin': origin }),
-            ...corsHeaders,
-        };
-        return NextResponse.json({}, { headers: preflightHeaders });
-    }
+  const origin = request.headers.get('origin') ?? '';
+  const isAllowedOrigin = allowedOrigins.includes(origin);
+  console.log('origin is here', origin);
+  if (request.method === 'OPTIONS') {
+    console.log('preflight request is here');
+    const preflightHeaders = {
+      ...(isAllowedOrigin && { 'Access-Control-Allow-Origin': origin }),
+      ...corsHeaders,
+    };
+    return NextResponse.json({}, { headers: preflightHeaders });
+  }
 
-    const response = NextResponse.next();
-    if (isAllowedOrigin) {
-        response.headers.set('Access-Control-Allow-Origin', origin);
-    }
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-    });
+  const response = NextResponse.next();
+  if (isAllowedOrigin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+  }
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
 
-    return response;
+  return response;
 }
 
 export const config = {
-    matcher: '/api/:path*',
+  matcher: '/api/:path*',
 };
