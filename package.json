@@ -32,7 +32,7 @@
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "mongoose": "^8.9.2",
-    "next": "^14.2.3",
+    "next": "^14.2.24",
     "next-connect": "^0.12.2",
     "nodemailer": "^6.10.0",
     "passport": "^0.7.0",
