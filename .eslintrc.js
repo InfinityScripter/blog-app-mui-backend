@@ -3,19 +3,19 @@
  */
 module.exports = {
   root: true,
-  env: { browser: true, es2020: true },
+  env: { browser: true, es2020: true, node: true, jest: true },
   plugins: ['perfectionist', 'unused-imports', '@typescript-eslint', 'prettier'],
   extends: ['airbnb', 'airbnb-typescript', 'airbnb/hooks', 'prettier'],
   parserOptions: {
     sourceType: 'module',
     ecmaVersion: 'latest',
     ecmaFeatures: { jsx: true },
-    project: './tsconfig.json',
+    project: '/Users/kot/projects/blog-app-mui/backend/tsconfig.jest.json',
   },
   settings: {
     'import/resolver': {
       typescript: {
-        project: './tsconfig.json',
+        project: '/Users/kot/projects/blog-app-mui/backend/tsconfig.jest.json',
       },
     },
   },
