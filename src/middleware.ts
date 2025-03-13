@@ -7,6 +7,7 @@ const allowedOrigins = [
   'https://blog-app-mui-frontend.vercel.app',
   'https://blog-app-mui-backend.onrender.com',
   'https://www.sh0ny.online',
+  'https://sh0ny.ru',
 ];
 
 const corsHeaders = {
