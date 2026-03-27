@@ -29,6 +29,7 @@ module.exports = {
     'no-alert': 0,
     camelcase: 0,
     'no-console': 0,
+    'consistent-return': 0,
     'no-unused-vars': 0,
     'no-nested-ternary': 0,
     'no-param-reassign': 0,
@@ -40,6 +41,7 @@ module.exports = {
     // typescript
     '@typescript-eslint/naming-convention': 0,
     '@typescript-eslint/no-use-before-define': 0,
+    '@typescript-eslint/no-shadow': 0,
     '@typescript-eslint/consistent-type-exports': 1,
     '@typescript-eslint/consistent-type-imports': 1,
     '@typescript-eslint/no-unused-vars': [1, { args: 'none' }],

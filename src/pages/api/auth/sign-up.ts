@@ -7,9 +7,10 @@ import { sign, type SignOptions } from 'jsonwebtoken';
 
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
-import type { IUser } from '../../../models/User';
 import User from '../../../models/User';
 import { sendVerificationEmail } from '../../../utils/email';
+
+import type { IUser } from '../../../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
@@ -72,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('[Sign Up API]', error);
     return res.status(500).json({
       message: 'Internal server error',
-      error: error.message
+      error: error.message,
     });
   }
 }

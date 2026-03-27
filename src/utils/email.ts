@@ -1,8 +1,5 @@
 import nodemailer from 'nodemailer';
 
-// Функция для генерации 6-значного кода
-const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
-
 // Создаем транспорт с подробным логированием
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -14,7 +11,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
   debug: true, // Включаем отладку
-  logger: true // Включаем логирование
+  logger: true, // Включаем логирование
 });
 
 // Проверяем конфигурацию при инициализации
@@ -36,7 +33,7 @@ export const sendVerificationEmail = async (email: string, code: string) => {
   const mailOptions = {
     from: {
       name: 'Blog App Support',
-      address: process.env.EMAIL_USER as string
+      address: process.env.EMAIL_USER as string,
     },
     to: email,
     subject: 'Email Verification',
@@ -80,7 +77,7 @@ export const sendPasswordResetEmail = async (email: string, code: string) => {
   const mailOptions = {
     from: {
       name: 'Blog App Support',
-      address: process.env.EMAIL_USER as string
+      address: process.env.EMAIL_USER as string,
     },
     to: email,
     subject: 'Password Reset Request',

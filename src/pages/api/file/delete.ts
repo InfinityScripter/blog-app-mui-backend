@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
 import dbConnect from '@/src/lib/db';
-import { File } from '@/src/models/File';
 import { verify } from 'jsonwebtoken';
+import { File } from '@/src/models/File';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -26,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ message: 'Неверный токен авторизации' });
     }
 
-    const userId = decoded.userId;
+    const { userId } = decoded;
     const { id } = req.query;
 
     if (!id || typeof id !== 'string') {
