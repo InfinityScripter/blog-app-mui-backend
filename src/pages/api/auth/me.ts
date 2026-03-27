@@ -6,6 +6,7 @@ import { verify } from 'jsonwebtoken';
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { toPublicUser } from '../../../utils/public-user';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -23,13 +24,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const token = authorization.split(' ')[1];
     const decoded: any = verify(token, JWT_SECRET);
-    const {userId} = decoded;
-    // Исключаем поле passwordHash из возвращаемых данных
-    const user = await User.findById(userId).select('-passwordHash');
+    const { userId } = decoded;
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(401).json({ message: 'Invalid authorization token' });
     }
-    return res.status(200).json({ user });
+    return res.status(200).json({ user: toPublicUser(user) });
   } catch (error: any) {
     console.error('[Me API]', error);
     return res.status(500).json({ message: 'Internal server error' });

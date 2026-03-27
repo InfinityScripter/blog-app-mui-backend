@@ -8,6 +8,7 @@ import { sign, type SignOptions } from 'jsonwebtoken';
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { toPublicUser } from '../../../utils/public-user';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Wrong email or password' });
     }
     const accessToken = sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    return res.status(200).json({ accessToken, user });
+    return res.status(200).json({ accessToken, user: toPublicUser(user) });
   } catch (error: any) {
     console.error('[Sign In API]', error);
     return res.status(500).json({ message: 'Internal server error' });

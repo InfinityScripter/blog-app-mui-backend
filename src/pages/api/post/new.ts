@@ -5,6 +5,7 @@ import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { verify } from 'jsonwebtoken';
 import { Post } from '@/src/models/Post';
+import { buildNewPostPayload } from '@/src/utils/post-payload';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -53,42 +54,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       favoritePerson,
     } = req.body;
 
-    const parsedTags =
-        typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()) : tags;
-    const parsedMetaKeywords =
-        typeof metaKeywords === 'string'
-            ? metaKeywords.split(',').map((k: string) => k.trim())
-            : metaKeywords;
-
-    // Handle coverUrl from frontend
-    let coverUrlValue = 'http://localhost:4444/assets/images/cover/cover-1.webp';
-    if (coverUrl) {
-        if (typeof coverUrl === 'string') {
-            coverUrlValue = coverUrl;
-        } else if (coverUrl.path) {
-            // If this is a new file upload, the path will be in the format /api/file/{id}
-            coverUrlValue = coverUrl.path;
-        }
-    }
-
-    const newPost = {
-      title,
-      publish,
-      metaKeywords: parsedMetaKeywords || [],
-      content,
-      tags: parsedTags || [],
-      metaTitle,
-      coverUrl: coverUrlValue,
-      totalViews: totalViews || 0,
-      totalShares: totalShares || 0,
-      totalComments: totalComments || 0,
-      totalFavorites: totalFavorites || 0,
-      metaDescription,
-      description,
+    const newPost = buildNewPostPayload(
+      {
+        title,
+        publish,
+        content,
+        tags,
+        metaKeywords,
+        metaTitle,
+        coverUrl,
+        totalViews,
+        totalShares,
+        totalComments,
+        totalFavorites,
+        metaDescription,
+        description,
+        favoritePerson,
+      },
       author,
-      userId: user._id,
-      favoritePerson: favoritePerson || [],
-    };
+      user._id
+    );
 
     const post = await Post.create(newPost);
     return res.status(201).json({ message: 'Пост успешно создан', success: true, post });

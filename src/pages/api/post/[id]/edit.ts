@@ -4,6 +4,7 @@ import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { verify } from 'jsonwebtoken';
 import { Post } from '@/src/models/Post';
+import { buildPostPatchPayload } from '@/src/utils/post-payload';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -61,49 +62,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       favoritePerson,
     } = req.body;
 
-    const parsedTags =
-        typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()) : tags;
-    const parsedMetaKeywords =
-        typeof metaKeywords === 'string'
-            ? metaKeywords.split(',').map((k: string) => k.trim())
-            : metaKeywords;
-
-    // Handle coverUrl from frontend
-    let coverUrlValue = existingPost.coverUrl;
-    if (coverUrl) {
-        if (typeof coverUrl === 'string') {
-            coverUrlValue = coverUrl;
-        } else if (coverUrl.path) {
-            // If this is a new file upload, the path will be in the format /api/file/{id}
-            coverUrlValue = coverUrl.path;
-        }
-    }
-
-    const updatedFields = {
-      title,
-      publish,
-      metaKeywords: parsedMetaKeywords || [],
-      content,
-      tags: parsedTags || [],
-      metaTitle,
-      coverUrl: coverUrlValue,
-      totalViews,
-      totalShares,
-      totalComments: existingPost.comments.length,
-      totalFavorites,
-      metaDescription,
-      description,
-      author, // заменяем данные автора данными из токена
-      favoritePerson,
-    };
+    const updatedFields = buildPostPatchPayload(
+      {
+        title,
+        publish,
+        metaKeywords,
+        content,
+        tags,
+        metaTitle,
+        coverUrl,
+        totalViews,
+        totalShares,
+        totalFavorites,
+        metaDescription,
+        description,
+        favoritePerson,
+      },
+      {
+        author,
+        coverUrlFallback: existingPost.coverUrl,
+        totalComments: existingPost.comments.length,
+      }
+    );
 
     const updatedPost = await Post.findByIdAndUpdate(id, updatedFields, { new: true });
     if (!updatedPost) {
       return res.status(404).json({ message: 'Пост не найден' });
     }
-    res.status(200).json({ message: 'Пост успешно обновлен', success: true, post: updatedPost });
+    return res
+      .status(200)
+      .json({ message: 'Пост успешно обновлен', success: true, post: updatedPost });
   } catch (error: any) {
     console.error('[Post Edit API]: ', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 }

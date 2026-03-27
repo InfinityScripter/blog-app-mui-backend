@@ -133,6 +133,16 @@ export default async function allHandler(req: NextApiRequest, res: NextApiRespon
         if (endpoint === 'conversation') getConversation(req, res);
         if (endpoint === 'mark-as-seen') getMarkAsSeen(req, res);
         if (endpoint === 'contacts') getContacts(req, res);
+        if (
+          endpoint !== 'conversations' &&
+          endpoint !== 'conversation' &&
+          endpoint !== 'mark-as-seen' &&
+          endpoint !== 'contacts'
+        ) {
+          res.status(400).json({
+            message: 'Unknown or missing chat endpoint',
+          });
+        }
         break;
       case 'POST':
         newConversation(req, res);

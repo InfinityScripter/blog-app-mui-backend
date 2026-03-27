@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
 import { requireAuth } from '@/src/utils/auth';
+import { buildPostPatchPayload } from '@/src/utils/post-payload';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PUT') {
@@ -45,38 +46,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(403).json({ message: 'Not authorized to update this post' });
     }
 
-    // Подготовка данных для обновления
-    const updateData: any = {};
-
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (content !== undefined) updateData.content = content;
-
-    if (tags !== undefined) {
-      const parsedTags =
-        typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()) : tags;
-      updateData.tags = parsedTags;
-    }
-
-    if (metaKeywords !== undefined) {
-      const parsedMetaKeywords =
-        typeof metaKeywords === 'string'
-          ? metaKeywords.split(',').map((k: string) => k.trim())
-          : metaKeywords;
-      updateData.metaKeywords = parsedMetaKeywords;
-    }
-
-    if (coverUrl !== undefined) {
-      let coverUrlValue = coverUrl;
-      if (typeof coverUrl !== 'string' && coverUrl?.path) {
-        // Если это новая загрузка файла
-        coverUrlValue = coverUrl.path;
+    const updateData = buildPostPatchPayload(
+      {
+        title,
+        description,
+        content,
+        tags,
+        metaKeywords,
+        coverUrl,
+        metaTitle,
+        metaDescription,
+      },
+      {
+        coverUrlFallback: post.coverUrl,
       }
-      updateData.coverUrl = coverUrlValue;
-    }
+    );
 
-    if (metaTitle !== undefined) updateData.metaTitle = metaTitle;
-    if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
     updateData.updatedAt = new Date();
 
     // Обновить пост
