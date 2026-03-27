@@ -18,7 +18,7 @@ jobs:
           if [ -z "${{ secrets.VDS_HOST }}" ]; then echo "Missing secret: VDS_HOST"; exit 1; fi
           if [ -z "${{ secrets.VDS_PORT }}" ]; then echo "Missing secret: VDS_PORT"; exit 1; fi
           if [ -z "${{ secrets.VDS_USER }}" ]; then echo "Missing secret: VDS_USER"; exit 1; fi
-          if [ -z "${{ secrets.VDS_SSH_PRIVATE_KEY }}" ]; then echo "Missing secret: VDS_SSH_PRIVATE_KEY"; exit 1; fi
+          if [ -z "${{ secrets.VDS_SSH_PRIVATE_KEY || secrets.VDS }}" ]; then echo "Missing secret: VDS_SSH_PRIVATE_KEY (or VDS fallback)"; exit 1; fi
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
         with:
           host: ${{ secrets.VDS_HOST }}
           username: ${{ secrets.VDS_USER }}
-          key: ${{ secrets.VDS_SSH_PRIVATE_KEY }}
+          key: ${{ secrets.VDS_SSH_PRIVATE_KEY || secrets.VDS }}
           port: ${{ secrets.VDS_PORT }}
           source: '.'
           target: '/opt/blog-app/backend'
@@ -40,7 +40,7 @@ jobs:
         with:
           host: ${{ secrets.VDS_HOST }}
           username: ${{ secrets.VDS_USER }}
-          key: ${{ secrets.VDS_SSH_PRIVATE_KEY }}
+          key: ${{ secrets.VDS_SSH_PRIVATE_KEY || secrets.VDS }}
           port: ${{ secrets.VDS_PORT }}
           script: |
             set -e
