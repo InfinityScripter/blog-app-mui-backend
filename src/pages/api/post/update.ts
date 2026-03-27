@@ -62,7 +62,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     );
 
-    updateData.updatedAt = new Date();
+    (updateData as Record<string, unknown>).updatedAt = new Date();
 
     // Обновить пост
     const updatedPost = await Post.findByIdAndUpdate(
