@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate deploy secrets
+        run: |
+          if [ -z "${{ secrets.VDS_HOST }}" ]; then echo "Missing secret: VDS_HOST"; exit 1; fi
+          if [ -z "${{ secrets.VDS_PORT }}" ]; then echo "Missing secret: VDS_PORT"; exit 1; fi
+          if [ -z "${{ secrets.VDS_USER }}" ]; then echo "Missing secret: VDS_USER"; exit 1; fi
+          if [ -z "${{ secrets.VDS_SSH_PRIVATE_KEY }}" ]; then echo "Missing secret: VDS_SSH_PRIVATE_KEY"; exit 1; fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
