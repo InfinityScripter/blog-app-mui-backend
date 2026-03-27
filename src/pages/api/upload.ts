@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import formidable from 'formidable';
+import dbConnect from '@/src/lib/db';
 import { verify } from 'jsonwebtoken';
+import { File } from '@/src/models/File';
+import { unlink, readFile } from 'node:fs/promises';
 
 import uuidv4 from 'src/utils/uuidv4';
-import dbConnect from '@/src/lib/db';
-import { File } from '@/src/models/File';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
@@ -37,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ message: 'Неверный токен авторизации' });
     }
 
-    const userId = decoded.userId;
+    const { userId } = decoded;
 
     // Create a temporary upload directory for formidable
     const form = formidable({
@@ -45,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       multiples: false,
     });
 
-    return new Promise<void>((resolve, reject) => {
+    return await new Promise<void>((resolve) => {
       form.parse(req, async (err, fields, files) => {
         if (err) {
           console.error('[Upload API] Form parse error:', err);
@@ -61,40 +62,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         try {
           // Read the file data
-          const fileData = await new Promise<Buffer>((resolveRead, rejectRead) => {
-            const fileStream = require('fs').createReadStream(file.filepath);
-            const chunks: Buffer[] = [];
-            
-            fileStream.on('data', (chunk: Buffer) => {
-              chunks.push(chunk);
-            });
-            
-            fileStream.on('end', () => {
-              resolveRead(Buffer.concat(chunks));
-            });
-            
-            fileStream.on('error', (error: Error) => {
-              rejectRead(error);
-            });
-          });
+          const fileData = await readFile(file.filepath);
 
           // Generate a unique filename
           const uniqueFilename = `${uuidv4()}${file.originalFilename?.substring(file.originalFilename.lastIndexOf('.'))}`;
 
-          // Save file to MongoDB
+          // Save file to PostgreSQL
           const newFile = new File({
             filename: uniqueFilename,
-            originalname: file.originalFilename,
-            mimetype: file.mimetype,
+            originalname: file.originalFilename || uniqueFilename,
+            mimetype: file.mimetype || 'application/octet-stream',
             size: file.size,
             data: fileData,
-            userId: userId,
+            userId,
           });
 
           await newFile.save();
 
           // Clean up the temporary file
-          require('fs').unlinkSync(file.filepath);
+          await unlink(file.filepath);
 
           res.status(200).json({
             message: 'File uploaded successfully',

@@ -1,10 +1,9 @@
+import '@jest/globals';
+import jwt from 'jsonwebtoken';
+import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-up';
-import User from '@/src/models/User';
-import jwt from 'jsonwebtoken';
-import '@jest/globals';
 
-jest.mock('@/src/lib/db', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/email', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue(true),
@@ -23,29 +22,32 @@ describe('POST /api/auth/sign-up', () => {
         email: 'test@example.com',
         password: 'password123',
         firstName: 'Test',
-        lastName: 'User'
-      }
+        lastName: 'User',
+      },
     });
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(201);
-    
+
     const data = JSON.parse(res._getData());
     expect(data.accessToken).toBeDefined();
     expect(data.user).toBeDefined();
     expect(data.user.email).toBe('test@example.com');
     expect(data.user.name).toBe('Test User');
     expect(data.user.isEmailVerified).toBe(false);
-    
+
     // Verify JWT token is valid
-    const decodedToken = jwt.verify(data.accessToken, process.env.JWT_SECRET || 'secret123') as { userId: string };
+    const decodedToken = jwt.verify(data.accessToken, process.env.JWT_SECRET || 'secret123') as {
+      userId: string;
+    };
     expect(decodedToken.userId).toBe(data.user.id);
-    
+
     // Verify user is saved in the database (select fields explicitly to get emailVerificationCode)
-    const savedUser = await User.findOne({ email: 'test@example.com' })
-      .select('+emailVerificationCode');
-    
+    const savedUser = await User.findOne({ email: 'test@example.com' }).select(
+      '+emailVerificationCode'
+    );
+
     expect(savedUser).toBeTruthy();
     expect(savedUser?.name).toBe('Test User');
     expect(savedUser?.isEmailVerified).toBe(false);
@@ -68,8 +70,8 @@ describe('POST /api/auth/sign-up', () => {
         email: 'existing@example.com',
         password: 'password123',
         firstName: 'Another',
-        lastName: 'User'
-      }
+        lastName: 'User',
+      },
     });
 
     await handler(req, res);
@@ -85,7 +87,7 @@ describe('POST /api/auth/sign-up', () => {
       body: {
         email: 'test@example.com',
         // Missing password, firstName, lastName
-      }
+      },
     });
 
     await handler(req, res);
@@ -97,7 +99,7 @@ describe('POST /api/auth/sign-up', () => {
 
   it('should return 405 for non-POST methods', async () => {
     const { req, res } = createMocks({
-      method: 'GET'
+      method: 'GET',
     });
 
     await handler(req, res);

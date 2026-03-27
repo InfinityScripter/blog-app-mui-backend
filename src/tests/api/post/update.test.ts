@@ -1,14 +1,13 @@
-import { createMocks } from 'node-mocks-http';
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+import '@jest/globals';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import '@jest/globals';
-
 import User from '@/src/models/User';
+import uuidv4 from '@/src/utils/uuidv4';
 import { Post } from '@/src/models/Post';
+import { createMocks } from 'node-mocks-http';
 
-jest.mock('@/src/lib/db', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/auth', () => ({
   requireAuth: jest.fn((handler) => async (req: NextApiRequest, res: NextApiResponse) => {
@@ -114,8 +113,8 @@ describe('PUT /api/post/update', () => {
   });
 
   it('should return 404 if post not found', async () => {
-    const nonExistentId = new mongoose.Types.ObjectId().toString();
-    
+    const nonExistentId = uuidv4();
+
     const { req, res } = createMocks({
       method: 'PUT',
       headers: {
@@ -167,7 +166,7 @@ describe('PUT /api/post/update', () => {
       passwordHash: anotherUserPasswordHash,
       isEmailVerified: true,
     });
-    
+
     const anotherUserId = anotherUser._id?.toString() || '';
     const anotherToken = jwt.sign({ userId: anotherUserId }, process.env.JWT_SECRET || 'secret123');
 

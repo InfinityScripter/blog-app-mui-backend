@@ -5,8 +5,6 @@ import dbConnect from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
 import { requireAuth } from '@/src/utils/auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
-
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PUT') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -16,9 +14,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await dbConnect();
     await cors(req, res);
 
-    const { postId, title, description, content, tags, metaKeywords, coverUrl, metaTitle, metaDescription } = req.body;
+    const {
+      postId,
+      title,
+      description,
+      content,
+      tags,
+      metaKeywords,
+      coverUrl,
+      metaTitle,
+      metaDescription,
+    } = req.body;
 
-    if (!postId) {
+    if (!postId || typeof postId !== 'string') {
       return res.status(400).json({ message: 'Post ID is required' });
     }
 
@@ -45,16 +53,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (content !== undefined) updateData.content = content;
 
     if (tags !== undefined) {
-      const parsedTags = typeof tags === 'string'
-        ? tags.split(',').map((t: string) => t.trim())
-        : tags;
+      const parsedTags =
+        typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()) : tags;
       updateData.tags = parsedTags;
     }
 
     if (metaKeywords !== undefined) {
-      const parsedMetaKeywords = typeof metaKeywords === 'string'
-        ? metaKeywords.split(',').map((k: string) => k.trim())
-        : metaKeywords;
+      const parsedMetaKeywords =
+        typeof metaKeywords === 'string'
+          ? metaKeywords.split(',').map((k: string) => k.trim())
+          : metaKeywords;
       updateData.metaKeywords = parsedMetaKeywords;
     }
 
@@ -81,7 +89,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(200).json({
       message: 'Post updated successfully',
       success: true,
-      post: updatedPost
+      post: updatedPost,
     });
   } catch (error: any) {
     console.error('[Post Update API]: ', error);

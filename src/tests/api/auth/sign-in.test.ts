@@ -1,24 +1,23 @@
-import { createMocks } from 'node-mocks-http';
-import bcrypt from 'bcrypt';
-import handler from '@/src/pages/api/auth/sign-in';
-import User from '@/src/models/User';
-import jwt from 'jsonwebtoken';
 import '@jest/globals';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import User from '@/src/models/User';
+import { createMocks } from 'node-mocks-http';
+import handler from '@/src/pages/api/auth/sign-in';
 
-jest.mock('@/src/lib/db', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
 describe('POST /api/auth/sign-in', () => {
   beforeEach(async () => {
     await User.deleteMany({});
-    
+
     // Create a test user with valid passwordHash
     const passwordHash = await bcrypt.hash('password123', 10);
     await User.create({
       name: 'Test User',
       email: 'test@example.com',
       passwordHash,
-      isEmailVerified: true
+      isEmailVerified: true,
     });
   });
 
@@ -27,22 +26,24 @@ describe('POST /api/auth/sign-in', () => {
       method: 'POST',
       body: {
         email: 'test@example.com',
-        password: 'password123'
-      }
+        password: 'password123',
+      },
     });
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    
+
     const data = JSON.parse(res._getData());
     expect(data.accessToken).toBeDefined();
     expect(data.user).toBeDefined();
     expect(data.user.email).toBe('test@example.com');
     expect(data.user.name).toBe('Test User');
-    
+
     // Verify JWT token is valid
-    const decodedToken = jwt.verify(data.accessToken, process.env.JWT_SECRET || 'secret123') as { userId: string };
+    const decodedToken = jwt.verify(data.accessToken, process.env.JWT_SECRET || 'secret123') as {
+      userId: string;
+    };
     expect(decodedToken.userId).toBe(data.user._id.toString());
   });
 
@@ -51,8 +52,8 @@ describe('POST /api/auth/sign-in', () => {
       method: 'POST',
       body: {
         email: 'test@example.com',
-        password: 'wrongpassword'
-      }
+        password: 'wrongpassword',
+      },
     });
 
     await handler(req, res);
@@ -67,8 +68,8 @@ describe('POST /api/auth/sign-in', () => {
       method: 'POST',
       body: {
         email: 'nonexistent@example.com',
-        password: 'password123'
-      }
+        password: 'password123',
+      },
     });
 
     await handler(req, res);
@@ -83,7 +84,7 @@ describe('POST /api/auth/sign-in', () => {
       method: 'POST',
       body: {
         // Missing email and password
-      }
+      },
     });
 
     await handler(req, res);
@@ -95,7 +96,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should return 405 for non-POST methods', async () => {
     const { req, res } = createMocks({
-      method: 'GET'
+      method: 'GET',
     });
 
     await handler(req, res);

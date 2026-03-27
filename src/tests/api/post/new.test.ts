@@ -1,13 +1,11 @@
-import { createMocks } from 'node-mocks-http';
-import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
+import '@jest/globals';
 import bcrypt from 'bcrypt';
-import handler from '@/src/pages/api/post/new';
+import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
-import '@jest/globals';
+import { createMocks } from 'node-mocks-http';
+import handler from '@/src/pages/api/post/new';
 
-jest.mock('@/src/lib/db', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
 describe('POST /api/post/new', () => {
@@ -15,7 +13,7 @@ describe('POST /api/post/new', () => {
     // Create a test user with passwordHash to satisfy validation
     const passwordHash = await bcrypt.hash('testpassword', 10);
     await User.create({
-      _id: new mongoose.Types.ObjectId('6060694b2c21843bf8307f43'),
+      _id: '6060694b2c21843bf8307f43',
       name: 'Test User',
       email: 'test@example.com',
       passwordHash,
@@ -24,13 +22,16 @@ describe('POST /api/post/new', () => {
   });
 
   it('should create a new post with valid token and data', async () => {
-    const token = jwt.sign({ userId: '6060694b2c21843bf8307f43' }, process.env.JWT_SECRET || 'secret123');
-    
+    const token = jwt.sign(
+      { userId: '6060694b2c21843bf8307f43' },
+      process.env.JWT_SECRET || 'secret123'
+    );
+
     const { req, res } = createMocks({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
       body: {
         title: 'Test Post Title',
@@ -41,20 +42,20 @@ describe('POST /api/post/new', () => {
         metaTitle: 'Test Meta Title',
         metaDescription: 'Test Meta Description',
         metaKeywords: 'key1,key2',
-        coverUrl: 'http://example.com/cover.jpg'
-      }
+        coverUrl: 'http://example.com/cover.jpg',
+      },
     });
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(201);
-    
+
     const responseData = JSON.parse(res._getData());
     expect(responseData.success).toBe(true);
     expect(responseData.post).toBeDefined();
     expect(responseData.post.title).toBe('Test Post Title');
     expect(responseData.post.author.name).toBe('Test User');
-    
+
     // Verify the post was actually saved in the database
     const post = await Post.findById(responseData.post._id);
     expect(post).toBeDefined();
@@ -66,11 +67,11 @@ describe('POST /api/post/new', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer invalid_token'
+        Authorization: 'Bearer invalid_token',
       },
       body: {
-        title: 'Test Post Title'
-      }
+        title: 'Test Post Title',
+      },
     });
 
     await handler(req, res);
@@ -81,11 +82,11 @@ describe('POST /api/post/new', () => {
     const { req, res } = createMocks({
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: {
-        title: 'Test Post Title'
-      }
+        title: 'Test Post Title',
+      },
     });
 
     await handler(req, res);
@@ -94,7 +95,7 @@ describe('POST /api/post/new', () => {
 
   it('should return 405 for non-POST methods', async () => {
     const { req, res } = createMocks({
-      method: 'GET'
+      method: 'GET',
     });
 
     await handler(req, res);

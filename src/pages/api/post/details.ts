@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             User.findOne({ _id: reply.userId }).then((user) => {
               if (user) {
                 reply.userName = user.name;
-                reply.userAvatar = user.avatarURL;
+                reply.userAvatar = user.avatarURL ?? undefined;
               }
             })
           );
@@ -52,9 +52,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await populateUserData();
 
-    res.status(200).json({ post });
+    return res.status(200).json({ post });
   } catch (error) {
     console.error('[Post Details API]:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }

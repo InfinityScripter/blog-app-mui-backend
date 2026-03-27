@@ -1,19 +1,18 @@
-import { createMocks } from 'node-mocks-http';
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+import '@jest/globals';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import '@jest/globals';
-
 import User from '@/src/models/User';
+import uuidv4 from '@/src/utils/uuidv4';
 import { Post } from '@/src/models/Post';
+import { createMocks } from 'node-mocks-http';
 
-jest.mock('@/src/lib/db', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/auth', () => ({
   requireAuth: jest.fn((handler) => async (req: NextApiRequest, res: NextApiResponse) => {
     if (req.headers.authorization) {
-      // Используем непосредственно userId из headers, это будет строковый ID из MongoDB
+      // Используем непосредственно userId из headers, это будет строковый ID пользователя
       req.user = { _id: req.headers.userid as string };
     }
     return handler(req, res);
@@ -101,8 +100,8 @@ describe('DELETE /api/post/delete', () => {
   });
 
   it('should return 404 if post does not exist', async () => {
-    const nonExistentPostId = new mongoose.Types.ObjectId().toString();
-    
+    const nonExistentPostId = uuidv4();
+
     const { req, res } = createMocks({
       method: 'DELETE',
       headers: {
@@ -147,7 +146,7 @@ describe('DELETE /api/post/delete', () => {
       passwordHash: await bcrypt.hash('password123', 10),
       isEmailVerified: true,
     });
-    
+
     const anotherUserId = anotherUser._id?.toString() || '';
     const anotherToken = jwt.sign({ userId: anotherUserId }, process.env.JWT_SECRET || 'secret123');
 

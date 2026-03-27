@@ -16,7 +16,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const { postId } = req.query;
 
-    if (!postId) {
+    if (!postId || typeof postId !== 'string') {
       return res.status(400).json({ message: 'Post ID is required' });
     }
 

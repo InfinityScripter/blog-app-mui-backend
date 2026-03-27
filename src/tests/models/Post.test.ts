@@ -1,8 +1,19 @@
-import mongoose from 'mongoose';
-import { IPost, Post } from '@/src/models/Post';
+import type { IPost } from '@/src/models/Post';
+
+import User from '@/src/models/User';
+import uuidv4 from '@/src/utils/uuidv4';
+import { Post } from '@/src/models/Post';
 
 describe('Post Model', () => {
   it('should create a post successfully', async () => {
+    const userId = uuidv4();
+    await User.create({
+      _id: userId,
+      name: 'Test Author',
+      email: 'author1@example.com',
+      passwordHash: 'hash',
+    });
+
     const postData: Partial<IPost> = {
       title: 'Test Post',
       description: 'Test Description',
@@ -13,7 +24,7 @@ describe('Post Model', () => {
       metaDescription: 'Test Meta Description',
       metaKeywords: ['test', 'keywords'],
       publish: 'published',
-      userId: new mongoose.Types.ObjectId().toString(),
+      userId,
       author: {
         name: 'Test Author',
         avatarUrl: 'http://test.com/avatar.jpg',
@@ -28,10 +39,18 @@ describe('Post Model', () => {
   });
 
   it('should update totalComments when comments are added', async () => {
+    const userId = uuidv4();
+    await User.create({
+      _id: userId,
+      name: 'Test Author',
+      email: 'author2@example.com',
+      passwordHash: 'hash',
+    });
+
     const postData: Partial<IPost> = {
       title: 'Test Post',
       description: 'Test Description',
-      userId: new mongoose.Types.ObjectId().toString(),
+      userId,
       author: {
         name: 'Test Author',
       },
@@ -44,7 +63,7 @@ describe('Post Model', () => {
     // Add a comment
     post.comments.push({
       id: '1',
-      userId: new mongoose.Types.ObjectId().toString(),
+      userId: uuidv4(),
       name: 'Commenter',
       avatarUrl: 'http://test.com/commenter.jpg',
       message: 'Test comment',
