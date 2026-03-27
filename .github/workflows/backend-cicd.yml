@@ -39,6 +39,7 @@ jobs:
             set -e
             cd /opt/blog-app/backend
             find . -name "._*" -delete
+            cp /opt/blog-backend/.env.production /opt/blog-app/backend/.env
             corepack enable
             corepack prepare yarn@1.22.22 --activate
             yarn install --frozen-lockfile
