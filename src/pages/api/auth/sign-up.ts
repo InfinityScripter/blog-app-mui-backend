@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 // @ts-ignore
 import bcrypt from 'bcrypt';
-import { sign } from 'jsonwebtoken';
+import { sign, type SignOptions } from 'jsonwebtoken';
 
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
@@ -12,7 +12,7 @@ import User from '../../../models/User';
 import { sendVerificationEmail } from '../../../utils/email';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
 
 // Генерация 6-значного кода
 const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
