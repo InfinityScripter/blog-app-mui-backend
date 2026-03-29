@@ -2,12 +2,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dotenv from 'dotenv';
-// @ts-ignore
-import passport from 'passport';
 import nextConnect from 'next-connect';
 import { sign, type SignOptions } from 'jsonwebtoken';
 
 import dbConnect from '../../../../lib/db';
+import passport from '../../../../lib/passport';
 
 dotenv.config();
 

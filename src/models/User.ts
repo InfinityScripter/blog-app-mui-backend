@@ -6,6 +6,7 @@ type UserFilter = {
   _id?: string;
   email?: string;
   googleId?: string;
+  yandexId?: string;
   isEmailVerified?: boolean;
   passwordResetCode?: string;
   passwordResetExpires?: { $gt: Date };
@@ -18,6 +19,7 @@ export interface IUser {
   email: string;
   passwordHash?: string | null;
   googleId?: string | null;
+  yandexId?: string | null;
   avatarURL?: string | null;
   isEmailVerified?: boolean;
   emailVerificationCode?: string | null;
@@ -39,6 +41,7 @@ type UserRow = {
   email_verification_expires: Date | null;
   failed_login_attempts: number;
   google_id: string | null;
+  yandex_id: string | null;
   id: string;
   is_email_verified: boolean;
   is_locked: boolean;
@@ -60,6 +63,7 @@ function mapUserRow(row: UserRow) {
     emailVerificationExpires: row.email_verification_expires,
     failedLoginAttempts: row.failed_login_attempts,
     googleId: row.google_id,
+    yandexId: row.yandex_id,
     id: row.id,
     isEmailVerified: row.is_email_verified,
     isLocked: row.is_locked,
@@ -131,6 +135,11 @@ function buildWhere(filter: UserFilter) {
     clauses.push(`google_id = $${values.length}`);
   }
 
+  if (filter.yandexId) {
+    values.push(filter.yandexId);
+    clauses.push(`yandex_id = $${values.length}`);
+  }
+
   if (typeof filter.isEmailVerified === 'boolean') {
     values.push(filter.isEmailVerified);
     clauses.push(`is_email_verified = $${values.length}`);
@@ -191,6 +200,8 @@ export default class User implements IUser {
 
   googleId?: string | null;
 
+  yandexId?: string | null;
+
   id: string;
 
   isEmailVerified?: boolean;
@@ -218,6 +229,7 @@ export default class User implements IUser {
     this.email = data.email || '';
     this.passwordHash = data.passwordHash ?? null;
     this.googleId = data.googleId ?? null;
+    this.yandexId = data.yandexId ?? null;
     this.avatarURL = data.avatarURL ?? null;
     this.isEmailVerified = data.isEmailVerified ?? false;
     this.emailVerificationCode = data.emailVerificationCode ?? null;
@@ -271,6 +283,7 @@ export default class User implements IUser {
           email,
           password_hash,
           google_id,
+          yandex_id,
           avatar_url,
           is_email_verified,
           email_verification_code,
@@ -282,13 +295,14 @@ export default class User implements IUser {
           is_locked,
           updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
           password_hash = EXCLUDED.password_hash,
           google_id = EXCLUDED.google_id,
+          yandex_id = EXCLUDED.yandex_id,
           avatar_url = EXCLUDED.avatar_url,
           is_email_verified = EXCLUDED.is_email_verified,
           email_verification_code = EXCLUDED.email_verification_code,
@@ -307,6 +321,7 @@ export default class User implements IUser {
         this.email,
         this.passwordHash ?? null,
         this.googleId ?? null,
+        this.yandexId ?? null,
         this.avatarURL ?? null,
         this.isEmailVerified ?? false,
         this.emailVerificationCode ?? null,

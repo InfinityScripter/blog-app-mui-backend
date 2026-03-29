@@ -36,6 +36,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!isMatch) {
       return res.status(400).json({ message: 'Wrong email or password' });
     }
+
+    if (!user.isEmailVerified) {
+      return res.status(403).json({
+        message: 'Please verify your email before signing in',
+        requiresVerification: true,
+      });
+    }
+
     const accessToken = sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     return res.status(200).json({ accessToken, user: toPublicUser(user) });
   } catch (error: any) {

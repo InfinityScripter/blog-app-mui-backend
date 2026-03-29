@@ -7,6 +7,7 @@ type PublicUser = Pick<
   | 'name'
   | 'email'
   | 'googleId'
+  | 'yandexId'
   | 'avatarURL'
   | 'isEmailVerified'
   | 'createdAt'
@@ -20,6 +21,7 @@ export function toPublicUser(user: IUser): PublicUser {
     name: user.name,
     email: user.email,
     googleId: user.googleId ?? null,
+    yandexId: user.yandexId ?? null,
     avatarURL: user.avatarURL ?? null,
     isEmailVerified: user.isEmailVerified ?? false,
     createdAt: user.createdAt,

@@ -6,9 +6,12 @@ const allowedOrigins = [
   'http://localhost:3033',
   'http://localhost:7272',
   'https://blog-app-mui-frontend.vercel.app',
+  'https://blog-git-main-sh0nyits-projects.vercel.app',
   'https://blog-app-mui-backend.onrender.com',
   'https://www.sh0ny.online',
   'https://sh0ny.ru',
+  'https://talalaev.su',
+  'https://www.talalaev.su',
 ];
 
 const corsHeaders = {
@@ -19,7 +22,7 @@ const corsHeaders = {
 
 export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin') ?? '';
-  const isAllowedOrigin = allowedOrigins.includes(origin);
+  const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
   console.log('origin is here', origin);
   if (request.method === 'OPTIONS') {
     console.log('preflight request is here');

@@ -12,6 +12,7 @@ const schemaSql = `
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT,
     google_id TEXT UNIQUE,
+    yandex_id TEXT UNIQUE,
     avatar_url TEXT,
     is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
     email_verification_code TEXT,
@@ -60,6 +61,17 @@ const schemaSql = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS yandex_id TEXT;
+
+  CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique
+    ON users (google_id)
+    WHERE google_id IS NOT NULL;
+
+  CREATE UNIQUE INDEX IF NOT EXISTS users_yandex_id_unique
+    ON users (yandex_id)
+    WHERE yandex_id IS NOT NULL;
 `;
 
 type PoolLike = NodePool;

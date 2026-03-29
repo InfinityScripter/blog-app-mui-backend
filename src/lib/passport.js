@@ -4,13 +4,14 @@ import User from '@/src/models/User';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 dotenv.config();
+const backendURL = process.env.BACKEND_URL || 'http://localhost:7272';
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      callbackURL: '/api/auth/google/callback',
+      callbackURL: `${backendURL}/api/auth/google/callback`,
       proxy: true,
       scope: ['profile', 'email'],
     },
