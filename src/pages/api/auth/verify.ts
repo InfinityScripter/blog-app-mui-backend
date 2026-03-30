@@ -26,10 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Email and verification code are required' });
     }
 
+    const emailNormalized = String(email).trim();
+    const codeNormalized = String(code).trim();
+
     const user = await User.findOne({
-      email,
+      email: emailNormalized,
       isEmailVerified: false,
-    }).select('+emailVerificationCode +emailVerificationExpires');
+    });
 
     if (!user) {
       console.log('No unverified user found with email:', email);
@@ -54,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Проверяем код верификации
-    if (user.emailVerificationCode !== code) {
+    if (user.emailVerificationCode !== codeNormalized) {
       console.log('Invalid verification code');
       return res.status(400).json({
         message: 'Invalid verification code',
@@ -69,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     user.emailVerificationExpires = null;
     await user.save();
 
-    console.log('User email verified successfully:', email);
+    console.log('User email verified successfully:', emailNormalized);
 
     return res.status(200).json({
       message: 'Email verified successfully',
