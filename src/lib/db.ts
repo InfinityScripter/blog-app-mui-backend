@@ -76,6 +76,79 @@ const schemaSql = `
 
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+
+  CREATE TABLE IF NOT EXISTS chat_channels (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    name TEXT,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS chat_members (
+    channel_id TEXT NOT NULL REFERENCES chat_channels(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (channel_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,
+    channel_id TEXT NOT NULL REFERENCES chat_channels(id) ON DELETE CASCADE,
+    sender_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    body TEXT NOT NULL,
+    attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS kanban_boards (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS kanban_board_members (
+    board_id TEXT NOT NULL REFERENCES kanban_boards(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (board_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS kanban_columns (
+    id TEXT PRIMARY KEY,
+    board_id TEXT NOT NULL REFERENCES kanban_boards(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS kanban_tasks (
+    id TEXT PRIMARY KEY,
+    column_id TEXT NOT NULL REFERENCES kanban_columns(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    assignees JSONB NOT NULL DEFAULT '[]'::jsonb,
+    labels JSONB NOT NULL DEFAULT '[]'::jsonb,
+    due_date TIMESTAMPTZ,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    color TEXT NOT NULL DEFAULT 'primary',
+    start_date TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ NOT NULL,
+    all_day BOOLEAN NOT NULL DEFAULT FALSE,
+    type TEXT NOT NULL,
+    created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 `;
 
 type PoolLike = NodePool;
@@ -142,6 +215,14 @@ export async function dbQuery<T extends QueryResultRow = QueryResultRow>(
 
 export async function resetDatabase() {
   const pool = await dbConnect();
+  await pool.query('DELETE FROM calendar_events');
+  await pool.query('DELETE FROM kanban_tasks');
+  await pool.query('DELETE FROM kanban_columns');
+  await pool.query('DELETE FROM kanban_board_members');
+  await pool.query('DELETE FROM kanban_boards');
+  await pool.query('DELETE FROM chat_messages');
+  await pool.query('DELETE FROM chat_members');
+  await pool.query('DELETE FROM chat_channels');
   await pool.query('DELETE FROM files');
   await pool.query('DELETE FROM posts');
   await pool.query('DELETE FROM users');
