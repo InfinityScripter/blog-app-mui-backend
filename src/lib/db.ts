@@ -22,6 +22,7 @@ const schemaSql = `
     last_login TIMESTAMPTZ,
     failed_login_attempts INTEGER NOT NULL DEFAULT 0,
     is_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
@@ -72,6 +73,9 @@ const schemaSql = `
   CREATE UNIQUE INDEX IF NOT EXISTS users_yandex_id_unique
     ON users (yandex_id)
     WHERE yandex_id IS NOT NULL;
+
+  ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 `;
 
 type PoolLike = NodePool;

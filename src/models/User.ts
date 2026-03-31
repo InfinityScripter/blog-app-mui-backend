@@ -29,6 +29,7 @@ export interface IUser {
   lastLogin?: Date | null;
   failedLoginAttempts?: number;
   isLocked?: boolean;
+  role?: 'user' | 'admin';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -45,6 +46,7 @@ type UserRow = {
   id: string;
   is_email_verified: boolean;
   is_locked: boolean;
+  role: string;
   last_login: Date | null;
   name: string;
   password_hash: string | null;
@@ -67,6 +69,7 @@ function mapUserRow(row: UserRow) {
     id: row.id,
     isEmailVerified: row.is_email_verified,
     isLocked: row.is_locked,
+    role: (row.role as 'user' | 'admin') ?? 'user',
     lastLogin: row.last_login,
     name: row.name,
     passwordHash: row.password_hash,
@@ -208,6 +211,8 @@ export default class User implements IUser {
 
   isLocked?: boolean;
 
+  role?: 'user' | 'admin';
+
   lastLogin?: Date | null;
 
   name: string;
@@ -239,6 +244,7 @@ export default class User implements IUser {
     this.lastLogin = data.lastLogin ?? null;
     this.failedLoginAttempts = data.failedLoginAttempts ?? 0;
     this.isLocked = data.isLocked ?? false;
+    this.role = data.role ?? 'user';
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
   }
@@ -293,9 +299,10 @@ export default class User implements IUser {
           last_login,
           failed_login_attempts,
           is_locked,
+          role,
           updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
@@ -312,6 +319,7 @@ export default class User implements IUser {
           last_login = EXCLUDED.last_login,
           failed_login_attempts = EXCLUDED.failed_login_attempts,
           is_locked = EXCLUDED.is_locked,
+          role = EXCLUDED.role,
           updated_at = NOW()
         RETURNING *
       `,
@@ -331,6 +339,7 @@ export default class User implements IUser {
         this.lastLogin ?? null,
         this.failedLoginAttempts ?? 0,
         this.isLocked ?? false,
+        this.role ?? 'user',
       ]
     );
 

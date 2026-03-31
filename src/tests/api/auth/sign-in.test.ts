@@ -94,6 +94,16 @@ describe('POST /api/auth/sign-in', () => {
     expect(data.message).toBe('Missing email or password');
   });
 
+  it('should return user with role field', async () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: { email: 'test@example.com', password: 'password123' },
+    });
+    await handler(req, res);
+    const data = JSON.parse(res._getData());
+    expect(data.user.role).toBe('user');
+  });
+
   it('should return 405 for non-POST methods', async () => {
     const { req, res } = createMocks({
       method: 'GET',

@@ -16,6 +16,7 @@ declare module 'next' {
   interface NextApiRequest {
     user?: {
       _id: string;
+      role: string;
       [key: string]: any;
     };
   }
@@ -36,10 +37,10 @@ export const requireAuth = (handler: NextApiHandler) =>
       const token = authHeader.split(' ')[1];
 
       // Проверяем токен
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123') as { userId: string };
-      
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123') as { userId: string; role: string };
+
       // Добавляем информацию о пользователе в объект запроса
-      req.user = { _id: decoded.userId };
+      req.user = { _id: decoded.userId, role: decoded.role ?? 'user' };
 
       // Передаем управление следующему обработчику
       return handler(req, res);

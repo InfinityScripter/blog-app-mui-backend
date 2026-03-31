@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const accessToken = sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const accessToken = sign({ userId: user._id, role: user.role ?? 'user' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     return res.status(200).json({ accessToken, user: toPublicUser(user) });
   } catch (error: any) {
     console.error('[Sign In API]', error);

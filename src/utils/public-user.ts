@@ -10,6 +10,7 @@ type PublicUser = Pick<
   | 'yandexId'
   | 'avatarURL'
   | 'isEmailVerified'
+  | 'role'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -24,6 +25,7 @@ export function toPublicUser(user: IUser): PublicUser {
     yandexId: user.yandexId ?? null,
     avatarURL: user.avatarURL ?? null,
     isEmailVerified: user.isEmailVerified ?? false,
+    role: user.role ?? 'user',
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
