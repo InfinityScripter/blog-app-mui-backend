@@ -9,6 +9,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const userId = req.user!._id;
   const { boardId } = req.query as { boardId: string };
 
+  if (req.method === 'DELETE') {
+    await dbQuery('DELETE FROM kanban_boards WHERE id = $1', [boardId]);
+    return res.status(200).json({ success: true });
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
   const member = await dbQuery(
