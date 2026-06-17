@@ -2,10 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import User from '@/src/models/User';
 
+import cors from 'src/utils/cors';
 import dbConnect from 'src/lib/db';
 import { Post } from 'src/models/Post';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await cors(req, res);
+
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
