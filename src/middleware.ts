@@ -15,14 +15,16 @@ const allowedOrigins = [
 ];
 
 const corsHeaders = {
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Credentials': 'true',
 };
 
 export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin') ?? '';
-  const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+  const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const isAllowedOrigin =
+    isLocalOrigin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
   console.log('origin is here', origin);
   if (request.method === 'OPTIONS') {
     console.log('preflight request is here');

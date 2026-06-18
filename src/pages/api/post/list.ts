@@ -20,8 +20,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const token = authorization.split(' ')[1];
         const decoded: any = verify(token, JWT_SECRET);
-        // Для авторизованных пользователей показываем их посты (и draft, и published)
-        filter = { userId: decoded.userId };
+        if (decoded.role === 'admin') {
+          // Администратору показываем все посты (и draft, и published, всех авторов)
+          filter = {};
+        } else {
+          // Обычному пользователю показываем его посты (и draft, и published)
+          filter = { userId: decoded.userId };
+        }
       } catch (err) {
         // Если токен неверный, показываем только опубликованные посты
         filter = { publish: 'published' };

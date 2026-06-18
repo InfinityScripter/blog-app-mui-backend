@@ -1,3 +1,7 @@
+const path = require('path');
+
+const tsProject = path.resolve(__dirname, 'tsconfig.jest.json');
+
 /**
  *  @type {import('eslint').ESLint.ConfigData}
  */
@@ -10,12 +14,12 @@ module.exports = {
     sourceType: 'module',
     ecmaVersion: 'latest',
     ecmaFeatures: { jsx: true },
-    project: '/Users/kot/projects/blog-app-mui/backend/tsconfig.jest.json',
+    project: tsProject,
   },
   settings: {
     'import/resolver': {
       typescript: {
-        project: '/Users/kot/projects/blog-app-mui/backend/tsconfig.jest.json',
+        project: tsProject,
       },
     },
   },
