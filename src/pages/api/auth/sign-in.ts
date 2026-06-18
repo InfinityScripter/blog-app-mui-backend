@@ -9,6 +9,7 @@ import { sign, type SignOptions } from 'jsonwebtoken';
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { signInSchema } from '../../../schemas/auth';
 import { toPublicUser } from '../../../utils/public-user';
 
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
@@ -20,11 +21,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   try {
     await dbConnect();
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Missing email or password' });
+    const parsed = signInSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const path = first?.path.join('.');
+      return res.status(400).json({
+        success: false,
+        message: first ? `${path ? `${path}: ` : ''}${first.message}` : 'Missing email or password',
+      });
     }
-    // Поиск пользователя по email (очищаем от пробелов)
+    const { email, password } = parsed.data;
+    // Поиск пользователя по email
     const user = await User.findOne({ email: email.trim() });
     if (!user) {
       return res.status(400).json({ message: 'Wrong email or password' });
@@ -44,7 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const accessToken = sign({ userId: user._id, role: user.role ?? 'user' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const accessToken = sign({ userId: user._id, role: user.role ?? 'user' }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+    });
     return res.status(200).json({ accessToken, user: toPublicUser(user) });
   } catch (error: any) {
     console.error('[Sign In API]', error);

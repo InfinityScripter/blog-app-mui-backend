@@ -91,7 +91,9 @@ describe('POST /api/auth/sign-in', () => {
 
     expect(res._getStatusCode()).toBe(400);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Missing email or password');
+    // body now validated by zod (signInSchema)
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/email|password|required|invalid/i);
   });
 
   it('should return user with role field', async () => {

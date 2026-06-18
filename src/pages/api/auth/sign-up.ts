@@ -7,6 +7,7 @@ import bcrypt from 'bcrypt';
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { signUpSchema } from '../../../schemas/auth';
 import { sendVerificationEmail } from '../../../utils/email';
 
 import type { IUser } from '../../../models/User';
@@ -16,7 +17,7 @@ const hasEmailCredentials = Boolean(process.env.EMAIL_USER && process.env.EMAIL_
 // Генерация 6-значного кода
 const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -29,11 +30,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const { email, password, firstName, lastName } = req.body;
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    const parsed = signUpSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const path = first?.path.join('.');
+      return res.status(400).json({
+        success: false,
+        message: first ? `${path ? `${path}: ` : ''}${first.message}` : 'Missing required fields',
+      });
     }
-    // Поиск пользователя по email (удаляем лишние пробелы)
+    const { email, password, firstName, lastName } = parsed.data;
+    // Поиск пользователя по email
     const existingUser = await User.findOne({ email: email.trim() });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
@@ -74,3 +81,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default handler;

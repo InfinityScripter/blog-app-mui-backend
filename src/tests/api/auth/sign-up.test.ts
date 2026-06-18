@@ -89,7 +89,9 @@ describe('POST /api/auth/sign-up', () => {
 
     expect(res._getStatusCode()).toBe(400);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('Missing required fields');
+    // body now validated by zod (signUpSchema); message names the bad field
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/password|firstName|lastName|required/i);
   });
 
   it('should return 405 for non-POST methods', async () => {
