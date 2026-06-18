@@ -3,16 +3,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 // @ts-ignore
 import bcrypt from 'bcrypt';
-import { JWT_SECRET } from '@/src/lib/jwt';
-import { sign, type SignOptions } from 'jsonwebtoken';
+import { signToken } from '@/src/lib/jwt';
 
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { signInSchema } from '../../../schemas/auth';
 import { toPublicUser } from '../../../utils/public-user';
-
-const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
@@ -51,9 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const accessToken = sign({ userId: user._id, role: user.role ?? 'user' }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
+    const accessToken = signToken({ userId: user._id, role: user.role ?? 'user' });
     return res.status(200).json({ accessToken, user: toPublicUser(user) });
   } catch (error: any) {
     console.error('[Sign In API]', error);

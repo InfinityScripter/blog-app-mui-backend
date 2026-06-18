@@ -1,12 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { JWT_SECRET } from '@/src/lib/jwt';
-import { sign, type SignOptions } from 'jsonwebtoken';
+import { signToken } from '@/src/lib/jwt';
 
 import dbConnect from '../../../../lib/db';
 import User from '../../../../models/User';
-
-const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
 
 const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
 const yandexClientSecret = process.env.YANDEX_CLIENT_SECRET || '';
@@ -148,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const token = sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const token = signToken({ userId: user.id });
 
     return res.redirect(`${frontendURL}/auth/success?token=${encodeURIComponent(token)}`);
   } catch (e) {
