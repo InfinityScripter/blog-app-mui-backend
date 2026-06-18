@@ -37,3 +37,7 @@ build
 tsconfig.tsbuildinfo
 .github/vds_actions_key
 .github/vds_actions_key.pub
+
+# Claude Code (local/machine-specific)
+.claude/settings.local.json
+.claude/launch.json

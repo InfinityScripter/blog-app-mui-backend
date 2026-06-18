@@ -1,5 +1,4 @@
 import '@jest/globals';
-import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-up';
@@ -31,17 +30,13 @@ describe('POST /api/auth/sign-up', () => {
     expect(res._getStatusCode()).toBe(201);
 
     const data = JSON.parse(res._getData());
-    expect(data.accessToken).toBeDefined();
+    // Verify-email-first flow: sign-up does NOT issue a token. User must verify
+    // their email and then sign in. Handler returns only a message + user.
+    expect(data.accessToken).toBeUndefined();
     expect(data.user).toBeDefined();
     expect(data.user.email).toBe('test@example.com');
     expect(data.user.name).toBe('Test User');
     expect(data.user.isEmailVerified).toBe(false);
-
-    // Verify JWT token is valid
-    const decodedToken = jwt.verify(data.accessToken, process.env.JWT_SECRET || 'secret123') as {
-      userId: string;
-    };
-    expect(decodedToken.userId).toBe(data.user.id);
 
     // Verify user is saved in the database (select fields explicitly to get emailVerificationCode)
     const savedUser = await User.findOne({ email: 'test@example.com' }).select(
