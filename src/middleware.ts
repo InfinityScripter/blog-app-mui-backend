@@ -1,45 +1,30 @@
 import type { NextRequest } from 'next/server';
 
 import { NextResponse } from 'next/server';
+import { isAllowedOrigin } from '@/src/utils/allowed-origin';
 
-const allowedOrigins = [
-  'http://localhost:3033',
-  'http://localhost:7272',
-  'https://blog-app-mui-frontend.vercel.app',
-  'https://blog-git-main-sh0nyits-projects.vercel.app',
-  'https://blog-app-mui-backend.onrender.com',
-  'https://www.sh0ny.online',
-  'https://sh0ny.ru',
-  'https://talalaev.su',
-  'https://www.talalaev.su',
-];
-
-const corsHeaders = {
+const baseCorsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Credentials': 'true',
 };
 
 export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin') ?? '';
-  const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-  const isAllowedOrigin =
-    isLocalOrigin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
-  console.log('origin is here', origin);
+
+  const headers: Record<string, string> = { ...baseCorsHeaders };
+  // Credentialed headers (Allow-Origin + Allow-Credentials) are only sent for
+  // allow-listed origins — never echo an arbitrary origin.
+  if (isAllowedOrigin(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+
   if (request.method === 'OPTIONS') {
-    console.log('preflight request is here');
-    const preflightHeaders = {
-      ...(isAllowedOrigin && { 'Access-Control-Allow-Origin': origin }),
-      ...corsHeaders,
-    };
-    return NextResponse.json({}, { headers: preflightHeaders });
+    return NextResponse.json({}, { headers });
   }
 
   const response = NextResponse.next();
-  if (isAllowedOrigin) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-  }
-  Object.entries(corsHeaders).forEach(([key, value]) => {
+  Object.entries(headers).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
 
