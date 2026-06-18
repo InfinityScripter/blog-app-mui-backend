@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 // @ts-ignore
 import bcrypt from 'bcrypt';
+import { JWT_SECRET } from '@/src/lib/jwt';
 import { sign, type SignOptions } from 'jsonwebtoken';
 
 import cors from '../../../utils/cors';
@@ -10,7 +11,6 @@ import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { toPublicUser } from '../../../utils/public-user';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

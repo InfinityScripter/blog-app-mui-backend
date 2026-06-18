@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dotenv from 'dotenv';
 import nextConnect from 'next-connect';
+import { JWT_SECRET } from '@/src/lib/jwt';
 import { sign, type SignOptions } from 'jsonwebtoken';
 
 import dbConnect from '../../../../lib/db';
@@ -10,7 +11,6 @@ import passport from '../../../../lib/passport';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
 
 const handler = nextConnect<NextApiRequest, NextApiResponse>();

@@ -5,10 +5,10 @@ import { createMocks } from 'node-mocks-http';
 
 import User from '@/src/models/User';
 import handler from '@/src/pages/api/calendar/events';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const makeToken = (userId: string) =>
   `Bearer ${jwt.sign({ userId, role: 'user' }, JWT_SECRET)}`;
 

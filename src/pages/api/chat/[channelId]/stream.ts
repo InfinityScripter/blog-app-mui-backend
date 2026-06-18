@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import jwt from 'jsonwebtoken';
-
 import { dbQuery } from '@/src/lib/db';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

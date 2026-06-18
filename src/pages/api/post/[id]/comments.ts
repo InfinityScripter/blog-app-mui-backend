@@ -2,13 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import User from '@/src/models/User';
 import { verify } from 'jsonwebtoken';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
 import uuidv4 from 'src/utils/uuidv4';
 
 import dbConnect from 'src/lib/db';
 import { Post } from 'src/models/Post';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     try {

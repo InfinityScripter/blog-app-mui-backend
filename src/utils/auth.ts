@@ -1,6 +1,6 @@
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '@/src/lib/jwt';
 
 // Расширение типа для использования req.user
 declare global {
@@ -37,7 +37,7 @@ export const requireAuth = (handler: NextApiHandler) =>
       const token = authHeader.split(' ')[1];
 
       // Проверяем токен
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123') as { userId: string; role: string };
+      const decoded = verifyToken(token) as { userId: string; role: string };
 
       // Добавляем информацию о пользователе в объект запроса
       req.user = { _id: decoded.userId, role: decoded.role ?? 'user' };

@@ -4,11 +4,11 @@ import formidable from 'formidable';
 import dbConnect from '@/src/lib/db';
 import { verify } from 'jsonwebtoken';
 import { File } from '@/src/models/File';
+import { JWT_SECRET } from '@/src/lib/jwt';
 import { unlink, readFile } from 'node:fs/promises';
 
 import uuidv4 from 'src/utils/uuidv4';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export const config = {
   api: {

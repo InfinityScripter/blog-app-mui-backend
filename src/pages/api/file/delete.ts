@@ -3,8 +3,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import { verify } from 'jsonwebtoken';
 import { File } from '@/src/models/File';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'DELETE') {

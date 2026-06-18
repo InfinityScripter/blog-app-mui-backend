@@ -3,11 +3,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { verify } from 'jsonwebtoken';
 import { Post } from '@/src/models/Post';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
