@@ -5,9 +5,9 @@ import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { verify } from 'jsonwebtoken';
 import { Post } from '@/src/models/Post';
+import { JWT_SECRET } from '@/src/lib/jwt';
 import { buildNewPostPayload } from '@/src/utils/post-payload';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

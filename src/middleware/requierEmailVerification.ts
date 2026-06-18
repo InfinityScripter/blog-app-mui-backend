@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { verify } from 'jsonwebtoken';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
 import User from '../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function requireEmailVerification(
   req: NextApiRequest,

@@ -2,13 +2,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { verify } from 'jsonwebtoken';
+import { JWT_SECRET } from '@/src/lib/jwt';
 
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { toPublicUser } from '../../../utils/public-user';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);

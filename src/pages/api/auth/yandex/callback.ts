@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { JWT_SECRET } from '@/src/lib/jwt';
 import { sign, type SignOptions } from 'jsonwebtoken';
 
 import dbConnect from '../../../../lib/db';
 import User from '../../../../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
 
 const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
