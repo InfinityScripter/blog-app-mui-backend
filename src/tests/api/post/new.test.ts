@@ -94,8 +94,15 @@ describe('POST /api/post/new', () => {
   });
 
   it('should return 405 for non-POST methods', async () => {
+    // requireAuth runs first, so an authenticated request is needed to reach
+    // the method check.
+    const token = jwt.sign(
+      { userId: '6060694b2c21843bf8307f43', role: 'user' },
+      process.env.JWT_SECRET || 'secret123'
+    );
     const { req, res } = createMocks({
       method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     await handler(req, res);
