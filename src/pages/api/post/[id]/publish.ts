@@ -2,31 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
-import { verify } from 'jsonwebtoken';
 import { Post } from '@/src/models/Post';
-import { JWT_SECRET } from '@/src/lib/jwt';
+import { requireAuth } from '@/src/utils/auth';
 
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         await dbConnect();
 
-        // Проверяем наличие токена в заголовке Authorization
-        const { authorization } = req.headers;
-        if (!authorization) {
-            return res.status(401).json({ message: 'Отсутствует токен авторизации' });
-        }
-        const token = authorization.split(' ')[1];
-        let decoded: any;
-        try {
-            decoded = verify(token, JWT_SECRET);
-        } catch (err) {
-            return res.status(401).json({ message: 'Неверный токен авторизации' });
-        }
-
         // Получаем пользователя из базы по userId из токена
-        const user = await User.findById(decoded.userId);
+        const user = await User.findById(req.user!._id);
         if (!user) {
             return res.status(401).json({ message: 'Пользователь не найден' });
         }
@@ -62,3 +47,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 }
+
+export default requireAuth(handler);

@@ -1,12 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { verify } from 'jsonwebtoken';
 import { File } from '@/src/models/File';
-import { JWT_SECRET } from '@/src/lib/jwt';
+import { requireAuth } from '@/src/utils/auth';
 
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -14,20 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await dbConnect();
 
-    // Verify authentication
-    const { authorization } = req.headers;
-    if (!authorization) {
-      return res.status(401).json({ message: 'Отсутствует токен авторизации' });
-    }
-    const token = authorization.split(' ')[1];
-    let decoded: any;
-    try {
-      decoded = verify(token, JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({ message: 'Неверный токен авторизации' });
-    }
-
-    const { userId } = decoded;
+    const userId = req.user!._id;
     const { id } = req.query;
 
     if (!id || typeof id !== 'string') {
@@ -54,3 +39,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 }
+
+export default requireAuth(handler);
