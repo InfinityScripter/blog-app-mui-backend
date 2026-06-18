@@ -1,31 +1,18 @@
 // src/pages/api/auth/me.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { verify } from 'jsonwebtoken';
-import { JWT_SECRET } from '@/src/lib/jwt';
-
-import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { requireAuth } from '../../../utils/auth';
 import { toPublicUser } from '../../../utils/public-user';
 
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-  console.log('auth me handler');
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
   try {
     await dbConnect();
-    const { authorization } = req.headers;
-    if (!authorization) {
-      return res.status(401).json({ message: 'Authorization token missing' });
-    }
-    const token = authorization.split(' ')[1];
-    const decoded: any = verify(token, JWT_SECRET);
-    const { userId } = decoded;
-    const user = await User.findById(userId);
+    const user = await User.findById(req.user!._id);
     if (!user) {
       return res.status(401).json({ message: 'Invalid authorization token' });
     }
@@ -35,3 +22,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Internal server error' });
   }
 }
+
+export default requireAuth(handler);
