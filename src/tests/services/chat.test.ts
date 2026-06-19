@@ -51,4 +51,42 @@ describe('chatService', () => {
     const u2Channels = await chatService.listChannels('u2');
     expect(u2Channels).toHaveLength(0);
   });
+
+  it('sendMessage + listMessages: member posts and reads', async () => {
+    const ch = await chatService.createChannel({
+      userId: 'u1',
+      type: 'group',
+      name: 'T',
+      memberIds: ['u2'],
+    });
+    await chatService.sendMessage({ channelId: ch.id, userId: 'u1', body: 'hello' });
+    const messages = await chatService.listMessages({ channelId: ch.id, userId: 'u2' });
+    expect(messages).toHaveLength(1);
+    expect(messages[0].body).toBe('hello');
+    expect(messages[0].sender.id).toBe('u1');
+  });
+
+  it('sendMessage: empty body → AppError 400', async () => {
+    const ch = await chatService.createChannel({
+      userId: 'u1',
+      type: 'group',
+      name: 'T',
+      memberIds: ['u1'],
+    });
+    await expect(
+      chatService.sendMessage({ channelId: ch.id, userId: 'u1', body: '   ' })
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('listMessages: non-member → AppError 403', async () => {
+    const ch = await chatService.createChannel({
+      userId: 'u1',
+      type: 'group',
+      name: 'T',
+      memberIds: ['u1'],
+    });
+    await expect(
+      chatService.listMessages({ channelId: ch.id, userId: 'u2' })
+    ).rejects.toMatchObject({ status: 403 });
+  });
 });
