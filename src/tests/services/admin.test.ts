@@ -15,6 +15,16 @@ describe('adminService.listUsers', () => {
     await User.create({ _id: 'b', name: 'Bob', email: 'b@e.com', passwordHash: 'x', role: 'user' });
   });
 
+  it('deleteUser: removes another user', async () => {
+    await adminService.deleteUser('a', 'b');
+    const users = await adminService.listUsers();
+    expect(users.some((u) => u.id === 'b')).toBe(false);
+  });
+
+  it('deleteUser: cannot delete own account → AppError 400', async () => {
+    await expect(adminService.deleteUser('a', 'a')).rejects.toMatchObject({ status: 400 });
+  });
+
   it('returns all users mapped to camelCase', async () => {
     const users = await adminService.listUsers();
     expect(users).toHaveLength(2);
