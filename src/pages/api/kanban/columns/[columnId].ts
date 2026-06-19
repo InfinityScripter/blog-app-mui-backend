@@ -1,19 +1,25 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { dbQuery } from '@/src/lib/db';
+import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
+import { sendError } from '@/src/utils/response';
+import { kanbanService } from '@/src/services/kanban';
 
+// Thin route: requireAuth → kanbanService.deleteColumn → respond.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
   const { columnId } = req.query as { columnId: string };
 
-  if (req.method === 'DELETE') {
-    await dbQuery('DELETE FROM kanban_columns WHERE id = $1', [columnId]);
-    return res.status(200).json({ success: true });
+  try {
+    if (req.method === 'DELETE') {
+      await kanbanService.deleteColumn(columnId);
+      return res.status(HTTP.OK).json({ success: true });
+    }
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+  } catch (error) {
+    return sendError(res, error);
   }
-
-  return res.status(405).json({ message: 'Method not allowed' });
 }
 
 export default requireAuth(handler);

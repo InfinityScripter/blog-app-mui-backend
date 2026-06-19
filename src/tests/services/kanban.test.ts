@@ -80,4 +80,45 @@ describe('kanbanService', () => {
     const boards = await kanbanService.listBoards('admin-1');
     expect(boards.some((b) => b.id === board.id)).toBe(false);
   });
+
+  it('addTask: appends a task, then getBoard shows it; updateTask renames it', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    const col = await kanbanService.addColumn(board.id, 'Doing');
+    const task = await kanbanService.addTask({
+      columnId: col.id,
+      userId: 'admin-1',
+      title: 'Task A',
+    });
+    expect(task.id).toBeTruthy();
+
+    await kanbanService.updateTask(task.id, { title: 'Task A renamed' });
+    const full = await kanbanService.getBoard('admin-1', board.id);
+    const found = full.columns[0].tasks.find((t: any) => t.id === task.id);
+    expect(found?.title).toBe('Task A renamed');
+  });
+
+  it('addTask: missing title → AppError 400', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    const col = await kanbanService.addColumn(board.id, 'C');
+    await expect(
+      kanbanService.addTask({ columnId: col.id, userId: 'admin-1', title: '' })
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('updateTask: no fields → AppError 400', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    const col = await kanbanService.addColumn(board.id, 'C');
+    const task = await kanbanService.addTask({ columnId: col.id, userId: 'admin-1', title: 'T' });
+    await expect(kanbanService.updateTask(task.id, {})).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('deleteTask + deleteColumn: remove cleanly', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    const col = await kanbanService.addColumn(board.id, 'C');
+    const task = await kanbanService.addTask({ columnId: col.id, userId: 'admin-1', title: 'T' });
+    await kanbanService.deleteTask(task.id);
+    await kanbanService.deleteColumn(col.id);
+    const full = await kanbanService.getBoard('admin-1', board.id);
+    expect(full.columns).toHaveLength(0);
+  });
 });
