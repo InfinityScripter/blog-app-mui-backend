@@ -1,4 +1,6 @@
 import { dbQuery } from '@/src/lib/db';
+import { AppError } from '@/src/types/api';
+import { HTTP } from '@/src/constants/http';
 
 // Business logic for the admin domain. No HTTP.
 
@@ -31,4 +33,12 @@ async function listUsers() {
   }));
 }
 
-export const adminService = { listUsers };
+/** Deletes a user. An admin cannot delete their own account (AppError 400). */
+async function deleteUser(adminId: string, targetId: string) {
+  if (adminId === targetId) {
+    throw new AppError(HTTP.BAD_REQUEST, 'Cannot delete your own account');
+  }
+  await dbQuery('DELETE FROM users WHERE id = $1', [targetId]);
+}
+
+export const adminService = { listUsers, deleteUser };
