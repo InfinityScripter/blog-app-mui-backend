@@ -89,6 +89,33 @@ async function updatePost(userId: string, postId: string, body: Record<string, a
   return updated;
 }
 
+interface SearchParams {
+  query?: string;
+  dashboard?: boolean;
+  userId?: string;
+}
+
+/**
+ * Searches posts by title (case-insensitive). In dashboard mode results are
+ * scoped to the user's own posts (userId required); otherwise only published.
+ */
+async function searchPosts({ query, dashboard, userId }: SearchParams) {
+  const filter: Record<string, unknown> = {};
+  if (dashboard) {
+    if (!userId) {
+      throw new AppError(HTTP.UNAUTHORIZED, 'Отсутствует токен авторизации');
+    }
+    filter.userId = userId;
+  } else {
+    filter.publish = 'published';
+  }
+  const clean = (query ? `${query}` : '').toLowerCase().trim();
+  if (clean !== '') {
+    filter.title = { $regex: clean, $options: 'i' };
+  }
+  return Post.find(filter).lean();
+}
+
 /** Sets publish status ('draft' | 'published') on a post the user owns. */
 async function setPublish(userId: string, postId: string, publish: string) {
   if (publish !== 'draft' && publish !== 'published') {
@@ -100,4 +127,11 @@ async function setPublish(userId: string, postId: string, publish: string) {
   return post;
 }
 
-export const postService = { listPosts, createPost, deletePost, updatePost, setPublish };
+export const postService = {
+  listPosts,
+  createPost,
+  deletePost,
+  updatePost,
+  setPublish,
+  searchPosts,
+};

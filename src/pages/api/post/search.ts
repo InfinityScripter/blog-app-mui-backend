@@ -1,54 +1,39 @@
 // src/pages/api/post/search.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { verify } from 'jsonwebtoken';
-import { Post } from '@/src/models/Post';
-import { JWT_SECRET } from '@/src/lib/jwt';
+import cors from '@/src/utils/cors';
+import dbConnect from '@/src/lib/db';
+import { HTTP } from '@/src/constants/http';
+import { verifyToken } from '@/src/lib/jwt';
+import { sendError } from '@/src/utils/response';
+import { postService } from '@/src/services/post';
 
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+// Optional auth: dashboard=true searches the caller's own posts (token
+// required), otherwise published only. Logic lives in postService.searchPosts.
+function readUserId(req: NextApiRequest): string | undefined {
+  const { authorization } = req.headers;
+  if (!authorization) return undefined;
   try {
-    await dbConnect();
-    await cors(req, res);
-
-    const { query, dashboard } = req.query;
-    const cleanQuery = (query ? `${query}` : '').toLowerCase().trim();
-    
-    // Базовый фильтр
-    const filter: any = {};
-
-    // Если это поиск в dashboard
-    if (dashboard === 'true') {
-      const { authorization } = req.headers;
-      if (!authorization) {
-        return res.status(401).json({ message: 'Отсутствует токен авторизации' });
-      }
-
-      try {
-        const token = authorization.split(' ')[1];
-        const decoded: any = verify(token, JWT_SECRET);
-        // Для dashboard поиск только по своим постам
-        filter.userId = decoded.userId;
-      } catch (err) {
-        return res.status(401).json({ message: 'Неверный токен авторизации' });
-      }
-    } else {
-      // Для публичного поиска только опубликованные посты
-      filter.publish = 'published';
-    }
-
-    // Добавляем поиск по заголовку, если есть запрос
-    if (cleanQuery !== '') {
-      filter.title = { $regex: cleanQuery, $options: 'i' };
-    }
-
-    const results = await Post.find(filter).lean();
-    res.status(200).json({ results });
-  } catch (error: any) {
-    console.error('[Post Search API]: ', error);
-    res.status(500).json({ message: 'Internal server error' });
+    return verifyToken(authorization.split(' ')[1]).userId;
+  } catch {
+    return undefined;
   }
 }
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await cors(req, res);
+  try {
+    await dbConnect();
+    const { query, dashboard } = req.query;
+    const results = await postService.searchPosts({
+      query: typeof query === 'string' ? query : undefined,
+      dashboard: dashboard === 'true',
+      userId: readUserId(req),
+    });
+    return res.status(HTTP.OK).json({ results });
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
+export default handler;
