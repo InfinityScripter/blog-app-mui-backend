@@ -82,3 +82,42 @@ describe('postService.createPost', () => {
     });
   });
 });
+
+describe('postService.deletePost / updatePost', () => {
+  let postId: string;
+
+  beforeEach(async () => {
+    await Post.deleteMany();
+    await User.deleteMany({});
+    await User.create({ _id: 'owner', name: 'Owner', email: 'o@e.com', passwordHash: 'x' });
+    await User.create({ _id: 'intruder', name: 'Intruder', email: 'i@e.com', passwordHash: 'x' });
+    const post = await postService.createPost('owner', { title: 'Mine', content: 'c' });
+    postId = post._id;
+  });
+
+  it('deletePost: owner can delete', async () => {
+    await postService.deletePost('owner', postId);
+    expect(await Post.findById(postId)).toBeNull();
+  });
+
+  it('deletePost: non-owner → AppError 403', async () => {
+    await expect(postService.deletePost('intruder', postId)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('deletePost: missing post → AppError 404', async () => {
+    await expect(postService.deletePost('owner', 'no-such-id')).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
+  it('updatePost: owner can update title', async () => {
+    const updated = await postService.updatePost('owner', postId, { title: 'Renamed' });
+    expect(updated.title).toBe('Renamed');
+  });
+
+  it('updatePost: non-owner → AppError 403', async () => {
+    await expect(
+      postService.updatePost('intruder', postId, { title: 'Hack' })
+    ).rejects.toMatchObject({ status: 403 });
+  });
+});
