@@ -53,4 +53,31 @@ describe('kanbanService', () => {
     const userBoards = await kanbanService.listBoards('user-1');
     expect(userBoards).toHaveLength(0);
   });
+
+  it('getBoard: member gets the board with an added column', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    await kanbanService.addColumn(board.id, 'To Do');
+    const full = await kanbanService.getBoard('admin-1', board.id);
+    expect(full.id).toBe(board.id);
+    expect(full.columns).toHaveLength(1);
+    expect(full.columns[0].name).toBe('To Do');
+    expect(full.columns[0].tasks).toEqual([]);
+  });
+
+  it('getBoard: non-member → AppError 403', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    await expect(kanbanService.getBoard('user-1', board.id)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('addColumn: missing name → AppError 400', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    await expect(kanbanService.addColumn(board.id, '')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('deleteBoard: removes the board', async () => {
+    const board = await kanbanService.createBoard({ userId: 'admin-1', role: 'admin', name: 'B' });
+    await kanbanService.deleteBoard(board.id);
+    const boards = await kanbanService.listBoards('admin-1');
+    expect(boards.some((b) => b.id === board.id)).toBe(false);
+  });
 });
