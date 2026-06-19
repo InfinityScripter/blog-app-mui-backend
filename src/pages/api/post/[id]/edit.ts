@@ -1,86 +1,26 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import User from '@/src/models/User';
-import { Post } from '@/src/models/Post';
+import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
-import { buildPostPatchPayload } from '@/src/utils/post-payload';
+import { sendError } from '@/src/utils/response';
+import { postService } from '@/src/services/post';
 
+// Thin route: requireAuth → postService.updatePost → respond. Keeps { post }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
   const { id } = req.query;
   if (!id || typeof id !== 'string') {
-    return res.status(400).json({ message: 'Invalid post id' });
+    return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
   }
   if (req.method !== 'PATCH' && req.method !== 'PUT') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
   }
   try {
-    const user = await User.findById(req.user!._id).select('name avatarURL');
-    if (!user) {
-      return res.status(401).json({ message: 'Пользователь не найден' });
-    }
-    const author = { name: user.name, avatarUrl: user.avatarURL };
-
-    // Находим пост и проверяем, что он принадлежит текущему пользователю
-    const existingPost = await Post.findById(id);
-    if (!existingPost) {
-      return res.status(404).json({ message: 'Пост не найден' });
-    }
-    if (existingPost.userId.toString() !== String(user._id)) {
-      return res.status(403).json({ message: 'Нет доступа к редактированию данного поста' });
-    }
-
-    // Извлекаем остальные поля из req.body
-    const {
-      title,
-      publish,
-      metaKeywords,
-      content,
-      tags,
-      metaTitle,
-      coverUrl,
-      totalViews,
-      totalShares,
-      totalFavorites,
-      metaDescription,
-      description,
-      favoritePerson,
-    } = req.body;
-
-    const updatedFields = buildPostPatchPayload(
-      {
-        title,
-        publish,
-        metaKeywords,
-        content,
-        tags,
-        metaTitle,
-        coverUrl,
-        totalViews,
-        totalShares,
-        totalFavorites,
-        metaDescription,
-        description,
-        favoritePerson,
-      },
-      {
-        author,
-        coverUrlFallback: existingPost.coverUrl,
-        totalComments: existingPost.comments.length,
-      }
-    );
-
-    const updatedPost = await Post.findByIdAndUpdate(id, updatedFields, { new: true });
-    if (!updatedPost) {
-      return res.status(404).json({ message: 'Пост не найден' });
-    }
-    return res
-      .status(200)
-      .json({ message: 'Пост успешно обновлен', success: true, post: updatedPost });
-  } catch (error: any) {
-    console.error('[Post Edit API]: ', error);
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
+    const post = await postService.updatePost(req.user!._id, id, req.body ?? {});
+    return res.status(HTTP.OK).json({ message: 'Пост успешно обновлен', success: true, post });
+  } catch (error) {
+    return sendError(res, error);
   }
 }
 

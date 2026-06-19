@@ -3,7 +3,7 @@ import { Post } from '@/src/models/Post';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
-import { buildNewPostPayload } from '@/src/utils/post-payload';
+import { buildNewPostPayload, buildPostPatchPayload } from '@/src/utils/post-payload';
 
 // Business logic for the post domain. No HTTP — routes call these and map
 // the result/throws to a response.
@@ -51,4 +51,42 @@ async function createPost(userId: string, body: Record<string, any>) {
   return Post.create(payload);
 }
 
-export const postService = { listPosts, createPost };
+/** Loads a post and asserts the user owns it. Throws 401/404/403. */
+async function loadOwnedPost(userId: string, postId: string) {
+  const user = await User.findById(userId).select('name avatarURL');
+  if (!user) {
+    throw new AppError(HTTP.UNAUTHORIZED, MSG.USER_NOT_FOUND);
+  }
+  const post = await Post.findById(postId);
+  if (!post) {
+    throw new AppError(HTTP.NOT_FOUND, 'Пост не найден');
+  }
+  if (post.userId.toString() !== String(user._id)) {
+    throw new AppError(HTTP.FORBIDDEN, 'Нет доступа к данному посту');
+  }
+  return { user, post };
+}
+
+/** Deletes a post the user owns. */
+async function deletePost(userId: string, postId: string) {
+  await loadOwnedPost(userId, postId);
+  await Post.findByIdAndDelete(postId);
+}
+
+/** Updates a post the user owns; returns the updated post. */
+async function updatePost(userId: string, postId: string, body: Record<string, any>) {
+  const { user, post } = await loadOwnedPost(userId, postId);
+  const author = { name: user.name, avatarUrl: user.avatarURL };
+  const updatedFields = buildPostPatchPayload(body, {
+    author,
+    coverUrlFallback: post.coverUrl,
+    totalComments: post.comments.length,
+  });
+  const updated = await Post.findByIdAndUpdate(postId, updatedFields, { new: true });
+  if (!updated) {
+    throw new AppError(HTTP.NOT_FOUND, 'Пост не найден');
+  }
+  return updated;
+}
+
+export const postService = { listPosts, createPost, deletePost, updatePost };
