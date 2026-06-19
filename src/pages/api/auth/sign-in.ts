@@ -1,57 +1,24 @@
 // src/pages/api/auth/sign-in.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// @ts-ignore
-import bcrypt from 'bcrypt';
-import { signToken } from '@/src/lib/jwt';
+import cors from '@/src/utils/cors';
+import { HTTP } from '@/src/constants/http';
+import { sendError } from '@/src/utils/response';
+import { signInSchema } from '@/src/schemas/auth';
+import { authService } from '@/src/services/auth';
+import { validateBody } from '@/src/utils/validate';
+import { withMethods } from '@/src/middlewares/with-methods';
 
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
-import { signInSchema } from '../../../schemas/auth';
-import { toPublicUser } from '../../../utils/public-user';
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+// Thin route: validate → service → respond. Logic lives in authService.
+// Keeps the { accessToken, user } top-level keys the frontend reads.
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
   try {
-    await dbConnect();
-    const parsed = signInSchema.safeParse(req.body);
-    if (!parsed.success) {
-      const first = parsed.error.issues[0];
-      const path = first?.path.join('.');
-      return res.status(400).json({
-        success: false,
-        message: first ? `${path ? `${path}: ` : ''}${first.message}` : 'Missing email or password',
-      });
-    }
-    const { email, password } = parsed.data;
-    // Поиск пользователя по email
-    const user = await User.findOne({ email: email.trim() });
-    if (!user) {
-      return res.status(400).json({ message: 'Wrong email or password' });
-    }
-    if (!user.passwordHash) {
-      return res.status(400).json({ message: 'No password set for this user' });
-    }
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Wrong email or password' });
-    }
-
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        message: 'Please verify your email before signing in',
-        requiresVerification: true,
-      });
-    }
-
-    const accessToken = signToken({ userId: user._id, role: user.role ?? 'user' });
-    return res.status(200).json({ accessToken, user: toPublicUser(user) });
-  } catch (error: any) {
-    console.error('[Sign In API]', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    const { accessToken, user } = await authService.signIn(req.body);
+    return res.status(HTTP.OK).json({ accessToken, user });
+  } catch (error) {
+    return sendError(res, error);
   }
 }
+
+export default withMethods(['POST'])(validateBody(signInSchema)(handler));

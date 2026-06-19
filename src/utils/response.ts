@@ -1,5 +1,9 @@
 import type { NextApiResponse } from 'next';
 
+import { HTTP } from '@/src/constants/http';
+import { isAppError } from '@/src/types/api';
+import { MSG } from '@/src/constants/messages';
+
 // ----------------------------------------------------------------------
 // Standard API response helpers.
 //
@@ -27,4 +31,20 @@ export function ok<T>(res: NextApiResponse, data?: T, options: OkOptions = {}) {
 
 export function fail(res: NextApiResponse, status: number, message: string) {
   return res.status(status).json({ success: false, message });
+}
+
+/**
+ * Maps a thrown error to an HTTP response. AppError uses its own status,
+ * message and optional extra fields; anything else becomes a 500. Routes call
+ * this in catch so they never branch on error types themselves.
+ */
+export function sendError(res: NextApiResponse, error: unknown) {
+  if (isAppError(error)) {
+    return res
+      .status(error.status)
+      .json({ success: false, message: error.message, ...error.extra });
+  }
+  // eslint-disable-next-line no-console
+  console.error('[API error]', error);
+  return res.status(HTTP.INTERNAL).json({ success: false, message: MSG.INTERNAL });
 }
