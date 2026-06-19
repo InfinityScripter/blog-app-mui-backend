@@ -344,7 +344,11 @@ export class Post implements IPost {
 
   async save() {
     this.comments = normalizeComments(this.comments);
-    this.totalComments = this.comments.length;
+    // Derive totalComments from the embedded comments — top-level plus replies.
+    this.totalComments = this.comments.reduce(
+      (total, comment) => total + 1 + (comment.replyComment ? comment.replyComment.length : 0),
+      0
+    );
 
     const result = await dbQuery<PostRow>(
       `
