@@ -1,51 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import User from '@/src/models/User';
-import { Post } from '@/src/models/Post';
+import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
+import { sendError } from '@/src/utils/response';
+import { postService } from '@/src/services/post';
 
+// Thin route: requireAuth → postService.setPublish → respond. Keeps { post }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-
-    try {
-        await dbConnect();
-
-        // Получаем пользователя из базы по userId из токена
-        const user = await User.findById(req.user!._id);
-        if (!user) {
-            return res.status(401).json({ message: 'Пользователь не найден' });
-        }
-
-        // Извлекаем id поста из query
-        const { id } = req.query;
-        if (!id || typeof id !== 'string') {
-            return res.status(400).json({ message: 'Invalid post id' });
-        }
-
-        // Находим пост и проверяем, что он принадлежит текущему пользователю
-        const post = await Post.findById(id);
-        if (!post) {
-            return res.status(404).json({ message: 'Пост не найден' });
-        }
-        if (post.userId.toString() !== String(user._id)) {
-            return res.status(403).json({ message: 'Нет прав для изменения статуса публикации' });
-        }
-
-        // Получаем новое значение поля publish из тела запроса
-        const { publish } = req.body;
-        if (!publish || (publish !== 'draft' && publish !== 'published')) {
-            return res.status(400).json({ message: 'Неверное значение поля publish' });
-        }
-
-        // Обновляем только поле publish
-        post.publish = publish;
-        await post.save();
-
-        return res.status(200).json({ message: 'Статус публикации обновлён', post });
-    } catch (error: any) {
-        console.error('[Post Publish API]: ', error);
-        return res.status(500).json({ message: 'Internal server error', error: error.message });
+  try {
+    await dbConnect();
+    const { id } = req.query;
+    if (!id || typeof id !== 'string') {
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
     }
+    const post = await postService.setPublish(req.user!._id, id, req.body?.publish);
+    return res.status(HTTP.OK).json({ message: 'Статус публикации обновлён', post });
+  } catch (error) {
+    return sendError(res, error);
+  }
 }
 
 export default requireAuth(handler);

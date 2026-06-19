@@ -120,4 +120,21 @@ describe('postService.deletePost / updatePost', () => {
       postService.updatePost('intruder', postId, { title: 'Hack' })
     ).rejects.toMatchObject({ status: 403 });
   });
+
+  it('setPublish: owner toggles to published', async () => {
+    const post = await postService.setPublish('owner', postId, 'published');
+    expect(post.publish).toBe('published');
+  });
+
+  it('setPublish: invalid value → AppError 400', async () => {
+    await expect(postService.setPublish('owner', postId, 'bogus')).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+
+  it('setPublish: non-owner → AppError 403', async () => {
+    await expect(postService.setPublish('intruder', postId, 'draft')).rejects.toMatchObject({
+      status: 403,
+    });
+  });
 });
