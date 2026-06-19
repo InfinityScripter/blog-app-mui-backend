@@ -51,3 +51,34 @@ describe('postService.listPosts', () => {
     expect(posts[0]).toHaveProperty('totalComments');
   });
 });
+
+describe('postService.createPost', () => {
+  beforeEach(async () => {
+    await Post.deleteMany();
+    await User.deleteMany({});
+    await User.create({
+      _id: 'author-1',
+      name: 'Author One',
+      email: 'author@e.com',
+      passwordHash: 'x',
+      avatarURL: 'http://x/a.png',
+    });
+  });
+
+  it('creates a post owned by the user with the author embedded', async () => {
+    const post = await postService.createPost('author-1', {
+      title: 'My Post',
+      content: '<p>hi</p>',
+      publish: 'draft',
+    });
+    expect(post.title).toBe('My Post');
+    expect(post.userId).toBe('author-1');
+    expect(post.author.name).toBe('Author One');
+  });
+
+  it('throws AppError 401 when the user does not exist', async () => {
+    await expect(postService.createPost('ghost', { title: 'X' })).rejects.toMatchObject({
+      status: 401,
+    });
+  });
+});
