@@ -79,4 +79,81 @@ async function createBoard({ userId, role, name, description, memberIds = [] }: 
   return { id: boardId, name, description };
 }
 
-export const kanbanService = { listBoards, createBoard };
+/** Full board (columns + their tasks) — caller must be a board member. */
+async function getBoard(userId: string, boardId: string) {
+  const member = await dbQuery(
+    'SELECT 1 FROM kanban_board_members WHERE board_id = $1 AND user_id = $2',
+    [boardId, userId]
+  );
+  if (!member.rows.length) {
+    throw new AppError(HTTP.FORBIDDEN, 'Forbidden');
+  }
+
+  const cols = await dbQuery<{ id: string; name: string; position: number }>(
+    'SELECT id, name, position FROM kanban_columns WHERE board_id = $1 ORDER BY position ASC',
+    [boardId]
+  );
+
+  const columns = await Promise.all(
+    cols.rows.map(async (col) => {
+      const tasks = await dbQuery<{
+        id: string;
+        title: string;
+        description: string | null;
+        assignees: unknown[];
+        labels: unknown[];
+        due_date: Date | null;
+        position: number;
+        created_by: string;
+        created_at: Date;
+      }>(
+        `SELECT id, title, description, assignees, labels, due_date, position, created_by, created_at
+         FROM kanban_tasks WHERE column_id = $1 ORDER BY position ASC`,
+        [col.id]
+      );
+      return {
+        id: col.id,
+        name: col.name,
+        position: col.position,
+        tasks: tasks.rows.map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          assignees: t.assignees,
+          labels: t.labels,
+          dueDate: t.due_date,
+          position: t.position,
+          createdBy: t.created_by,
+          createdAt: t.created_at,
+        })),
+      };
+    })
+  );
+
+  return { id: boardId, columns };
+}
+
+/** Deletes a board (cascades to columns/tasks via FK). */
+async function deleteBoard(boardId: string) {
+  await dbQuery('DELETE FROM kanban_boards WHERE id = $1', [boardId]);
+}
+
+/** Appends a column to a board at the next position. */
+async function addColumn(boardId: string, name: string) {
+  if (!name) {
+    throw new AppError(HTTP.BAD_REQUEST, 'name is required');
+  }
+  const posResult = await dbQuery<{ max: number }>(
+    'SELECT COALESCE(MAX(position), -1) + 1 AS max FROM kanban_columns WHERE board_id = $1',
+    [boardId]
+  );
+  const position = posResult.rows[0].max;
+  const colId = uuidv4();
+  await dbQuery(
+    'INSERT INTO kanban_columns (id, board_id, name, position) VALUES ($1, $2, $3, $4)',
+    [colId, boardId, name, position]
+  );
+  return { id: colId, name, position, tasks: [] as unknown[] };
+}
+
+export const kanbanService = { listBoards, createBoard, getBoard, deleteBoard, addColumn };
