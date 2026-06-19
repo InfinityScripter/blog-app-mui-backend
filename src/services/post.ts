@@ -1,4 +1,9 @@
+import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
+import { AppError } from '@/src/types/api';
+import { HTTP } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
+import { buildNewPostPayload } from '@/src/utils/post-payload';
 
 // Business logic for the post domain. No HTTP — routes call these and map
 // the result/throws to a response.
@@ -32,4 +37,18 @@ async function listPosts({ role, userId }: ListParams) {
   }));
 }
 
-export const postService = { listPosts };
+/**
+ * Creates a post owned by `userId`, embedding the author snapshot. Throws
+ * AppError 401 if the user no longer exists.
+ */
+async function createPost(userId: string, body: Record<string, any>) {
+  const user = await User.findById(userId).select('name avatarURL');
+  if (!user) {
+    throw new AppError(HTTP.UNAUTHORIZED, MSG.USER_NOT_FOUND);
+  }
+  const author = { name: user.name, avatarUrl: user.avatarURL };
+  const payload = buildNewPostPayload(body, author, user._id);
+  return Post.create(payload);
+}
+
+export const postService = { listPosts, createPost };
