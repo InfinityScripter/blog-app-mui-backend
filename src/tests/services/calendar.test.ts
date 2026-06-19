@@ -52,4 +52,46 @@ describe('calendarService', () => {
       calendarService.createEvent({ userId: 'owner', title: '', start: '', end: '', type: '' })
     ).rejects.toBeInstanceOf(AppError);
   });
+
+  it('updateEvent: owner renames; deleteEvent removes', async () => {
+    const ev = await calendarService.createEvent({
+      userId: 'owner',
+      title: 'Old',
+      start: '2026-02-01T09:00:00Z',
+      end: '2026-02-01T10:00:00Z',
+      type: 'public',
+    });
+    await calendarService.updateEvent(
+      { eventId: ev.id, userId: 'owner', isAdmin: false },
+      { title: 'New' }
+    );
+    let events = await calendarService.listEvents('owner');
+    expect(events.find((e) => e.id === ev.id)?.title).toBe('New');
+
+    await calendarService.deleteEvent({ eventId: ev.id, userId: 'owner', isAdmin: false });
+    events = await calendarService.listEvents('owner');
+    expect(events.some((e) => e.id === ev.id)).toBe(false);
+  });
+
+  it('updateEvent: non-owner non-admin → AppError 403', async () => {
+    const ev = await calendarService.createEvent({
+      userId: 'owner',
+      title: 'X',
+      start: '2026-02-02T09:00:00Z',
+      end: '2026-02-02T10:00:00Z',
+      type: 'private',
+    });
+    await expect(
+      calendarService.updateEvent(
+        { eventId: ev.id, userId: 'other', isAdmin: false },
+        { title: 'Y' }
+      )
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('deleteEvent: missing event → AppError 404', async () => {
+    await expect(
+      calendarService.deleteEvent({ eventId: 'no-id', userId: 'owner', isAdmin: false })
+    ).rejects.toMatchObject({ status: 404 });
+  });
 });
