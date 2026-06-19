@@ -101,4 +101,81 @@ async function createChannel({ userId, type, name, memberIds }: CreateChannelPar
   return { id: channelId, existing: false };
 }
 
-export const chatService = { listChannels, createChannel };
+/** Throws AppError 403 if the user is not a member of the channel. */
+async function assertMember(channelId: string, userId: string) {
+  const membership = await dbQuery(
+    'SELECT 1 FROM chat_members WHERE channel_id = $1 AND user_id = $2',
+    [channelId, userId]
+  );
+  if (!membership.rows.length) {
+    throw new AppError(HTTP.FORBIDDEN, 'Forbidden');
+  }
+}
+
+interface ListMessagesParams {
+  channelId: string;
+  userId: string;
+  before?: string;
+  limit?: number;
+}
+
+/** Messages in a channel (member-only), oldest-first, paginated by `before`. */
+async function listMessages({ channelId, userId, before, limit = 50 }: ListMessagesParams) {
+  await assertMember(channelId, userId);
+
+  const params: unknown[] = [channelId, limit];
+  let whereClause = '';
+  if (before) {
+    params.push(before);
+    whereClause = `AND m.created_at < $${params.length}`;
+  }
+
+  const result = await dbQuery<{
+    id: string;
+    body: string;
+    attachments: unknown[];
+    created_at: Date;
+    sender_id: string;
+    sender_name: string;
+    sender_avatar: string | null;
+  }>(
+    `SELECT m.id, m.body, m.attachments, m.created_at, m.sender_id,
+            u.name AS sender_name, u.avatar_url AS sender_avatar
+     FROM chat_messages m
+     LEFT JOIN users u ON u.id = m.sender_id
+     WHERE m.channel_id = $1 ${whereClause}
+     ORDER BY m.created_at DESC
+     LIMIT $2`,
+    params
+  );
+
+  return result.rows.reverse().map((row) => ({
+    id: row.id,
+    body: row.body,
+    attachments: row.attachments,
+    createdAt: row.created_at,
+    sender: { id: row.sender_id, name: row.sender_name, avatarURL: row.sender_avatar },
+  }));
+}
+
+interface SendMessageParams {
+  channelId: string;
+  userId: string;
+  body: string;
+}
+
+/** Posts a message to a channel (member-only). Returns the new message id. */
+async function sendMessage({ channelId, userId, body }: SendMessageParams) {
+  await assertMember(channelId, userId);
+  if (!body?.trim()) {
+    throw new AppError(HTTP.BAD_REQUEST, 'Message body is required');
+  }
+  const msgId = uuidv4();
+  await dbQuery(
+    'INSERT INTO chat_messages (id, channel_id, sender_id, body) VALUES ($1, $2, $3, $4)',
+    [msgId, channelId, userId, body.trim()]
+  );
+  return { id: msgId };
+}
+
+export const chatService = { listChannels, createChannel, listMessages, sendMessage };
