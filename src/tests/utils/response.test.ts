@@ -1,6 +1,7 @@
 import '@jest/globals';
+import { AppError } from '@/src/types/api';
 import { createMocks } from 'node-mocks-http';
-import { ok, fail } from '@/src/utils/response';
+import { ok, fail, sendError } from '@/src/utils/response';
 
 describe('response helpers', () => {
   it('ok() sends success:true with data and default 200', () => {
@@ -29,5 +30,23 @@ describe('response helpers', () => {
     const body = JSON.parse(res._getData());
     expect(body.success).toBe(false);
     expect(body.message).toBe('Not found');
+  });
+
+  it('sendError() maps an AppError to its status + message + extra', () => {
+    const { res } = createMocks();
+    sendError(res as any, new AppError(403, 'Nope', { requiresVerification: true }));
+    expect(res._getStatusCode()).toBe(403);
+    const body = JSON.parse(res._getData());
+    expect(body.success).toBe(false);
+    expect(body.message).toBe('Nope');
+    expect(body.requiresVerification).toBe(true);
+  });
+
+  it('sendError() maps an unknown error to 500', () => {
+    const { res } = createMocks();
+    sendError(res as any, new Error('boom'));
+    expect(res._getStatusCode()).toBe(500);
+    const body = JSON.parse(res._getData());
+    expect(body.success).toBe(false);
   });
 });
