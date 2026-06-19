@@ -2,13 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import formidable from 'formidable';
 import dbConnect from '@/src/lib/db';
-import { verify } from 'jsonwebtoken';
 import { File } from '@/src/models/File';
-import { JWT_SECRET } from '@/src/lib/jwt';
+import { requireAuth } from '@/src/utils/auth';
 import { unlink, readFile } from 'node:fs/promises';
 
 import uuidv4 from 'src/utils/uuidv4';
-
 
 export const config = {
   api: {
@@ -16,7 +14,7 @@ export const config = {
   },
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -25,20 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Connect to the database
     await dbConnect();
 
-    // Verify authentication
-    const { authorization } = req.headers;
-    if (!authorization) {
-      return res.status(401).json({ message: 'Отсутствует токен авторизации' });
-    }
-    const token = authorization.split(' ')[1];
-    let decoded: any;
-    try {
-      decoded = verify(token, JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({ message: 'Неверный токен авторизации' });
-    }
-
-    const { userId } = decoded;
+    const userId = req.user!._id;
 
     // Create a temporary upload directory for formidable
     const form = formidable({
@@ -103,3 +88,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Internal server error' });
   }
 }
+
+export default requireAuth(handler);

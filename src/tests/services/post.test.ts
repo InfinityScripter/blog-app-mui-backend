@@ -137,4 +137,22 @@ describe('postService.deletePost / updatePost', () => {
       status: 403,
     });
   });
+
+  it('searchPosts: public mode returns only published matching the query', async () => {
+    await postService.setPublish('owner', postId, 'published');
+    const results = await postService.searchPosts({ query: 'Mine' });
+    expect(results.every((p: any) => p.publish === 'published')).toBe(true);
+    expect(results.some((p: any) => p.title === 'Mine')).toBe(true);
+  });
+
+  it('searchPosts: dashboard mode without userId → AppError 401', async () => {
+    await expect(postService.searchPosts({ dashboard: true })).rejects.toMatchObject({
+      status: 401,
+    });
+  });
+
+  it('searchPosts: dashboard mode scopes to the user own posts', async () => {
+    const results = await postService.searchPosts({ dashboard: true, userId: 'owner' });
+    expect(results.every((p: any) => p.userId === 'owner')).toBe(true);
+  });
 });
