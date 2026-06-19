@@ -1,36 +1,23 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
 import cors from '@/src/utils/cors';
-import { dbQuery } from '@/src/lib/db';
+import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
+import { sendError } from '@/src/utils/response';
+import { adminService } from '@/src/services/admin';
 
+// Thin route: requireAuth(requireAdmin) → adminService.listUsers → respond.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
   if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
   }
   try {
-    const result = await dbQuery<{
-      id: string; name: string; email: string;
-      avatar_url: string | null; role: string;
-      is_email_verified: boolean; is_locked: boolean;
-      created_at: Date;
-    }>(
-      'SELECT id, name, email, avatar_url, role, is_email_verified, is_locked, created_at FROM users ORDER BY created_at DESC'
-    );
-    const users = result.rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      avatarURL: row.avatar_url,
-      role: row.role,
-      isEmailVerified: row.is_email_verified,
-      isLocked: row.is_locked,
-      createdAt: row.created_at,
-    }));
-    return res.status(200).json({ users });
+    const users = await adminService.listUsers();
+    return res.status(HTTP.OK).json({ users });
   } catch (error) {
-    return res.status(500).json({ message: 'Internal server error' });
+    return sendError(res, error);
   }
 }
 
