@@ -89,4 +89,15 @@ async function updatePost(userId: string, postId: string, body: Record<string, a
   return updated;
 }
 
-export const postService = { listPosts, createPost, deletePost, updatePost };
+/** Sets publish status ('draft' | 'published') on a post the user owns. */
+async function setPublish(userId: string, postId: string, publish: string) {
+  if (publish !== 'draft' && publish !== 'published') {
+    throw new AppError(HTTP.BAD_REQUEST, 'Неверное значение поля publish');
+  }
+  const { post } = await loadOwnedPost(userId, postId);
+  post.publish = publish;
+  await post.save();
+  return post;
+}
+
+export const postService = { listPosts, createPost, deletePost, updatePost, setPublish };
