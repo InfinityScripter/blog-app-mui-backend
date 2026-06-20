@@ -1,5 +1,6 @@
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
+import uuidv4 from '@/src/utils/uuidv4';
 import { verifyToken } from '@/src/lib/jwt';
 
 // Расширение типа для использования req.user
@@ -19,14 +20,16 @@ declare module 'next' {
       role: string;
       [key: string]: any;
     };
+    /** Per-request correlation id, stashed by requireAuth for audit logging. */
+    requestId?: string;
   }
 }
 
 /**
  * Middleware для проверки JWT-токена и аутентификации пользователя
  */
-export const requireAuth = (handler: NextApiHandler) => 
-  async (req: NextApiRequest, res: NextApiResponse) => {
+export const requireAuth =
+  (handler: NextApiHandler) => async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       // Получаем токен из заголовка Authorization
       const authHeader = req.headers.authorization;
@@ -41,6 +44,11 @@ export const requireAuth = (handler: NextApiHandler) =>
 
       // Добавляем информацию о пользователе в объект запроса
       req.user = { _id: decoded.userId, role: decoded.role ?? 'user' };
+
+      // Mint a per-request correlation id for audit logging (if not already set).
+      if (!req.requestId) {
+        req.requestId = uuidv4();
+      }
 
       // Передаем управление следующему обработчику
       return handler(req, res);

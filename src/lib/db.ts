@@ -149,6 +149,28 @@ const schemaSql = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  -- Audit trail of business actions (who/what/when). Append-only.
+  -- actor_id keeps the trail when a user is deleted (SET NULL); target_id has
+  -- NO FK because the target row is often deleted in the same action. All
+  -- indexes are plain btree (no GIN) so this stays pg-mem + boot safe.
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    action TEXT NOT NULL,
+    actor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    actor_role TEXT,
+    target_type TEXT,
+    target_id TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    ip TEXT,
+    request_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS audit_logs_actor_id_idx   ON audit_logs (actor_id);
+  CREATE INDEX IF NOT EXISTS audit_logs_action_idx     ON audit_logs (action);
+  CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs (created_at);
+  CREATE INDEX IF NOT EXISTS audit_logs_target_idx     ON audit_logs (target_type, target_id);
 `;
 
 type PoolLike = NodePool;
@@ -250,6 +272,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM chat_channels');
   await pool.query('DELETE FROM files');
   await pool.query('DELETE FROM posts');
+  await pool.query('DELETE FROM audit_logs');
   await pool.query('DELETE FROM users');
 }
 
