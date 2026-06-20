@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 
 // Thin route: requireAuth → kanbanService.deleteColumn → respond.
@@ -14,6 +15,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === 'DELETE') {
       await kanbanService.deleteColumn(columnId);
+      emitAudit(req, { action: 'kanban.column.deleted', targetType: 'column', targetId: columnId });
       return res.status(HTTP.OK).json({ success: true });
     }
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });

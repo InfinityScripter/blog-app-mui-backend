@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 
 // Thin route: requireAuth → kanbanService.addTask → respond. Keeps { task }.
@@ -25,6 +26,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       assignees,
       labels,
       dueDate,
+    });
+    emitAudit(req, {
+      action: 'kanban.task.created',
+      targetType: 'task',
+      targetId: task.id,
+      metadata: {
+        columnId,
+        assigneeCount: assignees?.length ?? 0,
+        labelCount: labels?.length ?? 0,
+        hasDueDate: Boolean(dueDate),
+      },
     });
     return res.status(HTTP.CREATED).json({ task });
   } catch (error) {

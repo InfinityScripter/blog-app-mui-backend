@@ -90,3 +90,52 @@ describe('auditService', () => {
     expect(all[0].actor_id).toBeNull(); // FK nulled, not cascaded
   });
 });
+
+describe('auditService.list', () => {
+  beforeEach(async () => {
+    await dbQuery('DELETE FROM audit_logs');
+    await User.deleteMany({});
+    await User.create({ _id: 'u1', name: 'U1', email: 'u1@e.com', passwordHash: 'x' });
+    await User.create({ _id: 'u2', name: 'U2', email: 'u2@e.com', passwordHash: 'x' });
+    await auditService.recordAndWait({ action: 'post.created', actorId: 'u1', targetType: 'post' });
+    await auditService.recordAndWait({ action: 'post.deleted', actorId: 'u1', targetType: 'post' });
+    await auditService.recordAndWait({ action: 'user.deleted', actorId: 'u2', targetType: 'user' });
+  });
+
+  it('returns all logs newest-first with a total count', async () => {
+    const { logs, total } = await auditService.list();
+    expect(total).toBe(3);
+    expect(logs).toHaveLength(3);
+    expect(logs[0]).toHaveProperty('actorId');
+    expect(logs[0]).toHaveProperty('createdAt');
+  });
+
+  it('filters by action', async () => {
+    const { logs, total } = await auditService.list({ action: 'post.created' });
+    expect(total).toBe(1);
+    expect(logs[0].action).toBe('post.created');
+  });
+
+  it('filters by actorId', async () => {
+    const { logs } = await auditService.list({ actorId: 'u1' });
+    expect(logs).toHaveLength(2);
+    expect(logs.every((l) => l.actorId === 'u1')).toBe(true);
+  });
+
+  it('filters by targetType', async () => {
+    const { logs } = await auditService.list({ targetType: 'user' });
+    expect(logs).toHaveLength(1);
+    expect(logs[0].action).toBe('user.deleted');
+  });
+
+  it('paginates with limit/offset and caps limit at 100', async () => {
+    const page1 = await auditService.list({ limit: 2, offset: 0 });
+    expect(page1.logs).toHaveLength(2);
+    expect(page1.total).toBe(3);
+    const page2 = await auditService.list({ limit: 2, offset: 2 });
+    expect(page2.logs).toHaveLength(1);
+
+    const capped = await auditService.list({ limit: 9999 });
+    expect(capped.limit).toBe(100);
+  });
+});

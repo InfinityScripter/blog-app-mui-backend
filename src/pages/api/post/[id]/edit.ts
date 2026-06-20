@@ -5,6 +5,7 @@ import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { emitAudit } from '@/src/utils/audit-context';
 
 // Thin route: requireAuth → postService.updatePost → respond. Keeps { post }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,6 +19,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   try {
     const post = await postService.updatePost(req.user!._id, id, req.body ?? {});
+    emitAudit(req, {
+      action: 'post.updated',
+      targetType: 'post',
+      targetId: post.id,
+      metadata: { publish: post.publish, updatedFieldNames: Object.keys(req.body ?? {}) },
+    });
     return res.status(HTTP.OK).json({ message: 'Пост успешно обновлен', success: true, post });
   } catch (error) {
     return sendError(res, error);

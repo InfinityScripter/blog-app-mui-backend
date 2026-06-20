@@ -5,6 +5,7 @@ import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { emitAudit } from '@/src/utils/audit-context';
 
 // Thin route: requireAuth → postService.deletePost → respond.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,6 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
     }
     await postService.deletePost(req.user!._id, id);
+    emitAudit(req, { action: 'post.deleted', targetType: 'post', targetId: id });
     return res.status(HTTP.OK).json({ message: 'Пост успешно удалён', success: true });
   } catch (error) {
     return sendError(res, error);
