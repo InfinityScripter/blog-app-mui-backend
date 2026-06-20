@@ -27,7 +27,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
     const tag = typeof req.query.tag === 'string' ? req.query.tag : undefined;
-    const posts = await postService.listPosts({ ...readAuth(req), tag });
+    const excludeTag = typeof req.query.excludeTag === 'string' ? req.query.excludeTag : undefined;
+    const posts = await postService.listPosts({ ...readAuth(req), tag, excludeTag });
     return res.status(HTTP.OK).json({ posts });
   } catch (error) {
     return sendError(res, error);

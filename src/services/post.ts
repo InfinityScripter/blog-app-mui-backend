@@ -14,6 +14,8 @@ interface ListParams {
   userId?: string;
   /** Optional tag filter (e.g. 'новости'), applied on top of the caller scope. */
   tag?: string;
+  /** Optional tag to exclude (e.g. hide 'новости' from the blog/home feed). */
+  excludeTag?: string;
 }
 
 /**
@@ -21,10 +23,10 @@ interface ListParams {
  *  - admin           → all posts (any author/status)
  *  - regular user    → only their own posts (any status)
  *  - anonymous       → only published posts
- * An optional `tag` narrows the result to posts carrying that tag.
- * Each post gets a derived totalComments field.
+ * An optional `tag` narrows to posts carrying that tag; `excludeTag` drops posts
+ * carrying that tag. Each post gets a derived totalComments field.
  */
-async function listPosts({ role, userId, tag }: ListParams) {
+async function listPosts({ role, userId, tag, excludeTag }: ListParams) {
   let filter: Record<string, unknown>;
   if (role === 'admin') {
     filter = {};
@@ -36,6 +38,10 @@ async function listPosts({ role, userId, tag }: ListParams) {
 
   if (tag) {
     filter.tag = tag;
+  }
+
+  if (excludeTag) {
+    filter.excludeTag = excludeTag;
   }
 
   const posts = await Post.find(filter).lean();

@@ -69,4 +69,14 @@ describe('GET /api/post/list — tag filter', () => {
     const { posts } = JSON.parse(res._getData());
     expect(posts).toHaveLength(0);
   });
+
+  it('excludeTag drops posts carrying that tag (news hidden from the blog)', async () => {
+    const { req, res } = listRequest({ excludeTag: 'новости' });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const { posts } = JSON.parse(res._getData());
+    const titles = posts.map((p: { title: string }) => p.title);
+    // Published, non-news posts only — the news post is excluded.
+    expect(titles).toEqual(['AI статья']);
+  });
 });
