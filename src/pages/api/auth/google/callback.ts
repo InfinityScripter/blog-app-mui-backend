@@ -20,7 +20,7 @@ handler.use(async (req, res, next) => {
 handler.get(passport.authenticate('google', { session: false }), (req: any, res) => {
   // При успешной аутентификации создаём JWT и перенаправляем на фронтенд
   const { user } = req;
-  const token = signToken({ userId: user.id });
+  const token = signToken({ userId: user.id, role: user.role ?? 'user' });
   const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
   res.redirect(`${frontendURL}/auth/success?token=${token}`);
 });
