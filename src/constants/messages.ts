@@ -17,4 +17,11 @@ export const MSG = {
   USER_EXISTS: 'User with this email already exists',
   USER_NOT_FOUND: 'Пользователь не найден',
   SIGN_UP_SUCCESS: 'User created successfully. Please check your email for verification code.',
+  NO_PASSWORD_FOR_CHANGE: 'Cannot change password: no password is set for this account',
+  CURRENT_PASSWORD_INCORRECT: 'Current password is incorrect',
+
+  // user profile
+  PROFILE_UPDATED: 'Profile updated successfully',
+  PASSWORD_CHANGED: 'Password changed successfully',
+  AVATAR_UPDATED: 'Avatar updated successfully',
 } as const;
