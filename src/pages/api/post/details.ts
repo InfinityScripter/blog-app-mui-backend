@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import User from '@/src/models/User';
 
 import cors from 'src/utils/cors';
+
 import dbConnect from 'src/lib/db';
 import { Post } from 'src/models/Post';
 
@@ -20,19 +21,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Invalid post id' });
     }
 
-    // Находим пост и увеличиваем счетчик просмотров атомарно
-    const post = await Post.findOneAndUpdate(
-      { _id: id },
-      { $inc: { totalViews: 1 } },
-      { new: true }
-    );
+    // Pure read. View counting lives in POST /api/post/[id]/view so that SSR
+    // prerenders and SWR revalidations don't inflate the counter.
+    const post = await Post.findById(id);
 
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
     post.totalComments = post.comments.length;
-    await post.save();
     // Populate user data for reply comments
     const populateUserData = async () => {
       const userPromises: Promise<void>[] = [];

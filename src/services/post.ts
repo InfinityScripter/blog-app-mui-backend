@@ -1,4 +1,5 @@
 import User from '@/src/models/User';
+import { dbQuery } from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
@@ -127,6 +128,19 @@ async function setPublish(userId: string, postId: string, publish: string) {
   return post;
 }
 
+/**
+ * Atomically bumps a post's view counter. Single UPDATE so concurrent readers
+ * never lose increments (no read-modify-write race). Returns the new count, or
+ * null if the post doesn't exist. Public action — no ownership check.
+ */
+async function incrementViews(postId: string): Promise<number | null> {
+  const result = await dbQuery<{ total_views: number }>(
+    'UPDATE posts SET total_views = total_views + 1 WHERE id = $1 RETURNING total_views',
+    [postId]
+  );
+  return result.rows[0]?.total_views ?? null;
+}
+
 export const postService = {
   listPosts,
   createPost,
@@ -134,4 +148,5 @@ export const postService = {
   updatePost,
   setPublish,
   searchPosts,
+  incrementViews,
 };
