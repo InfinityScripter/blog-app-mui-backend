@@ -6,6 +6,7 @@ import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
 import { sendError } from '@/src/utils/response';
 import { adminService } from '@/src/services/admin';
+import { emitAudit } from '@/src/utils/audit-context';
 
 // Thin route: requireAuth(requireAdmin) → adminService.deleteUser → respond.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,6 +16,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === 'DELETE') {
       await adminService.deleteUser(req.user!._id, id);
+      emitAudit(req, {
+        action: 'user.deleted',
+        targetType: 'user',
+        targetId: id,
+        metadata: { deletedByAdminId: req.user!._id },
+      });
       return res.status(HTTP.OK).json({ success: true, message: 'User deleted' });
     }
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });

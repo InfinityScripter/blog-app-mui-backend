@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { calendarService } from '@/src/services/calendar';
 
 // Thin route: requireAuth → calendarService → respond. Keeps { events }/{ event }.
@@ -19,6 +20,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (req.method === 'POST') {
       const event = await calendarService.createEvent({ userId, ...(req.body ?? {}) });
+      emitAudit(req, {
+        action: 'calendar.event.created',
+        targetType: 'calendar_event',
+        targetId: event.id,
+        metadata: { type: event.type, allDay: event.allDay },
+      });
       return res.status(HTTP.CREATED).json({ event });
     }
 

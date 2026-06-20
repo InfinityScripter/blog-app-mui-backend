@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 
 // Thin route: requireAuth → kanbanService → respond. Keeps { board }/{ success }.
@@ -15,6 +16,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === 'DELETE') {
       await kanbanService.deleteBoard(boardId);
+      emitAudit(req, { action: 'kanban.board.deleted', targetType: 'board', targetId: boardId });
       return res.status(HTTP.OK).json({ success: true });
     }
 

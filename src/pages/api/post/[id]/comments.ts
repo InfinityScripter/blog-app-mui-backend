@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { commentService } from '@/src/services/comment';
 
 // Thin route: requireAuth → commentService.{add,edit,delete} → respond.
@@ -21,6 +22,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         parentCommentId,
         tagUser,
       });
+      emitAudit(req, {
+        action: 'comment.created',
+        targetType: 'comment',
+        targetId: postId,
+        metadata: { postId, isReply: Boolean(parentCommentId) },
+      });
       return res.status(HTTP.OK).json({ message: 'Comment added successfully', post });
     }
 
@@ -34,6 +41,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         isReply,
         parentCommentId,
       });
+      emitAudit(req, {
+        action: 'comment.updated',
+        targetType: 'comment',
+        targetId: commentId,
+        metadata: { postId, isReply: Boolean(isReply) },
+      });
       return res.status(HTTP.OK).json({ message: 'Comment updated successfully', post });
     }
 
@@ -45,6 +58,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         commentId,
         isReply,
         parentCommentId,
+      });
+      emitAudit(req, {
+        action: 'comment.deleted',
+        targetType: 'comment',
+        targetId: commentId,
+        metadata: { postId, isReply: Boolean(isReply) },
       });
       return res.status(HTTP.OK).json({ message: 'Comment deleted successfully', post });
     }

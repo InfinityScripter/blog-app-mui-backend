@@ -70,4 +70,92 @@ async function recordAndWait(rec: AuditRecord): Promise<void> {
   await dbQuery(INSERT_SQL, params);
 }
 
-export const auditService = { record, recordAndWait };
+export interface ListAuditParams {
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AuditLogRow {
+  id: string;
+  action: string;
+  actorId: string | null;
+  actorRole: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  metadata: Record<string, unknown>;
+  ip: string | null;
+  requestId: string | null;
+  createdAt: Date;
+}
+
+const MAX_LIMIT = 100;
+
+/**
+ * Lists audit logs newest-first with optional filters and pagination.
+ * Returns rows mapped to camelCase plus the total count for the same filters.
+ */
+async function list(params: ListAuditParams = {}) {
+  const clauses: string[] = [];
+  const values: unknown[] = [];
+
+  if (params.action) {
+    values.push(params.action);
+    clauses.push(`action = $${values.length}`);
+  }
+  if (params.actorId) {
+    values.push(params.actorId);
+    clauses.push(`actor_id = $${values.length}`);
+  }
+  if (params.targetType) {
+    values.push(params.targetType);
+    clauses.push(`target_type = $${values.length}`);
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), MAX_LIMIT);
+  const offset = Math.max(params.offset ?? 0, 0);
+
+  const countResult = await dbQuery<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM audit_logs ${where}`,
+    values
+  );
+  const total = Number(countResult.rows[0]?.count ?? 0);
+
+  const rowsResult = await dbQuery<{
+    id: string;
+    action: string;
+    actor_id: string | null;
+    actor_role: string | null;
+    target_type: string | null;
+    target_id: string | null;
+    metadata: Record<string, unknown>;
+    ip: string | null;
+    request_id: string | null;
+    created_at: Date;
+  }>(
+    `SELECT * FROM audit_logs ${where} ORDER BY created_at DESC LIMIT $${
+      values.length + 1
+    } OFFSET $${values.length + 2}`,
+    [...values, limit, offset]
+  );
+
+  const logs: AuditLogRow[] = rowsResult.rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    actorId: row.actor_id,
+    actorRole: row.actor_role,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    metadata: row.metadata,
+    ip: row.ip,
+    requestId: row.request_id,
+    createdAt: row.created_at,
+  }));
+
+  return { logs, total, limit, offset };
+}
+
+export const auditService = { record, recordAndWait, list };

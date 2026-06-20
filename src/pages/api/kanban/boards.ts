@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 
 // Thin route: requireAuth → kanbanService → respond. Keeps { boards }/{ board }.
@@ -25,6 +26,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         name,
         description,
         memberIds,
+      });
+      emitAudit(req, {
+        action: 'kanban.board.created',
+        targetType: 'board',
+        targetId: board.id,
+        metadata: { memberCount: memberIds?.length ?? 0 },
       });
       return res.status(HTTP.CREATED).json({ board });
     }

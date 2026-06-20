@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 
 // Thin route: requireAuth → kanbanService → respond. Keeps { success }.
@@ -14,11 +15,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === 'DELETE') {
       await kanbanService.deleteTask(taskId);
+      emitAudit(req, { action: 'kanban.task.deleted', targetType: 'task', targetId: taskId });
       return res.status(HTTP.OK).json({ success: true });
     }
 
     if (req.method === 'PATCH') {
-      await kanbanService.updateTask(taskId, req.body ?? {});
+      const body = req.body ?? {};
+      await kanbanService.updateTask(taskId, body);
+      // A move changes column/position; everything else is a field edit.
+      const isMove =
+        body.columnId !== undefined || body.column_id !== undefined || body.position !== undefined;
+      emitAudit(req, {
+        action: isMove ? 'kanban.task.moved' : 'kanban.task.updated',
+        targetType: 'task',
+        targetId: taskId,
+        metadata: {
+          fields: Object.keys(body),
+          ...(isMove
+            ? { toColumnId: body.columnId ?? body.column_id, position: body.position }
+            : {}),
+        },
+      });
       return res.status(HTTP.OK).json({ success: true });
     }
 
