@@ -63,6 +63,8 @@ type PostFilter = {
   userId?: string;
   /** Filters to posts whose tags JSON array contains this tag (e.g. 'новости'). */
   tag?: string;
+  /** Excludes posts whose tags JSON array contains this tag (e.g. hide news from the blog). */
+  excludeTag?: string;
 };
 
 type PostRow = {
@@ -153,6 +155,12 @@ function buildWhere(filter: PostFilter) {
     // tags is a jsonb array of strings — containment check for the tag.
     values.push(JSON.stringify([filter.tag]));
     clauses.push(`tags @> $${values.length}::jsonb`);
+  }
+
+  if (filter.excludeTag) {
+    // Inverse containment — drop posts carrying the tag (e.g. hide news).
+    values.push(JSON.stringify([filter.excludeTag]));
+    clauses.push(`NOT (tags @> $${values.length}::jsonb)`);
   }
 
   return {
