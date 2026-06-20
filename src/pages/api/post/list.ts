@@ -26,7 +26,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
   try {
     await dbConnect();
-    const posts = await postService.listPosts(readAuth(req));
+    const tag = typeof req.query.tag === 'string' ? req.query.tag : undefined;
+    const posts = await postService.listPosts({ ...readAuth(req), tag });
     return res.status(HTTP.OK).json({ posts });
   } catch (error) {
     return sendError(res, error);

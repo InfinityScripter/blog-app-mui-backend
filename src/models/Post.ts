@@ -61,6 +61,8 @@ type PostFilter = {
   publish?: 'draft' | 'published';
   title?: { $options?: string; $regex: string };
   userId?: string;
+  /** Filters to posts whose tags JSON array contains this tag (e.g. 'новости'). */
+  tag?: string;
 };
 
 type PostRow = {
@@ -145,6 +147,12 @@ function buildWhere(filter: PostFilter) {
   if (filter.title?.$regex) {
     values.push(`%${filter.title.$regex}%`);
     clauses.push(`LOWER(title) LIKE LOWER($${values.length})`);
+  }
+
+  if (filter.tag) {
+    // tags is a jsonb array of strings — containment check for the tag.
+    values.push(JSON.stringify([filter.tag]));
+    clauses.push(`tags @> $${values.length}::jsonb`);
   }
 
   return {
