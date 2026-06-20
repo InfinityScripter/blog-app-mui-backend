@@ -12,6 +12,8 @@ import { buildNewPostPayload, buildPostPatchPayload } from '@/src/utils/post-pay
 interface ListParams {
   role?: string;
   userId?: string;
+  /** Optional tag filter (e.g. 'новости'), applied on top of the caller scope. */
+  tag?: string;
 }
 
 /**
@@ -19,9 +21,10 @@ interface ListParams {
  *  - admin           → all posts (any author/status)
  *  - regular user    → only their own posts (any status)
  *  - anonymous       → only published posts
+ * An optional `tag` narrows the result to posts carrying that tag.
  * Each post gets a derived totalComments field.
  */
-async function listPosts({ role, userId }: ListParams) {
+async function listPosts({ role, userId, tag }: ListParams) {
   let filter: Record<string, unknown>;
   if (role === 'admin') {
     filter = {};
@@ -29,6 +32,10 @@ async function listPosts({ role, userId }: ListParams) {
     filter = { userId };
   } else {
     filter = { publish: 'published' };
+  }
+
+  if (tag) {
+    filter.tag = tag;
   }
 
   const posts = await Post.find(filter).lean();
