@@ -66,13 +66,6 @@ const schemaSql = `
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS yandex_id TEXT;
 
-  -- Case-insensitive email uniqueness. Replaces the old case-sensitive
-  -- UNIQUE(email) so that 'Mtal-va@mail.ru' and 'mtal-va@mail.ru' collide.
-  -- For existing prod tables the old constraint must be dropped separately
-  -- after de-duping (see docs migration); IF NOT EXISTS keeps this idempotent.
-  CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique
-    ON users (LOWER(email));
-
   CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique
     ON users (google_id)
     WHERE google_id IS NOT NULL;
@@ -160,6 +153,29 @@ const schemaSql = `
 
 type PoolLike = NodePool;
 
+/**
+ * Best-effort migrations that may legitimately fail against legacy data and
+ * must NOT abort startup. The case-insensitive email unique index cannot be
+ * created while duplicate emails (differing only by case) still exist in an
+ * existing prod table; we attempt it and, on failure, log and continue so the
+ * service still boots. Once the duplicates are merged the next restart creates
+ * the index. New/clean databases get the index immediately.
+ */
+async function applySafeMigrations(pool: PoolLike) {
+  try {
+    await pool.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique ON users (LOWER(email))'
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[db] Skipping users_email_lower_unique index (likely duplicate emails differing by case). ' +
+        'Merge duplicates, then restart to enforce case-insensitive email uniqueness.',
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 const globalForPostgres = globalThis as typeof globalThis & {
   __postgres_cache__?:
     | {
@@ -187,6 +203,7 @@ async function createPool(): Promise<PoolLike> {
     const adapter = db.adapters.createPg();
     const pool = new adapter.Pool();
     await pool.query(schemaSql);
+    await applySafeMigrations(pool);
     return pool;
   }
 
@@ -196,6 +213,7 @@ async function createPool(): Promise<PoolLike> {
   });
 
   await pool.query(schemaSql);
+  await applySafeMigrations(pool);
   return pool;
 }
 
