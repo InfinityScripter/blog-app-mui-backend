@@ -39,11 +39,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         message: first ? `${path ? `${path}: ` : ''}${first.message}` : 'Missing required fields',
       });
     }
+    // email is already trimmed + lowercased by signUpSchema.
     const { email, password, firstName, lastName } = parsed.data;
-    // Поиск пользователя по email
-    const existingUser = await User.findOne({ email: email.trim() });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User with this email already exists' });
+      // Neutral message — do not confirm whether an account exists (anti-enumeration).
+      return res.status(201).json({
+        message: 'User created successfully. Please check your email for verification code.',
+      });
     }
 
     const saltRounds = 10;
@@ -54,7 +57,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const newUser: Partial<IUser> = {
       name: `${firstName} ${lastName}`,
-      email: email.trim(),
+      email,
       passwordHash,
       isEmailVerified: false,
       emailVerificationCode: verificationCode ?? undefined,
@@ -62,7 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
     const createdUser = await User.create(newUser);
 
-    await sendVerificationEmail(email.trim(), verificationCode);
+    await sendVerificationEmail(email, verificationCode);
 
     return res.status(201).json({
       message: 'User created successfully. Please check your email for verification code.',

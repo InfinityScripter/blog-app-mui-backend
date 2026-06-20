@@ -6,6 +6,10 @@ import nodemailer from 'nodemailer';
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { normalizeEmail } from '../../../utils/normalize-email';
+
+const NEUTRAL_RESET_MESSAGE =
+  'If an account exists for that email, a password reset code has been sent.';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
@@ -18,15 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await dbConnect();
     const { email } = req.body;
 
-    console.log('Reset password request for email:', email);
-
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const user = await User.findOne({ email: email.trim() });
+    const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) {
-      return res.status(400).json({ message: 'No user found with that email' });
+      // Anti-enumeration: respond the same whether or not the account exists.
+      return res.status(200).json({ message: NEUTRAL_RESET_MESSAGE });
     }
 
     // Генерируем 6-значный код
@@ -37,12 +40,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     user.passwordResetCode = resetCode;
     user.passwordResetExpires = resetExpires;
     await user.save();
-
-    console.log('Generated reset code for user:', {
-      email: user.email,
-      resetCode,
-      expiresAt: resetExpires,
-    });
 
     // Формируем ссылку для сброса пароля
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:7272';
@@ -93,11 +90,8 @@ If you did not request this code, please ignore this email.`,
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('Reset code email sent to:', user.email);
 
-    res.status(200).json({
-      message: 'Password reset code has been sent to your email',
-    });
+    res.status(200).json({ message: NEUTRAL_RESET_MESSAGE });
   } catch (error) {
     console.error('[Reset Password API Error]:', error);
     res.status(500).json({

@@ -9,6 +9,8 @@ export const MSG = {
   // auth
   WRONG_CREDENTIALS: 'Wrong email or password',
   NO_PASSWORD_SET: 'No password set for this user',
+  ACCOUNT_LOCKED:
+    'Account locked due to too many failed sign-in attempts. Reset your password to unlock.',
   EMAIL_NOT_VERIFIED: 'Please verify your email before signing in',
   EMAIL_SERVICE_UNAVAILABLE:
     'Email service is not configured. Registration is temporarily unavailable.',

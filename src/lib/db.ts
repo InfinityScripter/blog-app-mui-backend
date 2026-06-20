@@ -9,7 +9,7 @@ const schemaSql = `
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL,
     password_hash TEXT,
     google_id TEXT UNIQUE,
     yandex_id TEXT UNIQUE,
@@ -65,6 +65,13 @@ const schemaSql = `
 
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS yandex_id TEXT;
+
+  -- Case-insensitive email uniqueness. Replaces the old case-sensitive
+  -- UNIQUE(email) so that 'Mtal-va@mail.ru' and 'mtal-va@mail.ru' collide.
+  -- For existing prod tables the old constraint must be dropped separately
+  -- after de-duping (see docs migration); IF NOT EXISTS keeps this idempotent.
+  CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique
+    ON users (LOWER(email));
 
   CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique
     ON users (google_id)
