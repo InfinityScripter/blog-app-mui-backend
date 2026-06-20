@@ -147,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const token = signToken({ userId: user.id });
+    const token = signToken({ userId: user.id, role: user.role ?? 'user' });
 
     return res.redirect(`${frontendURL}/auth/success?token=${encodeURIComponent(token)}`);
   } catch (e) {
