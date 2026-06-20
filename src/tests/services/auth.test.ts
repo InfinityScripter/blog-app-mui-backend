@@ -47,4 +47,37 @@ describe('authService.signIn', () => {
       authService.signIn({ email: 'unv@example.com', password: 'password123' })
     ).rejects.toMatchObject({ status: 403 });
   });
+
+  it('signs in case-insensitively (email normalized upstream)', async () => {
+    // The schema lowercases the email before it reaches the service, and the
+    // lookup is case-insensitive — so a lowercased match always works.
+    const result = await authService.signIn({ email: 'svc@example.com', password: 'password123' });
+    expect(result.user.email).toBe('svc@example.com');
+  });
+
+  it('locks the account after 5 consecutive failed attempts (403 afterwards)', async () => {
+    for (let i = 0; i < 5; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await expect(
+        authService.signIn({ email: 'svc@example.com', password: 'wrong' })
+      ).rejects.toMatchObject({ status: 400 });
+    }
+    // 6th attempt — even with the CORRECT password — is rejected with 403 lock.
+    await expect(
+      authService.signIn({ email: 'svc@example.com', password: 'password123' })
+    ).rejects.toMatchObject({ status: 403 });
+
+    const locked = await User.findOne({ email: 'svc@example.com' });
+    expect(locked?.isLocked).toBe(true);
+    expect(locked?.failedLoginAttempts).toBeGreaterThanOrEqual(5);
+  });
+
+  it('resets the failed-attempt counter on a successful sign-in', async () => {
+    await expect(
+      authService.signIn({ email: 'svc@example.com', password: 'wrong' })
+    ).rejects.toMatchObject({ status: 400 });
+    await authService.signIn({ email: 'svc@example.com', password: 'password123' });
+    const fresh = await User.findOne({ email: 'svc@example.com' });
+    expect(fresh?.failedLoginAttempts).toBe(0);
+  });
 });

@@ -4,6 +4,7 @@ import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { sendVerificationEmail } from '../../../utils/email';
+import { normalizeEmail } from '../../../utils/normalize-email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
@@ -20,7 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = normalizeEmail(email);
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -42,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await user.save();
 
     // Отправляем новый код на email
-    await sendVerificationEmail(email, verificationCode);
+    await sendVerificationEmail(normalizedEmail, verificationCode);
 
     res.status(200).json({ message: 'Verification code sent successfully' });
   } catch (error: any) {

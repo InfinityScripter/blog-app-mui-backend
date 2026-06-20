@@ -4,6 +4,7 @@ import { signToken } from '@/src/lib/jwt';
 
 import dbConnect from '../../../../lib/db';
 import User from '../../../../models/User';
+import { normalizeEmail } from '../../../../utils/normalize-email';
 
 const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
 const yandexClientSecret = process.env.YANDEX_CLIENT_SECRET || '';
@@ -110,11 +111,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const profile = (await userResponse.json()) as YandexUserResponse;
-    const email = profile.default_email;
+    const rawEmail = profile.default_email;
 
-    if (!email) {
+    if (!rawEmail) {
       return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_email`);
     }
+    const email = normalizeEmail(rawEmail);
 
     const avatarURL = profile.default_avatar_id
       ? `https://avatars.yandex.net/get-yapic/${profile.default_avatar_id}/islands-200`

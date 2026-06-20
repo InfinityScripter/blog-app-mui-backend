@@ -129,8 +129,9 @@ function buildWhere(filter: UserFilter) {
   }
 
   if (filter.email) {
+    // Case-insensitive lookup — emails are treated case-insensitively.
     values.push(filter.email);
-    clauses.push(`email = $${values.length}`);
+    clauses.push(`LOWER(email) = LOWER($${values.length})`);
   }
 
   if (filter.googleId) {

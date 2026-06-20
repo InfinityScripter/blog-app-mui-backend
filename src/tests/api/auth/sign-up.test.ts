@@ -50,7 +50,7 @@ describe('POST /api/auth/sign-up', () => {
     expect(savedUser?.emailVerificationCode?.length).toBe(6); // Should be a 6-digit code
   });
 
-  it('should return 400 if email already exists', async () => {
+  it('returns a neutral 201 for an existing email and does not create a duplicate (anti-enumeration)', async () => {
     // First create a user
     await User.create({
       name: 'Existing User',
@@ -58,11 +58,11 @@ describe('POST /api/auth/sign-up', () => {
       passwordHash: 'hashedpassword',
     });
 
-    // Try to create user with same email
+    // Try to create user with same email (different case to also cover normalization)
     const { req, res } = createMocks({
       method: 'POST',
       body: {
-        email: 'existing@example.com',
+        email: 'EXISTING@example.com',
         password: 'password123',
         firstName: 'Another',
         lastName: 'User',
@@ -71,9 +71,14 @@ describe('POST /api/auth/sign-up', () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
+    // Neutral response — does NOT reveal that the account already exists.
+    expect(res._getStatusCode()).toBe(201);
     const data = JSON.parse(res._getData());
-    expect(data.message).toBe('User with this email already exists');
+    expect(data.message).not.toMatch(/already exists/i);
+
+    // No duplicate account was created.
+    const all = await User.findOne({ email: 'existing@example.com' });
+    expect(all).toBeTruthy();
   });
 
   it('should return 400 if required fields are missing', async () => {

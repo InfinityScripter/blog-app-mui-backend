@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
+import { normalizeEmail } from '@/src/utils/normalize-email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -20,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Поиск пользователя по email
-    const user = await User.findOne({ email: email.trim() });
+    const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) {
       return res.status(400).json({ message: 'User not found with this email' });
     }
