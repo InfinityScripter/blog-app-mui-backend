@@ -63,7 +63,7 @@ integration seam. The bot owns its own state (SQLite); the blog owns posts.
 | `types.ts`     | `FeedItem`, `Candidate`, `CandidateState`, `RewriteResult`, `BlogPostBody`                                                             | —                                |
 | `feeds.ts`     | `DEFAULT_FEEDS` + `fetchAllFeeds()`: rss-parser, per-feed try/catch, normalize to `FeedItem[]` with `dedupKey`                         | rss-parser, config               |
 | `store.ts`     | better-sqlite3: schema, `isSeen`, `insertCollected`, `getCandidate`, `setState`, `attachRewrite`, `setTelegramMessage`, `setPublished` | better-sqlite3, config           |
-| `rewriter.ts`  | Anthropic client + `rewriteToPost(item)`: structured JSON via `messages.parse` + zod, defensive fallback                               | @anthropic-ai/sdk, zod, config   |
+| `rewriter.ts`  | Anthropic client + `rewriteToPost(item)`: `messages.create` → extract JSON → zod-validate (defensive parse)                            | @anthropic-ai/sdk, zod, config   |
 | `publisher.ts` | `publish(candidate)`: `fetch` POST to `/api/post/new`, returns blog post id or throws                                                  | config                           |
 | `bot.ts`       | grammy Bot: owner-lock middleware, `/start` `/ping` `/fetch`, `sendApproval`, `callback_query:data` handler                            | grammy, store, publisher, config |
 | `collector.ts` | `runCollection()`: feeds → dedup → rewrite → store → DM owner. The cron job and `/fetch` both call this                                | feeds, store, rewriter, bot      |
@@ -110,9 +110,17 @@ CREATE TABLE IF NOT EXISTS candidates (
 ## Claude rewrite
 
 - **Model:** `claude-haiku-4-5` — cheap, sufficient for rewrite (~20 articles/day ≈ pennies).
-- **Method:** `client.messages.parse()` with `zodOutputFormat(RewriteSchema)` for
-  guaranteed valid JSON; if `parsed_output` is null (refusal / parse failure),
-  mark candidate `rewrite_failed`, show the error in the DM — never crash the batch.
+- **Method:** `client.messages.create()` with a system prompt that instructs
+  strict JSON, then a **defensive parse**: extract the first `{…}` from the text
+  block, `JSON.parse`, and validate with `RewriteSchema.safeParse`. On a
+  `refusal` stop reason, missing JSON, or a schema-validation failure → mark the
+  candidate `rewrite_failed` and show the error in the DM, never crashing the
+  batch.
+  > Implementation note: the design originally called for `messages.parse()` +
+  > `zodOutputFormat` (structured outputs), but the installed `@anthropic-ai/sdk`
+  > (0.40.x) predates those helpers. The defensive `create()` + zod-validate path
+  > is version-independent and equally safe — it just validates client-side
+  > instead of via `output_config`. Revisit `messages.parse` if the SDK is bumped.
 - **Output schema:**
 
 ```ts
