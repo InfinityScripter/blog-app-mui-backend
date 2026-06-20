@@ -3,24 +3,45 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
+import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { userService } from '@/src/services/user';
-import { validateBody } from '@/src/utils/validate';
 import { emitAudit } from '@/src/utils/audit-context';
 import { updateAvatarSchema } from '@/src/schemas/user';
 import { withMethods } from '@/src/middlewares/with-methods';
 
-// Thin route: auth → validate → service → respond. The file binary is uploaded
-// separately via /api/upload, which returns a /api/file/:id path; this endpoint
-// just persists that URL onto the user's avatar_url column.
+// Thin route. POST sets the avatar to an already-uploaded /api/file/:id URL
+// (the binary is uploaded separately via /api/upload); DELETE clears it.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
   try {
     await dbConnect();
-    const user = await userService.updateAvatar(req.user!._id, req.body);
+    const userId = req.user!._id;
+
+    if (req.method === 'DELETE') {
+      const user = await userService.removeAvatar(userId);
+      emitAudit(req, {
+        action: 'user.avatar.removed',
+        targetType: 'user',
+        targetId: user._id,
+      });
+      return res.status(HTTP.OK).json({ message: MSG.AVATAR_REMOVED, success: true, user });
+    }
+
+    // POST — validate the body inline (the route allows two methods, so the
+    // validateBody wrapper can't gate just one of them).
+    const parsed = updateAvatarSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError(
+        HTTP.BAD_REQUEST,
+        parsed.error.issues[0]?.message ?? 'Invalid request body'
+      );
+    }
+
+    const user = await userService.updateAvatar(userId, parsed.data);
     emitAudit(req, {
       action: 'user.avatar.updated',
       targetType: 'user',
@@ -32,4 +53,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(withMethods(['POST'])(validateBody(updateAvatarSchema)(handler)));
+export default requireAuth(withMethods(['POST', 'DELETE'])(handler));

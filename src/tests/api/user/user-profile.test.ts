@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
+import { userService } from '@/src/services/user';
 import avatarHandler from '@/src/pages/api/user/avatar';
 import profileHandler from '@/src/pages/api/user/profile';
 import changePasswordHandler from '@/src/pages/api/user/change-password';
@@ -63,6 +64,35 @@ describe('User profile endpoints', () => {
       expect(res._getStatusCode()).toBe(400);
       const data = JSON.parse(res._getData());
       expect(data.success).toBe(false);
+    });
+
+    it('rejects a name longer than 100 chars with 400', async () => {
+      const { req, res } = createMocks({
+        method: 'PATCH',
+        headers: authHeader(userId),
+        body: { name: 'x'.repeat(101) },
+      });
+
+      await profileHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(400);
+      const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
+
+      // The original name is untouched.
+      const reloaded = await User.findById(userId);
+      expect(reloaded?.name).toBe('Original Name');
+    });
+
+    it('rejects a non-PATCH method with 405', async () => {
+      const { req, res } = createMocks({
+        method: 'GET',
+        headers: authHeader(userId),
+      });
+
+      await profileHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(405);
     });
 
     it('returns 401 when unauthenticated', async () => {
@@ -139,6 +169,27 @@ describe('User profile endpoints', () => {
 
       expect(res._getStatusCode()).toBe(401);
     });
+
+    it('returns 400 for an OAuth-only account with no password set', async () => {
+      const oauthUser = await User.create({
+        name: 'OAuth User',
+        email: 'oauth@example.com',
+        isEmailVerified: true,
+        // no passwordHash — e.g. a Google/Yandex sign-up
+      });
+
+      const { req, res } = createMocks({
+        method: 'POST',
+        headers: authHeader(oauthUser._id),
+        body: { currentPassword: 'anything', newPassword: 'newpassword456' },
+      });
+
+      await changePasswordHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(400);
+      const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
+    });
   });
 
   describe('POST /api/user/avatar', () => {
@@ -175,10 +226,70 @@ describe('User profile endpoints', () => {
       expect(data.success).toBe(false);
     });
 
+    it('rejects an avatar URL longer than 2048 chars with 400', async () => {
+      const { req, res } = createMocks({
+        method: 'POST',
+        headers: authHeader(userId),
+        body: { avatarURL: `/api/file/${'x'.repeat(2049)}` },
+      });
+
+      await avatarHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(400);
+      const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
+    });
+
     it('returns 401 when unauthenticated', async () => {
       const { req, res } = createMocks({
         method: 'POST',
         body: { avatarURL: '/api/file/abc123' },
+      });
+
+      await avatarHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(401);
+    });
+  });
+
+  describe('DELETE /api/user/avatar', () => {
+    it('clears the avatar and returns the updated user', async () => {
+      // Seed an existing avatar first.
+      await userService.updateAvatar(userId, { avatarURL: '/api/file/existing' });
+
+      const { req, res } = createMocks({
+        method: 'DELETE',
+        headers: authHeader(userId),
+      });
+
+      await avatarHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = JSON.parse(res._getData());
+      expect(data.success).toBe(true);
+      expect(data.user.avatarURL).toBeNull();
+
+      // Persisted to the database.
+      const reloaded = await User.findById(userId);
+      expect(reloaded?.avatarURL ?? null).toBeNull();
+    });
+
+    it('is idempotent when there is no avatar', async () => {
+      const { req, res } = createMocks({
+        method: 'DELETE',
+        headers: authHeader(userId),
+      });
+
+      await avatarHandler(req as any, res as any);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = JSON.parse(res._getData());
+      expect(data.user.avatarURL).toBeNull();
+    });
+
+    it('returns 401 when unauthenticated', async () => {
+      const { req, res } = createMocks({
+        method: 'DELETE',
       });
 
       await avatarHandler(req as any, res as any);

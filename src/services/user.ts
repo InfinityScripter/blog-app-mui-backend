@@ -61,4 +61,15 @@ async function updateAvatar(userId: string, { avatarURL }: UpdateAvatarBody) {
   return toPublicUser(user);
 }
 
-export const userService = { updateProfile, changePassword, updateAvatar };
+/** Clears the caller's avatar (sets it to null). Returns the public user. */
+async function removeAvatar(userId: string) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError(HTTP.UNAUTHORIZED, MSG.USER_NOT_FOUND);
+  }
+  user.avatarURL = null;
+  await user.save();
+  return toPublicUser(user);
+}
+
+export const userService = { updateProfile, changePassword, updateAvatar, removeAvatar };

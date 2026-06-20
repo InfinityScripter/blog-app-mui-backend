@@ -24,4 +24,5 @@ export const MSG = {
   PROFILE_UPDATED: 'Profile updated successfully',
   PASSWORD_CHANGED: 'Password changed successfully',
   AVATAR_UPDATED: 'Avatar updated successfully',
+  AVATAR_REMOVED: 'Avatar removed successfully',
 } as const;
