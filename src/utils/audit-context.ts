@@ -1,8 +1,8 @@
 import type { NextApiRequest } from 'next';
-import type { AuditContext } from '@/src/services/audit';
 
 import uuidv4 from '@/src/utils/uuidv4';
 import { getClientIp } from '@/src/utils/client-ip';
+import { auditService, type AuditRecord, type AuditContext } from '@/src/services/audit';
 
 /**
  * Builds the actor + request context for an audit record from the request.
@@ -16,4 +16,14 @@ export function buildAuditContext(req: NextApiRequest): AuditContext {
     ip: getClientIp(req),
     requestId: (req as NextApiRequest & { requestId?: string }).requestId ?? uuidv4(),
   };
+}
+
+/**
+ * One-liner for route handlers: capture the request context and emit an audit
+ * event in a single fire-and-forget call. Call it on the success path only.
+ * Fields from the request context (actorId/actorRole/ip/requestId) can be
+ * overridden — e.g. sign-in derives the actor from the looked-up user, not req.
+ */
+export function emitAudit(req: NextApiRequest, event: AuditRecord): void {
+  auditService.record({ ...buildAuditContext(req), ...event });
 }
