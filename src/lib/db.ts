@@ -171,6 +171,13 @@ const schemaSql = `
   CREATE INDEX IF NOT EXISTS audit_logs_action_idx     ON audit_logs (action);
   CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs (created_at);
   CREATE INDEX IF NOT EXISTS audit_logs_target_idx     ON audit_logs (target_type, target_id);
+
+  CREATE TABLE IF NOT EXISTS llm_stats_snapshots (
+    id TEXT PRIMARY KEY,
+    bundle JSONB NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL,
+    pushed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 `;
 
 type PoolLike = NodePool;
@@ -279,6 +286,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM files');
   await pool.query('DELETE FROM posts');
   await pool.query('DELETE FROM audit_logs');
+  await pool.query('DELETE FROM llm_stats_snapshots');
   await pool.query('DELETE FROM users');
 }
 
