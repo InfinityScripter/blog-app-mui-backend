@@ -21,7 +21,9 @@
     "ts:watch": "yarn ts --watch",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "relevance:summary": "node scripts/relevance-shadow-summary.mjs",
+    "news:offtopic": "node scripts/find-offtopic-news.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
