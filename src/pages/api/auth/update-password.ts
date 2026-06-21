@@ -6,6 +6,7 @@ import bcrypt from 'bcrypt';
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
+import { emitAudit } from '../../../utils/audit-context';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
@@ -66,6 +67,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await user.save();
 
     console.log('Password updated successfully for user:', user.email);
+
+    // Emitted here (not in reset-password.ts, which only sends the code) because
+    // this is where the password is actually changed. Actor is the user.
+    emitAudit(req, {
+      actorId: user._id,
+      actorRole: user.role ?? 'user',
+      action: 'auth.password_reset',
+      targetType: 'user',
+      targetId: user._id,
+    });
 
     res.status(200).json({
       message: 'Password has been updated successfully',

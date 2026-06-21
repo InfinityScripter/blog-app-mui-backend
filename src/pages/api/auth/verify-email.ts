@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
+import { emitAudit } from '@/src/utils/audit-context';
 import { normalizeEmail } from '@/src/utils/normalize-email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -46,6 +47,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     user.emailVerificationCode = undefined;
     user.emailVerificationExpires = undefined;
     await user.save();
+
+    // Actor is the verifying user (anonymous request has no req.user).
+    emitAudit(req, {
+      actorId: user._id,
+      actorRole: user.role ?? 'user',
+      action: 'auth.email_verified',
+      targetType: 'user',
+      targetId: user._id,
+    });
 
     return res.status(200).json({
       message: 'Email successfully verified',

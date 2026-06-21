@@ -9,7 +9,7 @@ export const JWT_EXPIRES_IN = '3 days';
 export const _users = [
   {
     id: '8864c717-587d-472a-929a-8e5f298024da-0',
-    displayName: 'Jaydon Frankie',
+    displayName: 'Михаил Талалаев',
     photoURL: _mock.image.avatar(24),
     phoneNumber: _mock.phoneNumber(1),
     country: _mock.countryNames(1),
@@ -21,7 +21,7 @@ export const _users = [
     role: 'admin',
     isPublic: true,
     //
-    email: 'demo@minimals.cc',
+    email: 'talalaev.misha@gmail.com',
     password: '@demo1',
   },
 ];

@@ -8,6 +8,7 @@ import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { signUpSchema } from '../../../schemas/auth';
+import { emitAudit } from '../../../utils/audit-context';
 import { sendVerificationEmail } from '../../../utils/email';
 
 import type { IUser } from '../../../models/User';
@@ -66,6 +67,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const createdUser = await User.create(newUser);
 
     await sendVerificationEmail(email, verificationCode);
+
+    // Actor is the just-created user (anonymous request has no req.user).
+    emitAudit(req, {
+      actorId: createdUser._id,
+      actorRole: createdUser.role ?? 'user',
+      action: 'auth.signup',
+      targetType: 'user',
+      targetId: createdUser._id,
+      metadata: { method: 'password' },
+    });
 
     return res.status(201).json({
       message: 'User created successfully. Please check your email for verification code.',

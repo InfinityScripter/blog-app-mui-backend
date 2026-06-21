@@ -6,6 +6,7 @@ import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
 import { ok, sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { botControlService } from '@/src/services/bot-control';
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -24,6 +25,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new AppError(HTTP.BAD_REQUEST, 'enabled must be a boolean');
     }
     const result = await botControlService.setMock(body.enabled);
+    emitAudit(req, {
+      action: 'bot.mock_toggled',
+      targetType: 'bot',
+      metadata: { enabled: body.enabled },
+    });
     return ok(res, result, { message: body.enabled ? 'Mock включён' : 'Mock выключен' });
   } catch (error) {
     return sendError(res, error);

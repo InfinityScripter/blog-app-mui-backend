@@ -196,6 +196,12 @@ async function applySafeMigrations(pool: PoolLike) {
       error instanceof Error ? error.message : error
     );
   }
+
+  // NOTE: no post-tagging backfill here. The landing feed (Лента) is common and
+  // lists every post; news vs blog is only a per-post distinction (the 'новости'
+  // tag, set by the bot) surfaced on /news and /post. Mass-tagging existing
+  // posts as news would wrongly pull hand-made blog posts into /news — so each
+  // post keeps its own tags exactly as authored.
 }
 
 const globalForPostgres = globalThis as typeof globalThis & {

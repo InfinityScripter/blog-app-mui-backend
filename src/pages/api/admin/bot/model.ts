@@ -6,6 +6,7 @@ import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
 import { ok, sendError } from '@/src/utils/response';
+import { emitAudit } from '@/src/utils/audit-context';
 import { botControlService } from '@/src/services/bot-control';
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -27,6 +28,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new AppError(HTTP.BAD_REQUEST, 'provider and model are required');
     }
     const result = await botControlService.setModel(provider, model);
+    emitAudit(req, {
+      action: 'bot.model_changed',
+      targetType: 'bot',
+      metadata: { provider, model },
+    });
     return ok(res, result, { message: 'Модель обновлена' });
   } catch (error) {
     return sendError(res, error);

@@ -23,6 +23,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
     }
 
+    // Intentionally NOT audited: views are high-volume (every reader, every
+    // page load) and would flood the audit trail with noise. The total_views
+    // counter on the post is the source of truth for this signal.
     const totalViews = await postService.incrementViews(id);
     if (totalViews === null) {
       return res.status(HTTP.NOT_FOUND).json({ message: 'Post not found' });
