@@ -42,14 +42,46 @@ jobs:
           username: ${{ secrets.VDS_USER }}
           key: ${{ secrets.VDS_SSH_PRIVATE_KEY || secrets.VDS }}
           port: ${{ secrets.VDS_PORT }}
+          # script_stop makes the action fail the step on any non-zero command.
+          # Without it, appleboy/ssh-action only checks the LAST command's exit
+          # code, so a failed `yarn build` followed by `systemctl restart` would
+          # report success — exactly the silent-restart-on-broken-build bug that
+          # shipped 500-ing routes on 2026-06-21. `set -e` alone is not enough.
+          script_stop: true
           script: |
-            set -e
+            set -euo pipefail
             cd /opt/blog-app/backend
             find . -name "._*" -delete
             cp /opt/blog-backend/.env.production /opt/blog-app/backend/.env
             corepack enable
             corepack prepare yarn@1.22.22 --activate
             yarn install --frozen-lockfile
-            yarn build
+
+            # Abort the deploy if the build fails — do NOT restart onto a stale
+            # or incomplete .next (e.g. an OOM-killed type-check leaves the
+            # server build missing and every new route 500s).
+            if ! yarn build; then
+              echo "BUILD FAILED — not restarting blog-backend"
+              exit 1
+            fi
+
             systemctl restart blog-backend
+
+            # Post-restart healthcheck: the service must answer a known public
+            # route, else the deploy is a failure even though the build passed.
+            # Retry briefly to let `next start` finish booting.
+            ok=0
+            for i in 1 2 3 4 5 6; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:7272/api/post/list || true)
+              if [ "$code" = "200" ]; then ok=1; break; fi
+              echo "healthcheck attempt $i: got '$code', retrying in 5s…"
+              sleep 5
+            done
+            if [ "$ok" != "1" ]; then
+              echo "HEALTHCHECK FAILED — backend did not return 200 after restart"
+              systemctl status blog-backend --no-pager || true
+              journalctl -u blog-backend --no-pager -n 40 || true
+              exit 1
+            fi
+            echo "healthcheck OK (200)"
             systemctl status blog-backend --no-pager
