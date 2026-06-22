@@ -22,6 +22,18 @@ export interface BotStatus {
   model?: string;
   isMockEnabled?: boolean;
 }
+export interface BotModelHealthCheck {
+  provider: string;
+  label: string;
+  model: string;
+  ok: boolean;
+  ms: number;
+  error?: string;
+}
+export interface BotModelsHealth {
+  healthy: boolean;
+  checks: BotModelHealthCheck[];
+}
 
 const TIMEOUT_MS = 8_000;
 
@@ -131,6 +143,15 @@ async function getStatus(): Promise<BotStatus> {
   }
 }
 
+async function getModelsHealth(): Promise<BotModelsHealth> {
+  const { data } = await call('/control/models/health');
+  const raw = asRecord(data);
+  return {
+    healthy: typeof raw.healthy === 'boolean' ? raw.healthy : false,
+    checks: Array.isArray(raw.checks) ? (raw.checks as BotModelHealthCheck[]) : [],
+  };
+}
+
 async function listProviders(): Promise<BotProvider[]> {
   const { data } = await call('/control/providers');
   const raw = asRecord(data);
@@ -155,4 +176,11 @@ async function setMock(enabled: boolean): Promise<{ isMockEnabled: boolean }> {
   return { isMockEnabled: typeof raw.isMockEnabled === 'boolean' ? raw.isMockEnabled : enabled };
 }
 
-export const botControlService = { getStatus, listProviders, listModels, setModel, setMock };
+export const botControlService = {
+  getStatus,
+  getModelsHealth,
+  listProviders,
+  listModels,
+  setModel,
+  setMock,
+};
