@@ -12,6 +12,8 @@ export const allowedOrigins = [
   'https://sh0ny.ru',
   'https://talalaev.su',
   'https://www.talalaev.su',
+  'https://aifirst.us.com',
+  'https://www.aifirst.us.com',
 ];
 
 /**
