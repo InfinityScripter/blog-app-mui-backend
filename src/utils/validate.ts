@@ -20,3 +20,17 @@ export function validateBody<T>(schema: ZodType<T>) {
     return handler(req, res);
   };
 }
+
+export function validateQuery<T>(schema: ZodType<T>) {
+  return (handler: NextApiHandler) => async (req: NextApiRequest, res: NextApiResponse) => {
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      const first = result.error.issues[0];
+      const path = first?.path.join('.');
+      const message = first ? `${path ? `${path}: ` : ''}${first.message}` : 'Invalid query';
+      return res.status(400).json({ success: false, message });
+    }
+    req.query = result.data as NextApiRequest['query'];
+    return handler(req, res);
+  };
+}

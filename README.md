@@ -105,6 +105,19 @@ JWT_EXPIRES_IN='3 days'
 FRONTEND_URL=http://localhost:3033
 ```
 
+Для записи `dogs-teacher` используется отдельная база на том же Postgres:
+
+```env
+DOGS_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dogs_teacher
+DOGS_ADMIN_PASSWORD=change-me
+DOGS_ADMIN_SESSION_SECRET=change-me-too
+DOGS_TELEGRAM_BOT_TOKEN=
+DOGS_TELEGRAM_WEBHOOK_SECRET=
+DOGS_OWNER_TELEGRAM_ID=
+DOGS_SITE_URL=http://localhost:3040
+DOGS_CONTACT_TEXT=
+```
+
 Если у вас другой пользователь/пароль/порт, измените `DATABASE_URL`.
 
 Примеры:
