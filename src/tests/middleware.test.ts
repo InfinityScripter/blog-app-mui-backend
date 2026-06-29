@@ -5,13 +5,13 @@ import { middleware } from '@/src/middleware';
 function makeRequest(method: string, origin?: string): NextRequest {
   const headers = new Headers();
   if (origin !== undefined) headers.set('origin', origin);
-  return new NextRequest('https://api.talalaev.su/api/post/list', { method, headers });
+  return new NextRequest('https://api.aifirst.us.com/api/post/list', { method, headers });
 }
 
 describe('CORS middleware', () => {
   it('reflects an allowed origin in Access-Control-Allow-Origin', () => {
-    const res = middleware(makeRequest('GET', 'https://talalaev.su'));
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://talalaev.su');
+    const res = middleware(makeRequest('GET', 'https://aifirst.us.com'));
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://aifirst.us.com');
     expect(res.headers.get('Access-Control-Allow-Credentials')).toBe('true');
   });
 
@@ -26,9 +26,9 @@ describe('CORS middleware', () => {
   });
 
   it('answers OPTIONS preflight with 200 and CORS headers for allowed origin', () => {
-    const res = middleware(makeRequest('OPTIONS', 'https://talalaev.su'));
+    const res = middleware(makeRequest('OPTIONS', 'https://aifirst.us.com'));
     expect(res.status).toBe(200);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://talalaev.su');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://aifirst.us.com');
     expect(res.headers.get('Access-Control-Allow-Methods')).toContain('POST');
   });
 
@@ -39,8 +39,8 @@ describe('CORS middleware', () => {
 
   it('does not emit console.log noise in production path', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    middleware(makeRequest('GET', 'https://talalaev.su'));
-    middleware(makeRequest('OPTIONS', 'https://talalaev.su'));
+    middleware(makeRequest('GET', 'https://aifirst.us.com'));
+    middleware(makeRequest('OPTIONS', 'https://aifirst.us.com'));
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
