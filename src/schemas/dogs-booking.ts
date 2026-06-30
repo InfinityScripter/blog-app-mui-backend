@@ -75,6 +75,7 @@ export const createDogsSlotsBatchSchema = z.object({
 export const createDogsBookingRequestSchema = z.object({
   name: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(5).max(40),
+  email: z.string().trim().toLowerCase().email().max(160).optional(),
   dog: z.string().trim().max(160).optional(),
   comment: z.string().trim().max(1000).optional(),
   serviceId: z.string().trim().min(1).max(80),
@@ -84,6 +85,10 @@ export const createDogsBookingRequestSchema = z.object({
 
 export const updateDogsBookingStatusSchema = z.object({
   status: dogsBookingStatusSchema,
+});
+
+export const cancelDogsBookingRequestSchema = z.object({
+  requestId: z.string().trim().min(1).max(80),
 });
 
 export const dogsAdminLoginSchema = z.object({

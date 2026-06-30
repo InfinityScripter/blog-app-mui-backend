@@ -9,6 +9,16 @@ import bookingIdHandler from '@/src/pages/api/dogs/admin/bookings/[id]';
 
 jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
 
+jest.mock('@/src/utils/dogs-email', () => ({
+  sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
+  sendDogsStatusChanged: jest.fn().mockResolvedValue(undefined),
+}));
+
+// eslint-disable-next-line import/first, import/order
+import { sendDogsStatusChanged } from '@/src/utils/dogs-email';
+
+const sendStatusMock = sendDogsStatusChanged as jest.Mock;
+
 async function adminToken() {
   const { req, res } = createMocks({ method: 'POST', body: { password: 'secret' } });
   await adminLoginHandler(req, res);
@@ -43,6 +53,8 @@ describe('Dogs admin mutations API', () => {
     process.env.DOGS_ADMIN_PASSWORD = 'secret';
     process.env.DOGS_ADMIN_SESSION_SECRET = 'session-secret';
     delete process.env.DOGS_TELEGRAM_BOT_TOKEN;
+    sendStatusMock.mockClear();
+    sendStatusMock.mockResolvedValue(undefined);
   });
 
   it('creates a batch of slots', async () => {
@@ -108,6 +120,35 @@ describe('Dogs admin mutations API', () => {
     await bookingIdHandler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(JSON.parse(res._getData()).data.booking.status).toBe('confirmed');
+  });
+
+  it('sends a status-changed email on a status PATCH', async () => {
+    const token = await adminToken();
+    const booking = await createBooking();
+    const { req, res } = createMocks({
+      method: 'PATCH',
+      headers: auth(token),
+      query: { id: booking.id },
+      body: { status: 'confirmed' },
+    });
+    await bookingIdHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(sendStatusMock).toHaveBeenCalledTimes(1);
+    expect(sendStatusMock.mock.calls[0][1].status).toBe('confirmed');
+  });
+
+  it('still returns 200 when the status-changed email send throws', async () => {
+    sendStatusMock.mockRejectedValue(new Error('smtp down'));
+    const token = await adminToken();
+    const booking = await createBooking();
+    const { req, res } = createMocks({
+      method: 'PATCH',
+      headers: auth(token),
+      query: { id: booking.id },
+      body: { status: 'declined' },
+    });
+    await bookingIdHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
   });
 
   it('deletes a slot', async () => {

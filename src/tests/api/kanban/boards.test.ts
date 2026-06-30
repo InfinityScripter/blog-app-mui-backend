@@ -1,14 +1,11 @@
 import '@jest/globals';
-
 import jwt from 'jsonwebtoken';
-import { createMocks } from 'node-mocks-http';
-
 import User from '@/src/models/User';
-import handler from '@/src/pages/api/kanban/boards';
 import { JWT_SECRET } from '@/src/lib/jwt';
+import { createMocks } from 'node-mocks-http';
+import handler from '@/src/pages/api/kanban/boards';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 
 function makeToken(userId: string, role = 'user') {
   return `Bearer ${jwt.sign({ userId, role }, JWT_SECRET)}`;

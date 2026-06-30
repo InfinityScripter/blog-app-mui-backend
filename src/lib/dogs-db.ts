@@ -11,6 +11,7 @@ const dogsSchemaSql = `
     name TEXT NOT NULL,
     phone TEXT NOT NULL,
     phone_normalized TEXT NOT NULL UNIQUE,
+    email TEXT,
     access_token TEXT NOT NULL UNIQUE,
     telegram_user_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -27,8 +28,6 @@ const dogsSchemaSql = `
     CHECK (ends_at > starts_at)
   );
 
-  CREATE INDEX IF NOT EXISTS dogs_booking_slots_starts_at_idx
-    ON dogs_booking_slots (starts_at);
   CREATE INDEX IF NOT EXISTS dogs_booking_slots_active_starts_at_idx
     ON dogs_booking_slots (is_active, starts_at);
 
@@ -58,6 +57,30 @@ const dogsSchemaSql = `
 
 type PoolLike = NodePool;
 
+/**
+ * Best-effort migration that may legitimately fail against legacy data and must
+ * NOT abort startup. The UNIQUE index on starts_at cannot be created while
+ * duplicate slot rows still exist on an existing prod table; we attempt it and,
+ * on failure, log and continue so the service still boots. Once the duplicates
+ * are cleaned (see docs/2026-06-30-prod-dogs-slot-dedup.sql) the next restart
+ * creates the index. New/clean databases get it immediately, which makes the
+ * createSlot/createSlots ON CONFLICT (starts_at) dedup effective.
+ */
+async function applyDogsSafeMigrations(pool: PoolLike) {
+  try {
+    await pool.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS dogs_booking_slots_starts_at_unique ON dogs_booking_slots (starts_at)'
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[dogs-db] Skipping dogs_booking_slots_starts_at_unique index (likely duplicate slot start times). ' +
+        'Clean duplicates, then restart to enforce slot uniqueness.',
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 const globalForDogsPostgres = globalThis as typeof globalThis & {
   __dogs_postgres_cache__?:
     | {
@@ -85,6 +108,7 @@ async function createPool(): Promise<PoolLike> {
     const adapter = db.adapters.createPg();
     const pool = new adapter.Pool();
     await pool.query(dogsSchemaSql);
+    await applyDogsSafeMigrations(pool);
     return pool;
   }
 
@@ -94,6 +118,7 @@ async function createPool(): Promise<PoolLike> {
   });
 
   await pool.query(dogsSchemaSql);
+  await applyDogsSafeMigrations(pool);
   return pool;
 }
 

@@ -18,6 +18,7 @@ interface DogsClientRow {
   name: string;
   phone: string;
   phone_normalized: string;
+  email: string | null;
   access_token: string;
   telegram_user_id: string | null;
   created_at: Date;
@@ -49,6 +50,7 @@ interface DogsBookingRequestRow {
 interface DogsBookingRequestWithDetailsRow extends DogsBookingRequestRow {
   client_name: string;
   client_phone: string;
+  client_email: string | null;
   client_access_token: string;
   starts_at: Date;
   ends_at: Date;
@@ -81,6 +83,7 @@ function mapClient(row: DogsClientRow) {
     id: row.id,
     name: row.name,
     phone: row.phone,
+    email: row.email,
     accessToken: row.access_token,
     telegramUserId: row.telegram_user_id,
     createdAt: toIso(row.created_at),
@@ -102,6 +105,7 @@ function mapRequest(row: DogsBookingRequestWithDetailsRow) {
       id: row.client_id,
       name: row.client_name,
       phone: row.client_phone,
+      email: row.client_email,
       accessToken: row.client_access_token,
     },
     slot: {
@@ -120,7 +124,7 @@ function generateAccessToken() {
   return crypto.randomBytes(32).toString('base64url');
 }
 
-async function createClient(input: { name: string; phone: string }) {
+async function createClient(input: { name: string; phone: string; email?: string }) {
   const phoneNormalized = normalizePhone(input.phone);
   if (!phoneNormalized || phoneNormalized.length < 5) {
     throw new AppError(HTTP.BAD_REQUEST, 'Invalid phone');
@@ -132,12 +136,14 @@ async function createClient(input: { name: string; phone: string }) {
   );
 
   if (existing.rows[0]) {
+    // Keep the previously stored email if no new one is supplied (COALESCE on
+    // the incoming value): a repeat booking without email must not wipe it.
     const updated = await dogsDbQuery<DogsClientRow>(
       `UPDATE dogs_clients
-       SET name = $1, phone = $2, updated_at = NOW()
-       WHERE id = $3
+       SET name = $1, phone = $2, email = COALESCE($3, email), updated_at = NOW()
+       WHERE id = $4
        RETURNING *`,
-      [input.name, input.phone, existing.rows[0].id]
+      [input.name, input.phone, input.email ?? null, existing.rows[0].id]
     );
     return updated.rows[0];
   }
@@ -145,10 +151,10 @@ async function createClient(input: { name: string; phone: string }) {
   const id = uuidv4();
   const accessToken = generateAccessToken();
   const created = await dogsDbQuery<DogsClientRow>(
-    `INSERT INTO dogs_clients (id, name, phone, phone_normalized, access_token)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO dogs_clients (id, name, phone, phone_normalized, email, access_token)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [id, input.name, input.phone, phoneNormalized, accessToken]
+    [id, input.name, input.phone, phoneNormalized, input.email ?? null, accessToken]
   );
   return created.rows[0];
 }
@@ -178,36 +184,64 @@ async function listAdminSlots() {
   return result.rows.map(mapSlot);
 }
 
+// Returns the created slot, or null when a slot already exists at this
+// startsAt (UNIQUE index → ON CONFLICT DO NOTHING). Lets the caller report
+// "skipped" instead of surfacing a 409.
 async function createSlot(input: CreateDogsSlotInput) {
   const id = uuidv4();
   const result = await dogsDbQuery<DogsSlotRow>(
     `INSERT INTO dogs_booking_slots (id, starts_at, ends_at)
      VALUES ($1, $2, $3)
+     ON CONFLICT (starts_at) DO NOTHING
      RETURNING *`,
     [id, input.startsAt, input.endsAt]
   );
-  return mapSlot(result.rows[0]);
+  // Only the row we just inserted carries our generated id; a conflict either
+  // returns nothing (real PG) or echoes the existing row (pg-mem) — both → null.
+  const inserted = result.rows[0];
+  return inserted && inserted.id === id ? mapSlot(inserted) : null;
 }
 
+// Inserts a batch of slots, skipping any whose startsAt already exists or is
+// duplicated within the batch. Returns only the rows actually inserted so the
+// caller can report "added N, skipped M".
 async function createSlots(inputs: CreateDogsSlotInput[]) {
   if (inputs.length === 0) {
     return [];
   }
 
+  // Drop duplicate startsAt within the batch first; ON CONFLICT alone cannot
+  // resolve two identical keys proposed in the same INSERT statement.
+  const seen = new Set<string>();
+  const unique = inputs.filter((input) => {
+    if (seen.has(input.startsAt)) {
+      return false;
+    }
+    seen.add(input.startsAt);
+    return true;
+  });
+
+  const insertedIds = new Set<string>();
   const values: unknown[] = [];
-  const tuples = inputs.map((input, index) => {
+  const tuples = unique.map((input, index) => {
+    const id = uuidv4();
+    insertedIds.add(id);
     const base = index * 3;
-    values.push(uuidv4(), input.startsAt, input.endsAt);
+    values.push(id, input.startsAt, input.endsAt);
     return `($${base + 1}, $${base + 2}, $${base + 3})`;
   });
 
   const result = await dogsDbQuery<DogsSlotRow>(
     `INSERT INTO dogs_booking_slots (id, starts_at, ends_at)
      VALUES ${tuples.join(', ')}
+     ON CONFLICT (starts_at) DO NOTHING
      RETURNING *`,
     values
   );
-  return result.rows.map(mapSlot);
+  // RETURNING after ON CONFLICT DO NOTHING may echo the pre-existing
+  // conflicting row (a pg-mem quirk; harmless on real PG which returns none).
+  // Keep only rows that carry one of the ids we generated → true inserts.
+  return result.rows.filter((row) => insertedIds.has(row.id)).map(mapSlot);
 }
 
 async function updateSlot(slotId: string, patch: { isActive: boolean }) {
@@ -237,7 +271,8 @@ async function deleteSlot(slotId: string) {
 async function getRequestDetails(requestId: string) {
   const result = await dogsDbQuery<DogsBookingRequestWithDetailsRow>(
     `SELECT r.*, c.name AS client_name, c.phone AS client_phone,
-            c.access_token AS client_access_token, s.starts_at, s.ends_at
+            c.email AS client_email, c.access_token AS client_access_token,
+            s.starts_at, s.ends_at
      FROM dogs_booking_requests r
      JOIN dogs_clients c ON c.id = r.client_id
      JOIN dogs_booking_slots s ON s.id = r.slot_id
@@ -260,7 +295,11 @@ async function createRequest(input: CreateDogsBookingRequestInput) {
     throw new AppError(HTTP.NOT_FOUND, 'Slot not found');
   }
 
-  const client = await createClient({ name: input.name, phone: input.phone });
+  const client = await createClient({
+    name: input.name,
+    phone: input.phone,
+    email: input.email,
+  });
   const id = uuidv4();
 
   try {
@@ -300,7 +339,8 @@ async function getClientPortal(accessToken: string) {
 
   const requests = await dogsDbQuery<DogsBookingRequestWithDetailsRow>(
     `SELECT r.*, c.name AS client_name, c.phone AS client_phone,
-            c.access_token AS client_access_token, s.starts_at, s.ends_at
+            c.email AS client_email, c.access_token AS client_access_token,
+            s.starts_at, s.ends_at
      FROM dogs_booking_requests r
      JOIN dogs_clients c ON c.id = r.client_id
      JOIN dogs_booking_slots s ON s.id = r.slot_id
@@ -318,7 +358,8 @@ async function getClientPortal(accessToken: string) {
 async function listAdminBookings() {
   const result = await dogsDbQuery<DogsBookingRequestWithDetailsRow>(
     `SELECT r.*, c.name AS client_name, c.phone AS client_phone,
-            c.access_token AS client_access_token, s.starts_at, s.ends_at
+            c.email AS client_email, c.access_token AS client_access_token,
+            s.starts_at, s.ends_at
      FROM dogs_booking_requests r
      JOIN dogs_clients c ON c.id = r.client_id
      JOIN dogs_booking_slots s ON s.id = r.slot_id
@@ -359,6 +400,51 @@ async function deleteRequest(requestId: string) {
   }
 }
 
+// Client-initiated cancel. The access token IS the authentication — only the
+// client owning that token may cancel, and only a still-active request
+// (pending|confirmed). Flipping to 'cancelled' frees the slot via the existing
+// active-slot uniqueness rule. Notifications are fired by the route, matching
+// updateBookingStatus.
+async function cancelClientRequest(accessToken: string, requestId: string) {
+  const clientResult = await dogsDbQuery<DogsClientRow>(
+    'SELECT * FROM dogs_clients WHERE access_token = $1',
+    [accessToken]
+  );
+  const client = clientResult.rows[0];
+  if (!client) {
+    throw new AppError(HTTP.NOT_FOUND, 'Client not found');
+  }
+
+  // Ownership + active-status guard collapsed into the UPDATE itself, gated on
+  // RETURNING, so the check and the write are one atomic statement. This avoids
+  // a TOCTOU window where a concurrent cancel re-notifies, or an admin status
+  // change (declined/confirmed) made after a separate SELECT is silently
+  // overwritten by a blind id-only UPDATE.
+  const updated = await dogsDbQuery<DogsBookingRequestRow>(
+    `UPDATE dogs_booking_requests
+     SET status = 'cancelled', updated_at = NOW()
+     WHERE id = $1 AND client_id = $2 AND status IN ('pending', 'confirmed')
+     RETURNING *`,
+    [requestId, client.id]
+  );
+
+  if (!updated.rows[0]) {
+    // Either the request does not belong to this client / does not exist, or it
+    // is no longer in a cancellable state. Distinguish so the caller gets a
+    // meaningful status without leaking another client's request existence.
+    const owned = await dogsDbQuery<{ status: DogsBookingStatus }>(
+      'SELECT status FROM dogs_booking_requests WHERE id = $1 AND client_id = $2',
+      [requestId, client.id]
+    );
+    if (!owned.rows[0]) {
+      throw new AppError(HTTP.NOT_FOUND, 'Booking request not found');
+    }
+    throw new AppError(HTTP.CONFLICT, 'Only an active request can be cancelled');
+  }
+
+  return getRequestDetails(requestId);
+}
+
 async function getClientByTelegramId(telegramUserId: string) {
   const result = await dogsDbQuery<DogsClientRow>(
     'SELECT * FROM dogs_clients WHERE telegram_user_id = $1',
@@ -389,6 +475,7 @@ async function linkTelegramClient(accessToken: string, telegramUserId: string) {
 }
 
 export const dogsBookingService = {
+  cancelClientRequest,
   createRequest,
   createSlot,
   createSlots,

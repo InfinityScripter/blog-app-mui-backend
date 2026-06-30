@@ -1,16 +1,13 @@
 import '@jest/globals';
-
 import jwt from 'jsonwebtoken';
-import { createMocks } from 'node-mocks-http';
-
 import User from '@/src/models/User';
-import handler from '@/src/pages/api/calendar/events';
 import { JWT_SECRET } from '@/src/lib/jwt';
+import { createMocks } from 'node-mocks-http';
+import handler from '@/src/pages/api/calendar/events';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
-const makeToken = (userId: string) =>
-  `Bearer ${jwt.sign({ userId, role: 'user' }, JWT_SECRET)}`;
+const makeToken = (userId: string) => `Bearer ${jwt.sign({ userId, role: 'user' }, JWT_SECRET)}`;
 
 describe('Calendar events API', () => {
   let userId: string;

@@ -1,13 +1,11 @@
 import '@jest/globals';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { createMocks } from 'node-mocks-http';
 import User from '@/src/models/User';
-import handler from '@/src/pages/api/admin/users';
 import { JWT_SECRET } from '@/src/lib/jwt';
+import { createMocks } from 'node-mocks-http';
+import handler from '@/src/pages/api/admin/users';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 
 function makeToken(userId: string, role: string) {
   return `Bearer ${jwt.sign({ userId, role }, JWT_SECRET)}`;
@@ -16,9 +14,21 @@ function makeToken(userId: string, role: string) {
 describe('GET /api/admin/users', () => {
   beforeEach(async () => {
     await User.deleteMany({});
-    const hash = await import('bcrypt').then(b => b.hash('pass', 10));
-    await User.create({ name: 'Admin', email: 'admin@test.com', passwordHash: hash, isEmailVerified: true, role: 'admin' });
-    await User.create({ name: 'User', email: 'user@test.com', passwordHash: hash, isEmailVerified: true, role: 'user' });
+    const hash = await import('bcrypt').then((b) => b.hash('pass', 10));
+    await User.create({
+      name: 'Admin',
+      email: 'admin@test.com',
+      passwordHash: hash,
+      isEmailVerified: true,
+      role: 'admin',
+    });
+    await User.create({
+      name: 'User',
+      email: 'user@test.com',
+      passwordHash: hash,
+      isEmailVerified: true,
+      role: 'user',
+    });
   });
 
   it('should return all users for admin', async () => {

@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+
 import cors from '@/src/utils/cors';
 import { Post } from '@/src/models/Post';
 import { requireAuth } from '@/src/utils/auth';

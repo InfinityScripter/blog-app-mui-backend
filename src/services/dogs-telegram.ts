@@ -196,6 +196,26 @@ export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {
   await sendMessage(ownerChatId, text);
 }
 
+// Notify the owner when a client cancels their own request from the site or
+// cabinet. No-op unless the bot + owner chat id are configured.
+export async function notifyDogsOwnerClientCancelled(request: DogsBookingRequest) {
+  const ownerChatId = getOwnerChatId();
+  if (!ownerChatId || !process.env.DOGS_TELEGRAM_BOT_TOKEN) {
+    return;
+  }
+
+  const adminUrl = `${getSiteUrl()}/admin`;
+  const text = [
+    'Клиент отменил заявку',
+    `Клиент: ${request.client.name}`,
+    `Телефон: ${request.client.phone}`,
+    `Время: ${new Date(request.slot.startsAt).toLocaleString('ru-RU')}`,
+    `Админка: ${adminUrl}`,
+  ].join('\n');
+
+  await sendMessage(ownerChatId, text);
+}
+
 // Notify the client in Telegram when the owner changes a request's status.
 // No-op unless the bot is configured AND the client linked their Telegram.
 export async function notifyDogsClientStatusChange(request: DogsBookingRequest) {

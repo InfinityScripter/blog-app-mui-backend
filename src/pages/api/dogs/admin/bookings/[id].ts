@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import { ok, sendError } from '@/src/utils/response';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { requireDogsAdmin } from '@/src/utils/dogs-admin-auth';
+import { sendDogsStatusChanged } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 import { validateBody, validateQuery } from '@/src/utils/validate';
 import { notifyDogsClientStatusChange } from '@/src/services/dogs-telegram';
@@ -17,6 +18,10 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
   notifyDogsClientStatusChange(booking).catch((error) => {
     // eslint-disable-next-line no-console
     console.warn('[dogs-booking] client Telegram notification failed', String(error));
+  });
+  sendDogsStatusChanged(booking.client, booking).catch((error) => {
+    // eslint-disable-next-line no-console
+    console.warn('[dogs-booking] client email notification failed', String(error));
   });
   return ok(res, { booking });
 }

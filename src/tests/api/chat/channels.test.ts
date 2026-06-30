@@ -1,11 +1,9 @@
 import '@jest/globals';
-
 import jwt from 'jsonwebtoken';
-import { createMocks } from 'node-mocks-http';
-
 import User from '@/src/models/User';
-import handler from '@/src/pages/api/chat/channels';
 import { JWT_SECRET } from '@/src/lib/jwt';
+import { createMocks } from 'node-mocks-http';
+import handler from '@/src/pages/api/chat/channels';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 

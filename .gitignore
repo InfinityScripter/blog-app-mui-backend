@@ -35,6 +35,7 @@ build
 .eslintcache
 .unimportedrc.json
 tsconfig.tsbuildinfo
+tsconfig.jest.tsbuildinfo
 .github/vds_actions_key
 .github/vds_actions_key.pub
 
