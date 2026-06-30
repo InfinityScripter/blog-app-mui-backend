@@ -34,6 +34,47 @@ function getOwnerChatId() {
   return process.env.DOGS_OWNER_TELEGRAM_ID;
 }
 
+// Contact details for the bot's "Контакты" reply. Defaults mirror the site
+// persona (DOG-CITY, Ноябрьск); each line is overridable via env so the bot
+// can be reused without code changes.
+const CONTACT_DEFAULTS = {
+  phone: '+7 922 254 14 87',
+  address: 'Ноябрьск, ул. Молодёжная, 4 (ближнее СМП), центр DOG-CITY',
+  landmark: 'Следующее здание после ветклиники «Айболит»',
+  mapsLink:
+    'https://yandex.ru/maps/11231/noyabrsk/house/molodyozhnaya_ulitsa_4/Y0wYcgZkTEQGQFhpfX10c3xnYQ==/?ll=75.414861%2C63.151911&z=17',
+};
+
+function buildContactsText() {
+  if (process.env.DOGS_CONTACT_TEXT) {
+    return process.env.DOGS_CONTACT_TEXT;
+  }
+
+  const phone = process.env.DOGS_CONTACT_PHONE || CONTACT_DEFAULTS.phone;
+  const address = process.env.DOGS_CONTACT_ADDRESS || CONTACT_DEFAULTS.address;
+  const landmark = process.env.DOGS_CONTACT_LANDMARK || CONTACT_DEFAULTS.landmark;
+  const mapsLink = process.env.DOGS_CONTACT_MAPS_LINK || CONTACT_DEFAULTS.mapsLink;
+
+  return [
+    '📞 Телефон',
+    phone,
+    '',
+    '📍 Где меня найти',
+    address,
+    landmark,
+    '',
+    '🗺 Яндекс Карты (маршрут и точка)',
+    mapsLink,
+  ].join('\n');
+}
+
+const STATUS_MESSAGES: Record<string, string> = {
+  confirmed: '✅ Ваша заявка подтверждена. Ждём вас на занятии!',
+  declined: '❌ К сожалению, заявку пришлось отклонить. Напишите нам, подберём другое время.',
+  cancelled: 'ℹ️ Ваша заявка отменена.',
+  pending: 'ℹ️ Статус заявки обновлён: ожидает подтверждения.',
+};
+
 async function sendMessage(
   chatId: number | string,
   text: string,
@@ -78,10 +119,7 @@ async function sendStart(chatId: number | string) {
 }
 
 async function sendContacts(chatId: number | string) {
-  const contactText =
-    process.env.DOGS_CONTACT_TEXT ||
-    'Телефон: +7 922 254 14 87\nАдрес: Ноябрьск, ул. Молодёжная, 4, DOG-CITY\nTelegram: https://t.me/funnydogs';
-  await sendMessage(chatId, contactText, mainMenuMarkup());
+  await sendMessage(chatId, buildContactsText(), mainMenuMarkup());
 }
 
 async function sendMyBookings(chatId: number | string, telegramUserId: string) {
@@ -156,4 +194,28 @@ export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {
   ].join('\n');
 
   await sendMessage(ownerChatId, text);
+}
+
+// Notify the client in Telegram when the owner changes a request's status.
+// No-op unless the bot is configured AND the client linked their Telegram.
+export async function notifyDogsClientStatusChange(request: DogsBookingRequest) {
+  if (!process.env.DOGS_TELEGRAM_BOT_TOKEN) {
+    return;
+  }
+
+  const client = await dogsBookingService.getClientById(request.client.id);
+  const telegramUserId = client?.telegramUserId;
+  if (!telegramUserId) {
+    return;
+  }
+
+  const statusLine = STATUS_MESSAGES[request.status] ?? STATUS_MESSAGES.pending;
+  const text = [
+    statusLine,
+    '',
+    `Время: ${new Date(request.slot.startsAt).toLocaleString('ru-RU')}`,
+    `Все ваши заявки: ${bookingLink(request.client.accessToken)}`,
+  ].join('\n');
+
+  await sendMessage(telegramUserId, text);
 }

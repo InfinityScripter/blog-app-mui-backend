@@ -12,6 +12,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
 
   try {
+    if (req.method === 'DELETE') {
+      await dogsBookingService.deleteSlot(req.query.id as string);
+      return ok(res, undefined, { message: 'Slot deleted' });
+    }
+
     const slot = await dogsBookingService.updateSlot(req.query.id as string, req.body);
     return ok(res, { slot });
   } catch (error) {
@@ -19,8 +24,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
+async function validatePatchOnly(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'PATCH') {
+    return validateBody(updateDogsSlotSchema)(handler)(req, res);
+  }
+  return handler(req, res);
+}
+
 export default requireDogsAdmin(
-  withMethods(['PATCH'])(
-    validateQuery(dogsIdQuerySchema)(validateBody(updateDogsSlotSchema)(handler))
-  )
+  withMethods(['PATCH', 'DELETE'])(validateQuery(dogsIdQuerySchema)(validatePatchOnly))
 );

@@ -189,6 +189,27 @@ async function createSlot(input: CreateDogsSlotInput) {
   return mapSlot(result.rows[0]);
 }
 
+async function createSlots(inputs: CreateDogsSlotInput[]) {
+  if (inputs.length === 0) {
+    return [];
+  }
+
+  const values: unknown[] = [];
+  const tuples = inputs.map((input, index) => {
+    const base = index * 3;
+    values.push(uuidv4(), input.startsAt, input.endsAt);
+    return `($${base + 1}, $${base + 2}, $${base + 3})`;
+  });
+
+  const result = await dogsDbQuery<DogsSlotRow>(
+    `INSERT INTO dogs_booking_slots (id, starts_at, ends_at)
+     VALUES ${tuples.join(', ')}
+     RETURNING *`,
+    values
+  );
+  return result.rows.map(mapSlot);
+}
+
 async function updateSlot(slotId: string, patch: { isActive: boolean }) {
   const result = await dogsDbQuery<DogsSlotRow>(
     `UPDATE dogs_booking_slots
@@ -201,6 +222,16 @@ async function updateSlot(slotId: string, patch: { isActive: boolean }) {
     throw new AppError(HTTP.NOT_FOUND, 'Slot not found');
   }
   return mapSlot(result.rows[0]);
+}
+
+async function deleteSlot(slotId: string) {
+  const result = await dogsDbQuery<{ id: string }>(
+    'DELETE FROM dogs_booking_slots WHERE id = $1 RETURNING id',
+    [slotId]
+  );
+  if (!result.rows[0]) {
+    throw new AppError(HTTP.NOT_FOUND, 'Slot not found');
+  }
 }
 
 async function getRequestDetails(requestId: string) {
@@ -318,11 +349,28 @@ async function updateBookingStatus(requestId: string, status: DogsBookingStatus)
   return getRequestDetails(requestId);
 }
 
+async function deleteRequest(requestId: string) {
+  const result = await dogsDbQuery<{ id: string }>(
+    'DELETE FROM dogs_booking_requests WHERE id = $1 RETURNING id',
+    [requestId]
+  );
+  if (!result.rows[0]) {
+    throw new AppError(HTTP.NOT_FOUND, 'Booking request not found');
+  }
+}
+
 async function getClientByTelegramId(telegramUserId: string) {
   const result = await dogsDbQuery<DogsClientRow>(
     'SELECT * FROM dogs_clients WHERE telegram_user_id = $1',
     [telegramUserId]
   );
+  return result.rows[0] ? mapClient(result.rows[0]) : null;
+}
+
+async function getClientById(clientId: string) {
+  const result = await dogsDbQuery<DogsClientRow>('SELECT * FROM dogs_clients WHERE id = $1', [
+    clientId,
+  ]);
   return result.rows[0] ? mapClient(result.rows[0]) : null;
 }
 
@@ -343,6 +391,10 @@ async function linkTelegramClient(accessToken: string, telegramUserId: string) {
 export const dogsBookingService = {
   createRequest,
   createSlot,
+  createSlots,
+  deleteRequest,
+  deleteSlot,
+  getClientById,
   getClientByTelegramId,
   getClientPortal,
   linkTelegramClient,

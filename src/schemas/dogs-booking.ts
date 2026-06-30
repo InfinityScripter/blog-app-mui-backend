@@ -52,6 +52,26 @@ export const updateDogsSlotSchema = z.object({
   isActive: z.boolean(),
 });
 
+// Batch slot creation: one calendar day + a list of explicit time intervals.
+// The admin picks a date and the hours to open; the client sends each interval
+// as a {startsAt, endsAt} pair. Keeps the day's slots in a single request.
+export const createDogsSlotsBatchSchema = z.object({
+  slots: z
+    .array(
+      z
+        .object({
+          startsAt: dateTimeSchema,
+          endsAt: dateTimeSchema,
+        })
+        .refine((value) => new Date(value.endsAt).getTime() > new Date(value.startsAt).getTime(), {
+          message: 'endsAt must be after startsAt',
+          path: ['endsAt'],
+        })
+    )
+    .min(1, 'Add at least one slot')
+    .max(48, 'Too many slots in one request'),
+});
+
 export const createDogsBookingRequestSchema = z.object({
   name: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(5).max(40),
@@ -72,5 +92,6 @@ export const dogsAdminLoginSchema = z.object({
 
 export type CreateDogsBookingRequestInput = z.infer<typeof createDogsBookingRequestSchema>;
 export type CreateDogsSlotInput = z.infer<typeof createDogsSlotSchema>;
+export type CreateDogsSlotsBatchInput = z.infer<typeof createDogsSlotsBatchSchema>;
 export type DogsBookingStatus = z.infer<typeof dogsBookingStatusSchema>;
 export type DogsSlotsQuery = z.infer<typeof dogsSlotsQuerySchema>;
