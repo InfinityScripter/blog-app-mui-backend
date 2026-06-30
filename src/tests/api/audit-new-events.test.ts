@@ -3,6 +3,7 @@ import User from '@/src/models/User';
 import { dbQuery } from '@/src/lib/db';
 import { signToken } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 // Mock the bot control proxy so model/mock routes don't touch a real bot server.
 jest.mock('@/src/services/bot-control', () => ({
@@ -74,7 +75,7 @@ describe('audit — newly covered admin/auth actions', () => {
     });
     const token = signToken({ userId: 'adm', role: 'admin' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${token}` },
       body: { provider: 'glm', model: 'glm-4-flash' },
     });
@@ -100,7 +101,7 @@ describe('audit — newly covered admin/auth actions', () => {
     });
     const token = signToken({ userId: 'adm2', role: 'admin' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${token}` },
       body: { enabled: true },
     });
@@ -126,7 +127,7 @@ describe('audit — newly covered admin/auth actions', () => {
     });
     const token = signToken({ userId: 'usr', role: 'user' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${token}` },
       body: { provider: 'glm', model: 'glm-4-flash' },
     });
@@ -140,7 +141,7 @@ describe('audit — newly covered admin/auth actions', () => {
 
   it('auth.signup is recorded with the new user as actor and no password leak', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'newbie@e.com',
         password: 'SuperSecret123',

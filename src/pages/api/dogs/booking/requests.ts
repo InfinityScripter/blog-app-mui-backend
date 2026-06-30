@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { validateBody } from '@/src/utils/validate';
 import { ok, sendError } from '@/src/utils/response';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { sendDogsRequestReceived } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
@@ -29,4 +29,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods(['POST'])(validateBody(createDogsBookingRequestSchema)(handler));
+export default withMethods([HTTP_METHOD.POST])(
+  validateBody(createDogsBookingRequestSchema)(handler)
+);

@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { HTTP_METHOD } from '@/src/constants/http';
+
 import cors from 'src/utils/cors';
 
 import { getData, saveData, _contacts } from 'src/_mock/_chat';
@@ -128,7 +130,7 @@ export default async function allHandler(req: NextApiRequest, res: NextApiRespon
     const { endpoint } = req.query;
 
     switch (req.method) {
-      case 'GET':
+      case HTTP_METHOD.GET:
         if (endpoint === 'conversations') getConversations(req, res);
         if (endpoint === 'conversation') getConversation(req, res);
         if (endpoint === 'mark-as-seen') getMarkAsSeen(req, res);
@@ -144,10 +146,10 @@ export default async function allHandler(req: NextApiRequest, res: NextApiRespon
           });
         }
         break;
-      case 'POST':
+      case HTTP_METHOD.POST:
         newConversation(req, res);
         break;
-      case 'PUT':
+      case HTTP_METHOD.PUT:
         updateConversation(req, res);
         break;
       default:

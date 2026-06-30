@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { HTTP } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { handleDogsTelegramUpdate } from '@/src/services/dogs-telegram';
 
@@ -26,4 +26,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods(['POST'])(handler);
+export default withMethods([HTTP_METHOD.POST])(handler);

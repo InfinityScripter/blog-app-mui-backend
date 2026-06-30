@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 
 import { NextResponse } from 'next/server';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { isAllowedOrigin } from '@/src/utils/allowed-origin';
 
 const baseCorsHeaders = {
@@ -19,7 +20,7 @@ export function middleware(request: NextRequest) {
     headers['Access-Control-Allow-Credentials'] = 'true';
   }
 
-  if (request.method === 'OPTIONS') {
+  if (request.method === HTTP_METHOD.OPTIONS) {
     return NextResponse.json({}, { headers });
   }
 

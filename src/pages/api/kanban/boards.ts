@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth → kanbanService → respond. Keeps { boards }/{ board }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,12 +13,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const userId = req.user!._id;
 
   try {
-    if (req.method === 'GET') {
+    if (req.method === HTTP_METHOD.GET) {
       const boards = await kanbanService.listBoards(userId);
       return res.status(HTTP.OK).json({ boards });
     }
 
-    if (req.method === 'POST') {
+    if (req.method === HTTP_METHOD.POST) {
       const { name, description, memberIds } = req.body ?? {};
       const board = await kanbanService.createBoard({
         userId,

@@ -4,6 +4,7 @@ import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/post/new';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
@@ -23,7 +24,7 @@ const VALID_BODY = {
 
 function postRequest(token?: string) {
   return createMocks({
-    method: 'POST',
+    method: HTTP_METHOD.POST,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

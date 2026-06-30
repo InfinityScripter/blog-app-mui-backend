@@ -4,13 +4,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { AppError } from '@/src/types/api';
-import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { userService } from '@/src/services/user';
 import { emitAudit } from '@/src/utils/audit-context';
 import { updateAvatarSchema } from '@/src/schemas/user';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
 
 // Thin route. POST sets the avatar to an already-uploaded /api/file/:id URL
@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await dbConnect();
     const userId = req.user!._id;
 
-    if (req.method === 'DELETE') {
+    if (req.method === HTTP_METHOD.DELETE) {
       const user = await userService.removeAvatar(userId);
       emitAudit(req, {
         action: 'user.avatar.removed',
@@ -53,4 +53,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(withMethods(['POST', 'DELETE'])(handler));
+export default requireAuth(withMethods([HTTP_METHOD.POST, HTTP_METHOD.DELETE])(handler));

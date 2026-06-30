@@ -1,5 +1,5 @@
 import { AppError } from '@/src/types/api';
-import { HTTP } from '@/src/constants/http';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Business logic for proxying the admin panel to the bot's localhost control
 // server. No HTTP-framework types here — routes adapt the result.
@@ -165,13 +165,16 @@ async function listModels(provider: string): Promise<BotModel[]> {
 }
 
 async function setModel(provider: string, model: string): Promise<{ validation: string }> {
-  const { data } = await call('/control/model', { method: 'POST', body: { provider, model } });
+  const { data } = await call('/control/model', {
+    method: HTTP_METHOD.POST,
+    body: { provider, model },
+  });
   const raw = asRecord(data);
   return { validation: typeof raw.validation === 'string' ? raw.validation : 'pinged' };
 }
 
 async function setMock(enabled: boolean): Promise<{ isMockEnabled: boolean }> {
-  const { data } = await call('/control/mock', { method: 'POST', body: { enabled } });
+  const { data } = await call('/control/mock', { method: HTTP_METHOD.POST, body: { enabled } });
   const raw = asRecord(data);
   return { isMockEnabled: typeof raw.isMockEnabled === 'boolean' ? raw.isMockEnabled : enabled };
 }

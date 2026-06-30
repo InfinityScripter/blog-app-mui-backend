@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth → kanbanService → respond. Keeps { success }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,13 +13,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { taskId } = req.query as { taskId: string };
 
   try {
-    if (req.method === 'DELETE') {
+    if (req.method === HTTP_METHOD.DELETE) {
       await kanbanService.deleteTask(taskId);
       emitAudit(req, { action: 'kanban.task.deleted', targetType: 'task', targetId: taskId });
       return res.status(HTTP.OK).json({ success: true });
     }
 
-    if (req.method === 'PATCH') {
+    if (req.method === HTTP_METHOD.PATCH) {
       const body = req.body ?? {};
       await kanbanService.updateTask(taskId, body);
       // A move changes column/position; everything else is a field edit.

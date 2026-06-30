@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import handler from '@/src/pages/api/kanban/boards';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
@@ -39,7 +40,7 @@ describe('Kanban boards API', () => {
 
   it('should create a board as admin', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(adminId, 'admin') },
       body: { name: 'Sprint 1' },
     });
@@ -52,7 +53,7 @@ describe('Kanban boards API', () => {
 
   it('should return 403 for non-admin creating board', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(userId, 'user') },
       body: { name: 'Board' },
     });
@@ -63,7 +64,7 @@ describe('Kanban boards API', () => {
   it('should list boards for member', async () => {
     // Create board first as admin
     const { req: cr, res: cres } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(adminId, 'admin') },
       body: { name: 'Sprint 1', memberIds: [userId] },
     });
@@ -71,7 +72,7 @@ describe('Kanban boards API', () => {
 
     // Admin should see it
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(adminId, 'admin') },
     });
     await handler(req, res);

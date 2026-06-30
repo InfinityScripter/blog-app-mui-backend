@@ -1,7 +1,7 @@
 import type { DogsBookingRequest } from '@/src/services/dogs-booking';
 
 import { AppError } from '@/src/types/api';
-import { HTTP } from '@/src/constants/http';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 
 interface TelegramMessage {
@@ -81,7 +81,7 @@ async function sendMessage(
   replyMarkup?: TelegramReplyMarkup
 ) {
   const response = await fetch(`https://api.telegram.org/bot${getBotToken()}/sendMessage`, {
-    method: 'POST',
+    method: HTTP_METHOD.POST,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,

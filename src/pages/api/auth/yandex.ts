@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { randomBytes } from 'crypto';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 import cors from '../../../utils/cors';
 
@@ -11,7 +12,7 @@ const redirectURI = process.env.YANDEX_REDIRECT_URI || `${backendURL}/api/auth/y
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
 
-  if (req.method !== 'GET') {
+  if (req.method !== HTTP_METHOD.GET) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import handler from '@/src/pages/api/chat/channels';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
@@ -39,7 +40,7 @@ describe('Chat channels API', () => {
 
   it('should create a direct channel', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(user1Id) },
       body: { type: 'direct', memberIds: [user2Id] },
     });
@@ -52,7 +53,7 @@ describe('Chat channels API', () => {
   it('should return existing direct channel on duplicate create', async () => {
     const body = { type: 'direct', memberIds: [user2Id] };
     const { req: r1, res: res1 } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(user1Id) },
       body,
     });
@@ -60,7 +61,7 @@ describe('Chat channels API', () => {
     const id1 = JSON.parse(res1._getData()).channel.id;
 
     const { req: r2, res: res2 } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(user1Id) },
       body,
     });
@@ -72,14 +73,14 @@ describe('Chat channels API', () => {
 
   it('should list user channels', async () => {
     const { req: cr, res: cres } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(user1Id) },
       body: { type: 'direct', memberIds: [user2Id] },
     });
     await handler(cr, cres);
 
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(user1Id) },
     });
     await handler(req, res);

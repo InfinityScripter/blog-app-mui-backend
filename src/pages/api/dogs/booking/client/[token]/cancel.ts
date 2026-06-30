@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { sendDogsStatusChanged } from '@/src/utils/dogs-email';
@@ -47,6 +48,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods(['PATCH'])(
+export default withMethods([HTTP_METHOD.PATCH])(
   validateQuery(dogsClientTokenQuerySchema)(validateBody(cancelDogsBookingRequestSchema)(handler))
 );

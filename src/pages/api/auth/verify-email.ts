@@ -3,11 +3,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { emitAudit } from '@/src/utils/audit-context';
 import { normalizeEmail } from '@/src/utils/normalize-email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+  if (req.method !== HTTP_METHOD.POST) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

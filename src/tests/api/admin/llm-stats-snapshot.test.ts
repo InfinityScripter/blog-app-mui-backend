@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import snapshotHandler from '@/src/pages/api/admin/llm-stats/snapshot';
 
 jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
@@ -51,7 +52,7 @@ describe('/api/admin/llm-stats/snapshot', () => {
   });
 
   it('401 without a JWT', async () => {
-    const { req, res } = createMocks({ method: 'GET' });
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET });
     await snapshotHandler(req, res);
     expect(res._getStatusCode()).toBe(401);
   });
@@ -59,7 +60,7 @@ describe('/api/admin/llm-stats/snapshot', () => {
   it('403 for a non-admin JWT', async () => {
     const user = await User.findOne({ email: 'user@test.com' });
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(user!._id, 'user') },
     });
     await snapshotHandler(req, res);
@@ -69,7 +70,7 @@ describe('/api/admin/llm-stats/snapshot', () => {
   it('GET returns { bundle: null } when no snapshot exists', async () => {
     const admin = await User.findOne({ email: 'admin@test.com' });
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(admin!._id, 'admin') },
     });
     await snapshotHandler(req, res);
@@ -80,7 +81,7 @@ describe('/api/admin/llm-stats/snapshot', () => {
   it('POST rejects an invalid bundle with 400', async () => {
     const admin = await User.findOne({ email: 'admin@test.com' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(admin!._id, 'admin') },
       body: { not: 'a bundle' },
     });
@@ -93,7 +94,7 @@ describe('/api/admin/llm-stats/snapshot', () => {
     const bundle = sampleBundle();
 
     const post = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(admin!._id, 'admin') },
       body: bundle,
     });
@@ -101,12 +102,12 @@ describe('/api/admin/llm-stats/snapshot', () => {
     expect(post.res._getStatusCode()).toBe(201);
 
     const get = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(admin!._id, 'admin') },
     });
     await snapshotHandler(get.req, get.res);
     expect(get.res._getStatusCode()).toBe(200);
-    const {data} = get.res._getJSONData();
+    const { data } = get.res._getJSONData();
     expect(data.bundle.kpis.totalTokens).toBe(100);
     expect(data.pushedAt).toBeTruthy();
   });

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import statusHandler from '@/src/pages/api/admin/bot/status';
 
 jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
@@ -32,7 +33,7 @@ describe('GET /api/admin/bot/status auth gating', () => {
   });
 
   it('401 without a JWT', async () => {
-    const { req, res } = createMocks({ method: 'GET' });
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET });
     await statusHandler(req, res);
     expect(res._getStatusCode()).toBe(401);
   });
@@ -40,7 +41,7 @@ describe('GET /api/admin/bot/status auth gating', () => {
   it('403 for a non-admin JWT', async () => {
     const user = await User.findOne({ email: 'user@test.com' });
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(user!._id, 'user') },
     });
     await statusHandler(req, res);
@@ -55,7 +56,7 @@ describe('GET /api/admin/bot/status auth gating', () => {
     try {
       const user = await User.findOne({ email: 'user@test.com' });
       const { req, res } = createMocks({
-        method: 'GET',
+        method: HTTP_METHOD.GET,
         headers: { authorization: makeToken(user!._id, 'user') },
       });
       await statusHandler(req, res);
@@ -68,7 +69,7 @@ describe('GET /api/admin/bot/status auth gating', () => {
   it('405 for a non-GET method (admin)', async () => {
     const admin = await User.findOne({ email: 'admin@test.com' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(admin!._id, 'admin') },
     });
     await statusHandler(req, res);

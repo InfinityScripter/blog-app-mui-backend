@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { signToken } from '@/src/lib/jwt';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 import dbConnect from '../../../../lib/db';
 import User from '../../../../models/User';
@@ -41,7 +42,7 @@ const getCookieValue = (cookieHeader: string | undefined, key: string) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
+  if (req.method !== HTTP_METHOD.GET) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -85,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      method: 'POST',
+      method: HTTP_METHOD.POST,
     });
 
     if (!tokenResponse.ok) {
@@ -103,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers: {
         Authorization: `OAuth ${yandexAccessToken}`,
       },
-      method: 'GET',
+      method: HTTP_METHOD.GET,
     });
 
     if (!userResponse.ok) {

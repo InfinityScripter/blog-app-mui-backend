@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import handler from '@/src/pages/api/calendar/events';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
@@ -27,7 +28,7 @@ describe('Calendar events API', () => {
 
   it('should create a personal event', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(userId) },
       body: {
         title: 'Test',
@@ -44,7 +45,7 @@ describe('Calendar events API', () => {
 
   it('should list personal + public events', async () => {
     const { req: cr, res: cres } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(userId) },
       body: {
         title: 'Mine',
@@ -56,7 +57,7 @@ describe('Calendar events API', () => {
     await handler(cr, cres);
 
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(userId) },
     });
     await handler(req, res);
@@ -67,7 +68,7 @@ describe('Calendar events API', () => {
 
   it('should return 400 when required fields missing', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(userId) },
       body: { title: 'No dates' },
     });

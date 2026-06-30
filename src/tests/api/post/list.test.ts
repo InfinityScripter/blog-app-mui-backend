@@ -4,6 +4,7 @@ import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/post/list';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
@@ -37,7 +38,7 @@ async function seed() {
 }
 
 function listRequest(query: Record<string, string> = {}) {
-  return createMocks({ method: 'GET', query });
+  return createMocks({ method: HTTP_METHOD.GET, query });
 }
 
 describe('GET /api/post/list — tag filter', () => {

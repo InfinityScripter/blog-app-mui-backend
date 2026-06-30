@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { HTTP_METHOD } from '@/src/constants/http';
+
 import cors from 'src/utils/cors';
 
 import { _board } from 'src/_mock/_kanban';
@@ -178,10 +180,10 @@ export default async function allHandler(req: NextApiRequest, res: NextApiRespon
     const { endpoint } = req.query;
 
     switch (req.method) {
-      case 'GET':
+      case HTTP_METHOD.GET:
         getBoard(req, res);
         break;
-      case 'POST':
+      case HTTP_METHOD.POST:
         if (endpoint === 'create-column') createColumn(req, res);
         if (endpoint === 'update-column') updateColumn(req, res);
         if (endpoint === 'move-column') moveColumn(req, res);

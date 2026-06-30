@@ -1,11 +1,12 @@
 import '@jest/globals';
 import cors from '@/src/utils/cors';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 describe('utils/cors (per-route CORS)', () => {
   it('reflects an allowed origin', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { origin: 'https://aifirst.us.com' },
     });
     await cors(req as any, res as any);
@@ -15,7 +16,7 @@ describe('utils/cors (per-route CORS)', () => {
 
   it('allows localhost dev origin', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { origin: 'http://localhost:3033' },
     });
     await cors(req as any, res as any);
@@ -24,7 +25,7 @@ describe('utils/cors (per-route CORS)', () => {
 
   it('does NOT reflect a disallowed origin (security: no wildcard echo)', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { origin: 'https://evil.example.com' },
     });
     await cors(req as any, res as any);
@@ -32,7 +33,7 @@ describe('utils/cors (per-route CORS)', () => {
   });
 
   it('does NOT echo when no origin header is present', async () => {
-    const { req, res } = createMocks({ method: 'GET' });
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET });
     await cors(req as any, res as any);
     expect(res.getHeader('Access-Control-Allow-Origin')).toBeUndefined();
   });

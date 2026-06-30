@@ -2,6 +2,7 @@ import '@jest/globals';
 import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-up';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/email', () => ({
@@ -16,7 +17,7 @@ describe('POST /api/auth/sign-up', () => {
 
   it('should create a new user and return 201 status', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'test@example.com',
         password: 'password123',
@@ -60,7 +61,7 @@ describe('POST /api/auth/sign-up', () => {
 
     // Try to create user with same email (different case to also cover normalization)
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'EXISTING@example.com',
         password: 'password123',
@@ -83,7 +84,7 @@ describe('POST /api/auth/sign-up', () => {
 
   it('should return 400 if required fields are missing', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'test@example.com',
         // Missing password, firstName, lastName
@@ -101,7 +102,7 @@ describe('POST /api/auth/sign-up', () => {
 
   it('should return 405 for non-POST methods', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
     });
 
     await handler(req, res);
