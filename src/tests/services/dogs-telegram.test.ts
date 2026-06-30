@@ -58,8 +58,8 @@ describe('dogs telegram service', () => {
     await dogsBookingService.linkTelegramClient(request.client.accessToken, '987654');
 
     const calls = mockTelegramFetch();
-    const updated = await dogsBookingService.updateBookingStatus(request.id, 'confirmed');
-    await notifyDogsClientStatusChange(updated);
+    const { booking } = await dogsBookingService.updateBookingStatus(request.id, 'confirmed');
+    await notifyDogsClientStatusChange(booking);
 
     expect(calls).toHaveLength(1);
     expect(String(calls[0].body.chat_id)).toBe('987654');
@@ -80,8 +80,8 @@ describe('dogs telegram service', () => {
     });
 
     const calls = mockTelegramFetch();
-    const updated = await dogsBookingService.updateBookingStatus(request.id, 'declined');
-    await notifyDogsClientStatusChange(updated);
+    const { booking } = await dogsBookingService.updateBookingStatus(request.id, 'declined');
+    await notifyDogsClientStatusChange(booking);
 
     expect(calls).toHaveLength(0);
   });

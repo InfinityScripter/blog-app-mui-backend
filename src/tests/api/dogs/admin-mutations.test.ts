@@ -142,6 +142,58 @@ describe('Dogs admin mutations API', () => {
     expect(sendStatusMock.mock.calls[0][1].status).toBe('confirmed');
   });
 
+  it('does not resend the email on a repeated cancelled PATCH (idempotent)', async () => {
+    const token = await adminToken();
+    const booking = await createBooking();
+
+    const first = createMocks({
+      method: HTTP_METHOD.PATCH,
+      headers: auth(token),
+      query: { id: booking.id },
+      body: { status: 'cancelled' },
+    });
+    await bookingIdHandler(first.req, first.res);
+    expect(first.res._getStatusCode()).toBe(200);
+    expect(sendStatusMock).toHaveBeenCalledTimes(1);
+
+    const second = createMocks({
+      method: HTTP_METHOD.PATCH,
+      headers: auth(token),
+      query: { id: booking.id },
+      body: { status: 'cancelled' },
+    });
+    await bookingIdHandler(second.req, second.res);
+    // Same terminal state, so the 2nd response is still a healthy 200 carrying
+    // the current booking — but no second notification is fired.
+    expect(second.res._getStatusCode()).toBe(200);
+    expect(JSON.parse(second.res._getData()).data.booking.status).toBe('cancelled');
+    expect(sendStatusMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not resend the email when PATCHing the same non-cancelled status twice', async () => {
+    const token = await adminToken();
+    const booking = await createBooking();
+
+    const first = createMocks({
+      method: HTTP_METHOD.PATCH,
+      headers: auth(token),
+      query: { id: booking.id },
+      body: { status: 'confirmed' },
+    });
+    await bookingIdHandler(first.req, first.res);
+    expect(sendStatusMock).toHaveBeenCalledTimes(1);
+
+    const second = createMocks({
+      method: HTTP_METHOD.PATCH,
+      headers: auth(token),
+      query: { id: booking.id },
+      body: { status: 'confirmed' },
+    });
+    await bookingIdHandler(second.req, second.res);
+    expect(second.res._getStatusCode()).toBe(200);
+    expect(sendStatusMock).toHaveBeenCalledTimes(1);
+  });
+
   it('still returns 200 when the status-changed email send throws', async () => {
     sendStatusMock.mockRejectedValue(new Error('smtp down'));
     const token = await adminToken();

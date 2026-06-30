@@ -12,18 +12,22 @@ import { notifyDogsClientStatusChange } from '@/src/services/dogs-telegram';
 import { dogsIdQuerySchema, updateDogsBookingStatusSchema } from '@/src/schemas/dogs-booking';
 
 async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
-  const booking = await dogsBookingService.updateBookingStatus(
+  const { booking, changed } = await dogsBookingService.updateBookingStatus(
     req.query.id as string,
     req.body.status
   );
-  notifyDogsClientStatusChange(booking).catch((error) => {
-    // eslint-disable-next-line no-console
-    console.warn('[dogs-booking] client Telegram notification failed', String(error));
-  });
-  sendDogsStatusChanged(booking.client, booking).catch((error) => {
-    // eslint-disable-next-line no-console
-    console.warn('[dogs-booking] client email notification failed', String(error));
-  });
+  // Only notify on a real transition. A repeated PATCH with the same status is a
+  // no-op (changed=false) and must not resend the email/Telegram message.
+  if (changed) {
+    notifyDogsClientStatusChange(booking).catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn('[dogs-booking] client Telegram notification failed', String(error));
+    });
+    sendDogsStatusChanged(booking.client, booking).catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn('[dogs-booking] client email notification failed', String(error));
+    });
+  }
   return ok(res, { booking });
 }
 

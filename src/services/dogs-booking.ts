@@ -368,17 +368,26 @@ async function listAdminBookings() {
   return result.rows.map(mapRequest);
 }
 
+// Returns the request plus a `changed` flag telling the caller whether this call
+// actually transitioned the status. The gate is the atomic `status <> $1` guard:
+// a repeated PATCH with the same status updates no row → changed=false, so the
+// route can skip re-notifying (idempotent cancelled/confirmed/...). A missing
+// request still surfaces as 404 via getRequestDetails below.
 async function updateBookingStatus(requestId: string, status: DogsBookingStatus) {
+  let changed = true;
   try {
-    const result = await dogsDbQuery<DogsBookingRequestRow>(
+    const result = await dogsDbQuery<{ id: string }>(
       `UPDATE dogs_booking_requests
        SET status = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
+       WHERE id = $2 AND status <> $1
+       RETURNING id`,
       [status, requestId]
     );
     if (!result.rows[0]) {
-      throw new AppError(HTTP.NOT_FOUND, 'Booking request not found');
+      // Either the request does not exist or it already has this status. The
+      // getRequestDetails call below distinguishes them (it throws 404 when the
+      // request is genuinely absent); an existing same-status row is a no-op.
+      changed = false;
     }
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -387,7 +396,8 @@ async function updateBookingStatus(requestId: string, status: DogsBookingStatus)
     throw error;
   }
 
-  return getRequestDetails(requestId);
+  const booking = await getRequestDetails(requestId);
+  return { booking, changed };
 }
 
 async function deleteRequest(requestId: string) {
