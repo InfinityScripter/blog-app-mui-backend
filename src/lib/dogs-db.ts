@@ -58,15 +58,26 @@ const dogsSchemaSql = `
 type PoolLike = NodePool;
 
 /**
- * Best-effort migration that may legitimately fail against legacy data and must
- * NOT abort startup. The UNIQUE index on starts_at cannot be created while
- * duplicate slot rows still exist on an existing prod table; we attempt it and,
- * on failure, log and continue so the service still boots. Once the duplicates
- * are cleaned (see docs/2026-06-30-prod-dogs-slot-dedup.sql) the next restart
- * creates the index. New/clean databases get it immediately, which makes the
- * createSlot/createSlots ON CONFLICT (starts_at) dedup effective.
+ * Best-effort migrations applied on top of dogsSchemaSql. They MUST be additive
+ * and idempotent because CREATE TABLE IF NOT EXISTS never alters an existing
+ * table — new columns/indexes added to the schema literal would silently NOT
+ * land on an already-provisioned prod DB. Each step is guarded so a legacy-data
+ * failure logs and continues instead of aborting startup.
  */
 async function applyDogsSafeMigrations(pool: PoolLike) {
+  // dogs_clients.email — added after the table first shipped, so existing prod
+  // tables need an explicit ADD COLUMN (the CREATE TABLE literal is a no-op for
+  // them). Idempotent; required by getClientPortal / listAdminBookings selects.
+  try {
+    await pool.query('ALTER TABLE dogs_clients ADD COLUMN IF NOT EXISTS email TEXT');
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[dogs-db] Failed to add dogs_clients.email column.',
+      error instanceof Error ? error.message : error
+    );
+  }
+
   try {
     await pool.query(
       'CREATE UNIQUE INDEX IF NOT EXISTS dogs_booking_slots_starts_at_unique ON dogs_booking_slots (starts_at)'
