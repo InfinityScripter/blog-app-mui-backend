@@ -1,6 +1,7 @@
 import '@jest/globals';
 import { z } from 'zod';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { validateBody } from '@/src/utils/validate';
 
 const schema = z.object({
@@ -13,7 +14,7 @@ describe('validateBody middleware', () => {
     const handler = jest.fn((req, res) => res.status(200).json({ ok: true }));
     const wrapped = validateBody(schema)(handler as any);
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: { email: 'a@b.com', age: 5 },
     });
 
@@ -27,7 +28,7 @@ describe('validateBody middleware', () => {
     const handler = jest.fn();
     const wrapped = validateBody(schema)(handler as any);
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: { email: 'not-an-email', age: -1 },
     });
 
@@ -43,7 +44,7 @@ describe('validateBody middleware', () => {
   it('rejects a missing required field with 400', async () => {
     const handler = jest.fn();
     const wrapped = validateBody(schema)(handler as any);
-    const { req, res } = createMocks({ method: 'POST', body: { email: 'a@b.com' } });
+    const { req, res } = createMocks({ method: HTTP_METHOD.POST, body: { email: 'a@b.com' } });
 
     await wrapped(req as any, res as any);
 

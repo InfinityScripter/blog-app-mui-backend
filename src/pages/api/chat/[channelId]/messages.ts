@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { chatService } from '@/src/services/chat';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth → chatService → respond. Keeps { messages }/{ message }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,7 +13,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { channelId } = req.query as { channelId: string };
 
   try {
-    if (req.method === 'GET') {
+    if (req.method === HTTP_METHOD.GET) {
       const { before, limit } = req.query as { before?: string; limit?: string };
       const messages = await chatService.listMessages({
         channelId,
@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ messages });
     }
 
-    if (req.method === 'POST') {
+    if (req.method === HTTP_METHOD.POST) {
       const message = await chatService.sendMessage({
         channelId,
         userId,

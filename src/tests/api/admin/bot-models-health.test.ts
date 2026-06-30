@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/services/bot-control', () => ({
@@ -42,7 +43,7 @@ describe('GET /api/admin/bot/models-health', () => {
     getModelsHealth.mockResolvedValue(payload);
     const admin = await User.findOne({ email: 'admin@test.com' });
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(admin!._id, 'admin') },
     });
     await healthHandler(req, res);
@@ -54,7 +55,7 @@ describe('GET /api/admin/bot/models-health', () => {
   it('405 for a non-GET method (admin), without calling the service', async () => {
     const admin = await User.findOne({ email: 'admin@test.com' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: makeToken(admin!._id, 'admin') },
     });
     await healthHandler(req, res);

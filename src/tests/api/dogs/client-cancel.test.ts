@@ -1,5 +1,6 @@
 import '@jest/globals';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 
 jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
@@ -52,7 +53,7 @@ describe('Dogs client cancel API', () => {
     const request = await createBooking();
 
     const { req, res } = createMocks({
-      method: 'PATCH',
+      method: HTTP_METHOD.PATCH,
       query: { token: request.client.accessToken },
       body: { requestId: request.id },
     });
@@ -79,7 +80,7 @@ describe('Dogs client cancel API', () => {
     });
 
     const { req, res } = createMocks({
-      method: 'PATCH',
+      method: HTTP_METHOD.PATCH,
       query: { token: other.client.accessToken },
       body: { requestId: request.id },
     });
@@ -90,7 +91,7 @@ describe('Dogs client cancel API', () => {
   it('rejects a non-PATCH method', async () => {
     const request = await createBooking();
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       query: { token: request.client.accessToken },
       body: { requestId: request.id },
     });
@@ -102,7 +103,7 @@ describe('Dogs client cancel API', () => {
     sendStatusMock.mockRejectedValue(new Error('smtp down'));
     const request = await createBooking();
     const { req, res } = createMocks({
-      method: 'PATCH',
+      method: HTTP_METHOD.PATCH,
       query: { token: request.client.accessToken },
       body: { requestId: request.id },
     });

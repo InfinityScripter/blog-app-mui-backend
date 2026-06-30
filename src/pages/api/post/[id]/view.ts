@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
-import { HTTP } from '@/src/constants/http';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Public POST endpoint: bumps a post's view counter atomically. Called once
 // per reader from the client (deduped via localStorage there). Kept out of the
@@ -12,7 +12,7 @@ import { postService } from '@/src/services/post';
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
 
-  if (req.method !== 'POST') {
+  if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
   }
 

@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 // @ts-ignore
 import bcrypt from 'bcrypt';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 import cors from '../../../utils/cors';
 import dbConnect from '../../../lib/db';
@@ -20,7 +21,7 @@ const generateVerificationCode = () => Math.floor(100000 + Math.random() * 90000
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
-  if (req.method !== 'POST') {
+  if (req.method !== HTTP_METHOD.POST) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
   try {

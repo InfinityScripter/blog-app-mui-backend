@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
 import { sendError } from '@/src/utils/response';
 import { adminService } from '@/src/services/admin';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth(requireAdmin) → adminService.deleteUser → respond.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query as { id: string };
 
   try {
-    if (req.method === 'DELETE') {
+    if (req.method === HTTP_METHOD.DELETE) {
       await adminService.deleteUser(req.user!._id, id);
       emitAudit(req, {
         action: 'user.deleted',

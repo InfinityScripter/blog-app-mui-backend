@@ -4,10 +4,11 @@ import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
 import { requireAuth } from '@/src/utils/auth';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { buildPostPatchPayload } from '@/src/utils/post-payload';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'PUT') {
+  if (req.method !== HTTP_METHOD.PUT) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

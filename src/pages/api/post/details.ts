@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import User from '@/src/models/User';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 import cors from 'src/utils/cors';
 
@@ -10,7 +11,7 @@ import { Post } from 'src/models/Post';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
 
-  if (req.method !== 'GET') {
+  if (req.method !== HTTP_METHOD.GET) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

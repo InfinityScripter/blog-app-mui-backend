@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth → postService.updatePost → respond. Keeps { post }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!id || typeof id !== 'string') {
     return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
   }
-  if (req.method !== 'PATCH' && req.method !== 'PUT') {
+  if (req.method !== HTTP_METHOD.PATCH && req.method !== HTTP_METHOD.PUT) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
   }
   try {

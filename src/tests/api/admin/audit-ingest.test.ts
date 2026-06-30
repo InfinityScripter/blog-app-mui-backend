@@ -3,6 +3,7 @@ import User from '@/src/models/User';
 import { dbQuery } from '@/src/lib/db';
 import { signToken } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
 
@@ -62,7 +63,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
     await seedOwnerAdmin();
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${BOT_TOKEN}` },
       body: {
         action: 'bot.relevance_dropped',
@@ -88,7 +89,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
     await seedOwnerAdmin();
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${BOT_TOKEN}` },
       body: {
         action: 'bot.relevance_kept',
@@ -117,7 +118,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
     const token = signToken({ userId: 'usr', role: 'user' });
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${token}` },
       body: { action: 'bot.relevance_dropped', metadata: {} },
     });
@@ -133,7 +134,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
     await seedOwnerAdmin();
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${BOT_TOKEN}` },
       body: { action: 'post.deleted', targetId: 'p1', metadata: {} },
     });
@@ -149,7 +150,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
     await seedOwnerAdmin();
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${BOT_TOKEN}` },
       body: { action: 'evil.action', metadata: {} },
     });
@@ -166,7 +167,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
 
     const huge = 'x'.repeat(5000);
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${BOT_TOKEN}` },
       body: { action: 'bot.relevance_dropped', metadata: { blob: huge } },
     });
@@ -182,7 +183,7 @@ describe('POST /api/admin/audit/ingest — bot relevance audit ingestion', () =>
     await seedOwnerAdmin();
 
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: `Bearer ${BOT_TOKEN}` },
     });
 

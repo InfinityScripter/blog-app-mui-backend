@@ -1,13 +1,15 @@
 // src/pages/api/auth/me.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { HTTP_METHOD } from '@/src/constants/http';
+
 import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { requireAuth } from '../../../utils/auth';
 import { toPublicUser } from '../../../utils/public-user';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
+  if (req.method !== HTTP_METHOD.GET) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
   try {

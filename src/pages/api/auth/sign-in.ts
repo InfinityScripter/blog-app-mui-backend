@@ -2,7 +2,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { isAppError } from '@/src/types/api';
 import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
@@ -10,6 +9,7 @@ import { signInSchema } from '@/src/schemas/auth';
 import { authService } from '@/src/services/auth';
 import { validateBody } from '@/src/utils/validate';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
 
 // Thin route: validate → service → respond. Logic lives in authService.
@@ -42,4 +42,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods(['POST'])(validateBody(signInSchema)(handler));
+export default withMethods([HTTP_METHOD.POST])(validateBody(signInSchema)(handler));

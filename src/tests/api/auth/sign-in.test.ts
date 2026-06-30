@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-in';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
@@ -23,7 +24,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should authenticate a user with valid credentials and return 200 status', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'test@example.com',
         password: 'password123',
@@ -49,7 +50,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should return 400 for incorrect password', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'test@example.com',
         password: 'wrongpassword',
@@ -65,7 +66,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should return 400 for non-existent email', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         email: 'nonexistent@example.com',
         password: 'password123',
@@ -81,7 +82,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should return 400 if email or password is missing', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         // Missing email and password
       },
@@ -98,7 +99,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should return user with role field', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: { email: 'test@example.com', password: 'password123' },
     });
     await handler(req, res);
@@ -108,7 +109,7 @@ describe('POST /api/auth/sign-in', () => {
 
   it('should return 405 for non-POST methods', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
     });
 
     await handler(req, res);

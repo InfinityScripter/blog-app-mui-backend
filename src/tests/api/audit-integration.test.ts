@@ -4,6 +4,7 @@ import User from '@/src/models/User';
 import { dbQuery } from '@/src/lib/db';
 import { signToken } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import newPostHandler from '@/src/pages/api/post/new';
 import signInHandler from '@/src/pages/api/auth/sign-in';
 
@@ -38,7 +39,7 @@ describe('audit integration — routes emit events', () => {
     await User.create({ _id: 'author', name: 'A', email: 'a@e.com', passwordHash: 'x' });
     const token = signToken({ userId: 'author', role: 'user' });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${token}` },
       body: { title: 'Hello', content: '<p>hi</p>', publish: 'draft' },
     });
@@ -65,7 +66,7 @@ describe('audit integration — routes emit events', () => {
       isEmailVerified: true,
     });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: { email: 'signer@e.com', password: 'password123' },
     });
 
@@ -89,7 +90,7 @@ describe('audit integration — routes emit events', () => {
       isEmailVerified: true,
     });
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: { email: 'signer2@e.com', password: 'WRONG' },
     });
 

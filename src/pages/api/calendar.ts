@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { HTTP_METHOD } from '@/src/constants/http';
+
 import cors from 'src/utils/cors';
 
 import { getData, saveData } from 'src/_mock/_event';
@@ -78,16 +80,16 @@ export default async function allHandler(req: NextApiRequest, res: NextApiRespon
     await cors(req, res);
 
     switch (req.method) {
-      case 'GET':
+      case HTTP_METHOD.GET:
         getEvents(req, res);
         break;
-      case 'POST':
+      case HTTP_METHOD.POST:
         newEvent(req, res);
         break;
-      case 'PUT':
+      case HTTP_METHOD.PUT:
         updateEvent(req, res);
         break;
-      case 'PATCH':
+      case HTTP_METHOD.PATCH:
         deleteEvent(req, res);
         break;
       default:

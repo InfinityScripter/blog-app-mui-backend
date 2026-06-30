@@ -1,5 +1,6 @@
 import '@jest/globals';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 import adminLoginHandler from '@/src/pages/api/dogs/admin/login';
 import adminSlotsHandler from '@/src/pages/api/dogs/admin/slots';
 import { dogsBookingService } from '@/src/services/dogs-booking';
@@ -31,7 +32,7 @@ describe('Dogs booking API', () => {
 
   it('logs in admin and creates a slot', async () => {
     const { req: loginReq, res: loginRes } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: { password: 'secret' },
     });
     await adminLoginHandler(loginReq, loginRes);
@@ -39,7 +40,7 @@ describe('Dogs booking API', () => {
     const loginData = JSON.parse(loginRes._getData());
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: { authorization: `Bearer ${loginData.data.token}` },
       body: {
         startsAt: '2027-02-01T09:00:00.000Z',
@@ -59,7 +60,7 @@ describe('Dogs booking API', () => {
     });
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         name: 'Анна',
         phone: '+7 900 111 22 33',
@@ -74,7 +75,7 @@ describe('Dogs booking API', () => {
     const token = requestData.data.request.client.accessToken;
 
     const { req: clientReq, res: clientRes } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       query: { token },
     });
     await clientHandler(clientReq, clientRes);
@@ -91,7 +92,7 @@ describe('Dogs booking API', () => {
     });
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         name: 'Анна',
         phone: '+7 900 111 22 33',
@@ -112,7 +113,7 @@ describe('Dogs booking API', () => {
     });
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         name: 'Анна',
         phone: '+7 900 111 22 33',
@@ -136,7 +137,7 @@ describe('Dogs booking API', () => {
     });
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         name: 'Анна',
         phone: '+7 900 111 22 33',
@@ -159,7 +160,7 @@ describe('Dogs booking API', () => {
     });
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       body: {
         name: 'Анна',
         phone: '+7 900 111 22 33',

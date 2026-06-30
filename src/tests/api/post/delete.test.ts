@@ -7,6 +7,7 @@ import User from '@/src/models/User';
 import uuidv4 from '@/src/utils/uuidv4';
 import { Post } from '@/src/models/Post';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/auth', () => ({
@@ -59,7 +60,7 @@ describe('DELETE /api/post/delete', () => {
 
   it('should delete a post successfully', async () => {
     const { req, res } = createMocks({
-      method: 'DELETE',
+      method: HTTP_METHOD.DELETE,
       headers: {
         authorization: `Bearer ${token}`,
         userid: userId, // Изменили с userId на userid (lowercase)
@@ -82,7 +83,7 @@ describe('DELETE /api/post/delete', () => {
 
   it('should return 400 if post ID is missing', async () => {
     const { req, res } = createMocks({
-      method: 'DELETE',
+      method: HTTP_METHOD.DELETE,
       headers: {
         authorization: `Bearer ${token}`,
         userid: userId, // Изменили с userId на userid (lowercase)
@@ -103,7 +104,7 @@ describe('DELETE /api/post/delete', () => {
     const nonExistentPostId = uuidv4();
 
     const { req, res } = createMocks({
-      method: 'DELETE',
+      method: HTTP_METHOD.DELETE,
       headers: {
         authorization: `Bearer ${token}`,
         userid: userId, // Изменили с userId на userid (lowercase)
@@ -122,7 +123,7 @@ describe('DELETE /api/post/delete', () => {
 
   it('should return 401 if not authenticated', async () => {
     const { req, res } = createMocks({
-      method: 'DELETE',
+      method: HTTP_METHOD.DELETE,
       headers: {
         // Нет токена авторизации
       },
@@ -151,7 +152,7 @@ describe('DELETE /api/post/delete', () => {
     const anotherToken = jwt.sign({ userId: anotherUserId }, process.env.JWT_SECRET || 'secret123');
 
     const { req, res } = createMocks({
-      method: 'DELETE',
+      method: HTTP_METHOD.DELETE,
       headers: {
         authorization: `Bearer ${anotherToken}`,
         userid: anotherUserId,
@@ -170,7 +171,7 @@ describe('DELETE /api/post/delete', () => {
 
   it('should return 405 for non-DELETE methods', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       query: {
         postId,
       },

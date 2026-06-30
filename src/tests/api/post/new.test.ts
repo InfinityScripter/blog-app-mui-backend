@@ -5,6 +5,7 @@ import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/post/new';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
@@ -28,7 +29,7 @@ describe('POST /api/post/new', () => {
     );
 
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -64,7 +65,7 @@ describe('POST /api/post/new', () => {
 
   it('should return 401 with invalid token', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer invalid_token',
@@ -80,7 +81,7 @@ describe('POST /api/post/new', () => {
 
   it('should return 401 with missing token', async () => {
     const { req, res } = createMocks({
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -101,7 +102,7 @@ describe('POST /api/post/new', () => {
       process.env.JWT_SECRET || 'secret123'
     );
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { Authorization: `Bearer ${token}` },
     });
 

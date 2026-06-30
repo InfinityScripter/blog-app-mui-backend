@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
 import { validateQuery } from '@/src/utils/validate';
 import { withMethods } from '@/src/middlewares/with-methods';
@@ -18,4 +19,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods(['GET'])(validateQuery(dogsClientTokenQuerySchema)(handler));
+export default withMethods([HTTP_METHOD.GET])(validateQuery(dogsClientTokenQuerySchema)(handler));

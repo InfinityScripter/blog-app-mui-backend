@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { commentService } from '@/src/services/comment';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth → commentService.{add,edit,delete} → respond.
 // The frontend reads the returned `post`, so that key is preserved.
@@ -13,7 +13,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: postId } = req.query as { id: string };
 
   try {
-    if (req.method === 'POST') {
+    if (req.method === HTTP_METHOD.POST) {
       const { message, parentCommentId, tagUser } = req.body;
       const post = await commentService.addComment({
         userId,
@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ message: 'Comment added successfully', post });
     }
 
-    if (req.method === 'PUT') {
+    if (req.method === HTTP_METHOD.PUT) {
       const { commentId, message, isReply, parentCommentId } = req.body;
       const post = await commentService.editComment({
         userId,
@@ -50,7 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ message: 'Comment updated successfully', post });
     }
 
-    if (req.method === 'DELETE') {
+    if (req.method === HTTP_METHOD.DELETE) {
       const { commentId, isReply, parentCommentId } = req.body;
       const post = await commentService.deleteComment({
         userId,

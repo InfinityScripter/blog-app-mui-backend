@@ -7,6 +7,7 @@ import User from '@/src/models/User';
 import uuidv4 from '@/src/utils/uuidv4';
 import { Post } from '@/src/models/Post';
 import { createMocks } from 'node-mocks-http';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/auth', () => ({
@@ -62,7 +63,7 @@ describe('PUT /api/post/update', () => {
 
   it('should update a post successfully', async () => {
     const { req, res } = createMocks({
-      method: 'PUT',
+      method: HTTP_METHOD.PUT,
       headers: {
         authorization: `Bearer ${token}`,
         userid: userId,
@@ -92,7 +93,7 @@ describe('PUT /api/post/update', () => {
 
   it('should return 400 if post ID is missing', async () => {
     const { req, res } = createMocks({
-      method: 'PUT',
+      method: HTTP_METHOD.PUT,
       headers: {
         authorization: `Bearer ${token}`,
         userid: userId,
@@ -116,7 +117,7 @@ describe('PUT /api/post/update', () => {
     const nonExistentId = uuidv4();
 
     const { req, res } = createMocks({
-      method: 'PUT',
+      method: HTTP_METHOD.PUT,
       headers: {
         authorization: `Bearer ${token}`,
         userid: userId,
@@ -138,7 +139,7 @@ describe('PUT /api/post/update', () => {
 
   it('should return 401 if not authenticated', async () => {
     const { req, res } = createMocks({
-      method: 'PUT',
+      method: HTTP_METHOD.PUT,
       headers: {
         // Нет токена авторизации
       },
@@ -171,7 +172,7 @@ describe('PUT /api/post/update', () => {
     const anotherToken = jwt.sign({ userId: anotherUserId }, process.env.JWT_SECRET || 'secret123');
 
     const { req, res } = createMocks({
-      method: 'PUT',
+      method: HTTP_METHOD.PUT,
       headers: {
         authorization: `Bearer ${anotherToken}`,
         userid: anotherUserId,

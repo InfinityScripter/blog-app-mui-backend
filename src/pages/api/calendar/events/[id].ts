@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { calendarService } from '@/src/services/calendar';
 
 // Thin route: requireAuth → calendarService → respond. Keeps { success }.
@@ -15,7 +15,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query as { id: string };
 
   try {
-    if (req.method === 'DELETE') {
+    if (req.method === HTTP_METHOD.DELETE) {
       await calendarService.deleteEvent({ eventId: id, userId, isAdmin });
       emitAudit(req, {
         action: 'calendar.event.deleted',
@@ -26,7 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ success: true });
     }
 
-    if (req.method === 'PATCH') {
+    if (req.method === HTTP_METHOD.PATCH) {
       await calendarService.updateEvent({ eventId: id, userId, isAdmin }, req.body ?? {});
       emitAudit(req, {
         action: 'calendar.event.updated',

@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
 import { ok, sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { saveSnapshot, getLatestSnapshot } from '@/src/services/llm-stats-snapshot';
 
 // Admin-only LLM-usage snapshot.
@@ -15,7 +15,7 @@ import { saveSnapshot, getLatestSnapshot } from '@/src/services/llm-stats-snapsh
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
 
-  if (req.method === 'GET') {
+  if (req.method === HTTP_METHOD.GET) {
     try {
       const snapshot = await getLatestSnapshot();
       return ok(res, snapshot);
@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  if (req.method === 'POST') {
+  if (req.method === HTTP_METHOD.POST) {
     try {
       const result = await saveSnapshot(req.body);
       emitAudit(req, {

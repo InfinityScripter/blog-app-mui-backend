@@ -2,11 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
 import { AppError } from '@/src/types/api';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { requireAdmin } from '@/src/utils/admin';
 import { ok, sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Audit events the bot is allowed to forge. Anything outside this set is
 // rejected (400) so a compromised BOT_API_TOKEN can't write arbitrary audit
@@ -36,7 +36,7 @@ function isAllowedBotAction(action: string): action is AllowedBotAction {
 // admin), so the same admin-only guard covers both the bot and human admins.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);
-  if (req.method !== 'POST') {
+  if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
   }
   try {

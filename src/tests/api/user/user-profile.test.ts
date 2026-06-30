@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import { userService } from '@/src/services/user';
+import { HTTP_METHOD } from '@/src/constants/http';
 import avatarHandler from '@/src/pages/api/user/avatar';
 import profileHandler from '@/src/pages/api/user/profile';
 import changePasswordHandler from '@/src/pages/api/user/change-password';
@@ -35,7 +36,7 @@ describe('User profile endpoints', () => {
   describe('PATCH /api/user/profile', () => {
     it('updates the name and returns the updated user', async () => {
       const { req, res } = createMocks({
-        method: 'PATCH',
+        method: HTTP_METHOD.PATCH,
         headers: authHeader(userId),
         body: { name: 'Updated Name' },
       });
@@ -54,7 +55,7 @@ describe('User profile endpoints', () => {
 
     it('rejects an empty name with 400', async () => {
       const { req, res } = createMocks({
-        method: 'PATCH',
+        method: HTTP_METHOD.PATCH,
         headers: authHeader(userId),
         body: { name: '   ' },
       });
@@ -68,7 +69,7 @@ describe('User profile endpoints', () => {
 
     it('rejects a name longer than 100 chars with 400', async () => {
       const { req, res } = createMocks({
-        method: 'PATCH',
+        method: HTTP_METHOD.PATCH,
         headers: authHeader(userId),
         body: { name: 'x'.repeat(101) },
       });
@@ -86,7 +87,7 @@ describe('User profile endpoints', () => {
 
     it('rejects a non-PATCH method with 405', async () => {
       const { req, res } = createMocks({
-        method: 'GET',
+        method: HTTP_METHOD.GET,
         headers: authHeader(userId),
       });
 
@@ -97,7 +98,7 @@ describe('User profile endpoints', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const { req, res } = createMocks({
-        method: 'PATCH',
+        method: HTTP_METHOD.PATCH,
         body: { name: 'Updated Name' },
       });
 
@@ -110,7 +111,7 @@ describe('User profile endpoints', () => {
   describe('POST /api/user/change-password', () => {
     it('changes the password with the correct current password', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(userId),
         body: { currentPassword: CURRENT_PASSWORD, newPassword: 'newpassword456' },
       });
@@ -129,7 +130,7 @@ describe('User profile endpoints', () => {
 
     it('returns 400 when the current password is incorrect', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(userId),
         body: { currentPassword: 'wrongpassword', newPassword: 'newpassword456' },
       });
@@ -147,7 +148,7 @@ describe('User profile endpoints', () => {
 
     it('returns 400 when the new password is too short', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(userId),
         body: { currentPassword: CURRENT_PASSWORD, newPassword: '123' },
       });
@@ -161,7 +162,7 @@ describe('User profile endpoints', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         body: { currentPassword: CURRENT_PASSWORD, newPassword: 'newpassword456' },
       });
 
@@ -179,7 +180,7 @@ describe('User profile endpoints', () => {
       });
 
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(oauthUser._id),
         body: { currentPassword: 'anything', newPassword: 'newpassword456' },
       });
@@ -195,7 +196,7 @@ describe('User profile endpoints', () => {
   describe('POST /api/user/avatar', () => {
     it('sets the avatar URL and returns the updated user', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(userId),
         body: { avatarURL: '/api/file/abc123' },
       });
@@ -214,7 +215,7 @@ describe('User profile endpoints', () => {
 
     it('rejects an empty avatar URL with 400', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(userId),
         body: { avatarURL: '' },
       });
@@ -228,7 +229,7 @@ describe('User profile endpoints', () => {
 
     it('rejects an avatar URL longer than 2048 chars with 400', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         headers: authHeader(userId),
         body: { avatarURL: `/api/file/${'x'.repeat(2049)}` },
       });
@@ -242,7 +243,7 @@ describe('User profile endpoints', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const { req, res } = createMocks({
-        method: 'POST',
+        method: HTTP_METHOD.POST,
         body: { avatarURL: '/api/file/abc123' },
       });
 
@@ -258,7 +259,7 @@ describe('User profile endpoints', () => {
       await userService.updateAvatar(userId, { avatarURL: '/api/file/existing' });
 
       const { req, res } = createMocks({
-        method: 'DELETE',
+        method: HTTP_METHOD.DELETE,
         headers: authHeader(userId),
       });
 
@@ -276,7 +277,7 @@ describe('User profile endpoints', () => {
 
     it('is idempotent when there is no avatar', async () => {
       const { req, res } = createMocks({
-        method: 'DELETE',
+        method: HTTP_METHOD.DELETE,
         headers: authHeader(userId),
       });
 
@@ -289,7 +290,7 @@ describe('User profile endpoints', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const { req, res } = createMocks({
-        method: 'DELETE',
+        method: HTTP_METHOD.DELETE,
       });
 
       await avatarHandler(req as any, res as any);

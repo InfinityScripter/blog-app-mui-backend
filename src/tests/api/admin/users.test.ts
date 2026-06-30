@@ -4,6 +4,7 @@ import User from '@/src/models/User';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/admin/users';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
@@ -34,7 +35,7 @@ describe('GET /api/admin/users', () => {
   it('should return all users for admin', async () => {
     const admin = await User.findOne({ email: 'admin@test.com' });
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(admin!._id, 'admin') },
     });
     await handler(req, res);
@@ -46,7 +47,7 @@ describe('GET /api/admin/users', () => {
   it('should return 403 for non-admin', async () => {
     const user = await User.findOne({ email: 'user@test.com' });
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: makeToken(user!._id, 'user') },
     });
     await handler(req, res);

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { validateBody } from '@/src/utils/validate';
 import { ok, sendError } from '@/src/utils/response';
 import { withMethods } from '@/src/middlewares/with-methods';
@@ -18,4 +19,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods(['POST'])(validateBody(dogsAdminLoginSchema)(handler));
+export default withMethods([HTTP_METHOD.POST])(validateBody(dogsAdminLoginSchema)(handler));

@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { HTTP_METHOD } from '@/src/constants/http';
+
 import cors from '../../../utils/cors';
 import { sendVerificationEmail } from '../../../utils/email';
 
@@ -8,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await cors(req, res);
 
   // Проверяем метод
-  if (req.method !== 'POST') {
+  if (req.method !== HTTP_METHOD.POST) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

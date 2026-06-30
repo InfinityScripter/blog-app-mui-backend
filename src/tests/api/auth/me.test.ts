@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/me';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 
@@ -25,7 +26,7 @@ describe('GET /api/auth/me', () => {
   it('returns the current user for a valid token', async () => {
     const token = jwt.sign({ userId, role: 'user' }, JWT_SECRET);
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: `Bearer ${token}` },
     });
 
@@ -38,7 +39,7 @@ describe('GET /api/auth/me', () => {
 
   it('returns 401 (not 500) for an invalid token', async () => {
     const { req, res } = createMocks({
-      method: 'GET',
+      method: HTTP_METHOD.GET,
       headers: { authorization: 'Bearer garbage.token.here' },
     });
 
@@ -48,7 +49,7 @@ describe('GET /api/auth/me', () => {
   });
 
   it('returns 401 when no token is provided', async () => {
-    const { req, res } = createMocks({ method: 'GET' });
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET });
 
     await handler(req as any, res as any);
 

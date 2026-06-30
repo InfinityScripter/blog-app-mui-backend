@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
 
 // Thin route: requireAuth → postService.createPost → respond.
@@ -30,4 +30,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(withMethods(['POST'])(handler));
+export default requireAuth(withMethods([HTTP_METHOD.POST])(handler));

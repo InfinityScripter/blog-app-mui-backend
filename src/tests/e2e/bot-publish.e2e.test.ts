@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import http from 'node:http';
 import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
+import { HTTP_METHOD } from '@/src/constants/http';
 import newPostHandler from '@/src/pages/api/post/new';
 import { apiResolver } from 'next/dist/server/api-utils/node/api-resolver';
 
@@ -99,7 +100,7 @@ describe('E2E: bot publishes to the blog over HTTP with BOT_API_TOKEN', () => {
 
   it('creates a published post authored by the owner (201) over the wire', async () => {
     const res = await fetch(server.url, {
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${BOT_TOKEN}`,
@@ -123,7 +124,7 @@ describe('E2E: bot publishes to the blog over HTTP with BOT_API_TOKEN', () => {
 
   it('rejects a wrong bot token over the wire (401)', async () => {
     const res = await fetch(server.url, {
-      method: 'POST',
+      method: HTTP_METHOD.POST,
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer wrong-token-over-the-wire-aaaaaaaaaa',

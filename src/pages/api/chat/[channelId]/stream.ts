@@ -3,10 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 import { dbQuery } from '@/src/lib/db';
 import { JWT_SECRET } from '@/src/lib/jwt';
-
+import { HTTP_METHOD } from '@/src/constants/http';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
+  if (req.method !== HTTP_METHOD.GET) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

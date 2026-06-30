@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
+import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { requireDogsAdmin } from '@/src/utils/dogs-admin-auth';
@@ -17,4 +18,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireDogsAdmin(withMethods(['GET'])(handler));
+export default requireDogsAdmin(withMethods([HTTP_METHOD.GET])(handler));

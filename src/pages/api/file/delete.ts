@@ -3,9 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import { File } from '@/src/models/File';
 import { requireAuth } from '@/src/utils/auth';
+import { HTTP_METHOD } from '@/src/constants/http';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'DELETE') {
+  if (req.method !== HTTP_METHOD.DELETE) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 

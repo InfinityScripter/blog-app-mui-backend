@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import cors from '@/src/utils/cors';
-import { HTTP } from '@/src/constants/http';
 import { requireAuth } from '@/src/utils/auth';
 import { sendError } from '@/src/utils/response';
 import { chatService } from '@/src/services/chat';
 import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Thin route: requireAuth → chatService → respond. Keeps { channels }/{ channel }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,12 +13,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const userId = req.user!._id;
 
   try {
-    if (req.method === 'GET') {
+    if (req.method === HTTP_METHOD.GET) {
       const channels = await chatService.listChannels(userId);
       return res.status(HTTP.OK).json({ channels });
     }
 
-    if (req.method === 'POST') {
+    if (req.method === HTTP_METHOD.POST) {
       const { type, name, memberIds } = req.body ?? {};
       const { id, existing } = await chatService.createChannel({ userId, type, name, memberIds });
       // Only a freshly created channel is a real mutation; a reused direct channel is not.
