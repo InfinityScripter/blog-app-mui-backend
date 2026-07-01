@@ -207,6 +207,24 @@ const schemaSql = `
   CREATE UNIQUE INDEX IF NOT EXISTS model_releases_slug_unique ON model_releases (slug);
   CREATE INDEX IF NOT EXISTS model_releases_released_at_idx ON model_releases (released_at DESC);
   CREATE INDEX IF NOT EXISTS model_releases_vendor_idx ON model_releases (vendor);
+
+  -- Newsletter subscribers (double-opt-in). TEXT pk + app-side uuidv4 (matches
+  -- users/posts). confirm_token/unsubscribe_token are opaque uuids, never
+  -- returned in any API response. All indexes are plain btree (pg-mem + boot safe).
+  CREATE TABLE IF NOT EXISTS subscribers (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    confirm_token TEXT,
+    confirm_expires_at TIMESTAMPTZ,
+    unsubscribe_token TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    confirmed_at TIMESTAMPTZ
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS subscribers_email_unique ON subscribers (LOWER(email));
+  CREATE INDEX IF NOT EXISTS subscribers_status_idx ON subscribers (status);
+  CREATE UNIQUE INDEX IF NOT EXISTS subscribers_confirm_token_idx ON subscribers (confirm_token);
+  CREATE UNIQUE INDEX IF NOT EXISTS subscribers_unsub_token_idx ON subscribers (unsubscribe_token);
 `;
 
 type PoolLike = NodePool;
@@ -317,6 +335,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM audit_logs');
   await pool.query('DELETE FROM llm_stats_snapshots');
   await pool.query('DELETE FROM model_releases');
+  await pool.query('DELETE FROM subscribers');
   await pool.query('DELETE FROM users');
 }
 

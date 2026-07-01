@@ -113,3 +113,85 @@ export const sendPasswordResetEmail = async (email: string, code: string) => {
     throw error;
   }
 };
+
+// Newsletter (double-opt-in) confirmation email. Sends a link to the frontend
+// confirm page — trailing slash matters (FE has trailingSlash: true).
+export const sendConfirmEmail = async (email: string, confirmToken: string) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const fromAddress = process.env.EMAIL_USER || '';
+  const confirmUrl = `${frontendUrl}/newsletter/confirm/?token=${encodeURIComponent(confirmToken)}`;
+
+  const mailOptions = {
+    from: { name: 'AI First — рассылка', address: fromAddress },
+    to: email,
+    subject: 'Подтвердите подписку на рассылку',
+    html: `
+      <h1>Подтвердите подписку</h1>
+      <p>Вы подписались на еженедельную рассылку с честными разборами AI. Осталось подтвердить адрес.</p>
+      <div style="text-align: center; margin: 20px 0;">
+        <a href="${confirmUrl}"
+           style="background-color: #4CAF50;
+                  color: white;
+                  padding: 14px 20px;
+                  text-decoration: none;
+                  border-radius: 4px;
+                  display: inline-block;">
+          Подтвердить подписку
+        </a>
+      </div>
+      <p>Ссылка действует 24 часа.</p>
+      <p>Если вы не подписывались, просто проигнорируйте это письмо.</p>
+      <p style="color: #666; font-size: 12px;">Если кнопка не работает, скопируйте ссылку в браузер:</p>
+      <p style="color: #666; font-size: 12px; word-break: break-all;">${confirmUrl}</p>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Confirm email sent successfully:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending confirm email:', error);
+    throw error;
+  }
+};
+
+// Newsletter digest email. Sends the pre-rendered html as-is and appends a
+// per-recipient unsubscribe footer (the bot ships one shared html; the working
+// unsubscribe link is added here from each recipient's own token).
+export const sendDigestEmail = async (
+  email: string,
+  subject: string,
+  html: string,
+  unsubscribeToken?: string
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const fromAddress = process.env.EMAIL_USER || '';
+
+  const unsubscribeFooter = unsubscribeToken
+    ? `
+      <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;" />
+      <p style="color: #999; font-size: 12px; text-align: center;">
+        Вы получили это письмо, потому что подписались на рассылку.
+        <a href="${frontendUrl}/newsletter/unsubscribe/?token=${encodeURIComponent(unsubscribeToken)}"
+           style="color: #999;">Отписаться</a>.
+      </p>
+    `
+    : '';
+
+  const mailOptions = {
+    from: { name: 'AI First — рассылка', address: fromAddress },
+    to: email,
+    subject,
+    html: `${html}${unsubscribeFooter}`,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Digest email sent successfully:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending digest email:', error);
+    throw error;
+  }
+};
