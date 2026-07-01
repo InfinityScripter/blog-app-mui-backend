@@ -10,6 +10,7 @@ import dbConnect from '../../../lib/db';
 import User from '../../../models/User';
 import { signUpSchema } from '../../../schemas/auth';
 import { emitAudit } from '../../../utils/audit-context';
+import { withRateLimit } from '../../../utils/rate-limit';
 import { sendVerificationEmail } from '../../../utils/email';
 
 import type { IUser } from '../../../models/User';
@@ -97,4 +98,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default handler;
+// ~3/min per IP — registration is rare; a tight cap blocks signup-spam.
+export default withRateLimit({ routeName: 'auth.sign-up', windowMs: 60_000, max: 3 })(handler);

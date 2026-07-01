@@ -5,6 +5,7 @@ export const MSG = {
   METHOD_NOT_ALLOWED: 'Method not allowed',
   INTERNAL: 'Internal server error',
   UNAUTHORIZED: 'Unauthorized',
+  TOO_MANY_REQUESTS: 'Too many requests, please try again later.',
 
   // auth
   WRONG_CREDENTIALS: 'Wrong email or password',

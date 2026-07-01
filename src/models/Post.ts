@@ -179,6 +179,10 @@ class ValidationError extends Error {
 class PostFindQuery {
   private orderBy = 'created_at ASC';
 
+  private limitValue?: number;
+
+  private offsetValue?: number;
+
   constructor(private readonly filter: PostFilter) {}
 
   sort(sort: Record<string, 1 | -1>) {
@@ -188,15 +192,48 @@ class PostFindQuery {
     return this;
   }
 
+  limit(value: number) {
+    this.limitValue = value;
+    return this;
+  }
+
+  offset(value: number) {
+    this.offsetValue = value;
+    return this;
+  }
+
   async lean() {
     return this.exec(true);
   }
 
+  /** Total rows matching the filter, ignoring limit/offset. */
+  async count() {
+    const where = buildWhere(this.filter);
+    const result = await dbQuery<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM posts ${where.text}`,
+      where.values
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  }
+
   async exec(asLean = false) {
     const where = buildWhere(this.filter);
+    const values = [...where.values];
+    let pagination = '';
+
+    if (this.limitValue !== undefined) {
+      values.push(this.limitValue);
+      pagination += ` LIMIT $${values.length}`;
+    }
+
+    if (this.offsetValue !== undefined) {
+      values.push(this.offsetValue);
+      pagination += ` OFFSET $${values.length}`;
+    }
+
     const result = await dbQuery<PostRow>(
-      `SELECT * FROM posts ${where.text} ORDER BY ${this.orderBy}`,
-      where.values
+      `SELECT * FROM posts ${where.text} ORDER BY ${this.orderBy}${pagination}`,
+      values
     );
 
     const posts = result.rows.map((row) => {

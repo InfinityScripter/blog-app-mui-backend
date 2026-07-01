@@ -172,6 +172,11 @@ const schemaSql = `
   CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs (created_at);
   CREATE INDEX IF NOT EXISTS audit_logs_target_idx     ON audit_logs (target_type, target_id);
 
+  CREATE INDEX IF NOT EXISTS posts_publish_idx ON posts (publish);
+  CREATE INDEX IF NOT EXISTS posts_created_at_idx ON posts (created_at);
+  CREATE INDEX IF NOT EXISTS posts_user_id_idx ON posts (user_id);
+  CREATE INDEX IF NOT EXISTS posts_tags_gin_idx ON posts USING GIN (tags jsonb_path_ops);
+
   CREATE TABLE IF NOT EXISTS llm_stats_snapshots (
     id TEXT PRIMARY KEY,
     bundle JSONB NOT NULL,

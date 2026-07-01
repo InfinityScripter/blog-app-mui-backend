@@ -1,5 +1,6 @@
 import '@jest/globals';
 import User from '@/src/models/User';
+import { dbQuery } from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
 import { postService } from '@/src/services/post';
 
@@ -30,25 +31,81 @@ describe('postService.listPosts', () => {
   });
 
   it('anonymous → only published posts', async () => {
-    const posts = await postService.listPosts({});
+    const { posts, total, hasMore } = await postService.listPosts({});
     expect(posts.every((p: any) => p.publish === 'published')).toBe(true);
     expect(posts).toHaveLength(2);
+    // Default (unpaginated) path: no pagination metadata.
+    expect(total).toBeUndefined();
+    expect(hasMore).toBeUndefined();
   });
 
   it('admin → all posts regardless of author/status', async () => {
-    const posts = await postService.listPosts({ role: 'admin', userId: 'someone' });
+    const { posts } = await postService.listPosts({ role: 'admin', userId: 'someone' });
     expect(posts).toHaveLength(3);
   });
 
   it('regular user → only own posts (any status)', async () => {
-    const posts = await postService.listPosts({ role: 'user', userId: 'user-a' });
+    const { posts } = await postService.listPosts({ role: 'user', userId: 'user-a' });
     expect(posts).toHaveLength(2);
     expect(posts.every((p: any) => p.userId === 'user-a')).toBe(true);
   });
 
   it('attaches totalComments', async () => {
-    const posts = await postService.listPosts({});
+    const { posts } = await postService.listPosts({});
     expect(posts[0]).toHaveProperty('totalComments');
+  });
+
+  it('page 1 limit 2 → 2 items, total 3, hasMore true (admin)', async () => {
+    const { posts, total, hasMore } = await postService.listPosts({
+      role: 'admin',
+      userId: 'someone',
+      page: 1,
+      limit: 2,
+    });
+    expect(posts).toHaveLength(2);
+    expect(total).toBe(3);
+    expect(hasMore).toBe(true);
+  });
+
+  it('last page → hasMore false (admin)', async () => {
+    const { posts, total, hasMore } = await postService.listPosts({
+      role: 'admin',
+      userId: 'someone',
+      page: 2,
+      limit: 2,
+    });
+    expect(posts).toHaveLength(1);
+    expect(total).toBe(3);
+    expect(hasMore).toBe(false);
+  });
+
+  it('paginated page 1 returns the NEWEST rows (created_at DESC), not the oldest', async () => {
+    // Stamp deterministic, distinct timestamps so the sort is verifiable.
+    await dbQuery(`UPDATE posts SET created_at = '2020-01-01T00:00:00Z' WHERE title = 'Pub by A'`);
+    await dbQuery(
+      `UPDATE posts SET created_at = '2020-06-01T00:00:00Z' WHERE title = 'Draft by A'`
+    );
+    await dbQuery(`UPDATE posts SET created_at = '2021-01-01T00:00:00Z' WHERE title = 'Pub by B'`);
+
+    const { posts } = await postService.listPosts({
+      role: 'admin',
+      userId: 'someone',
+      page: 1,
+      limit: 1,
+    });
+    // Newest is 'Pub by B' (2021) — the OLD default-ASC slice would have returned 'Pub by A' (2020).
+    expect(posts).toHaveLength(1);
+    expect(posts[0].title).toBe('Pub by B');
+  });
+
+  it('default (unpaginated) path keeps created_at ASC order', async () => {
+    await dbQuery(`UPDATE posts SET created_at = '2020-01-01T00:00:00Z' WHERE title = 'Pub by A'`);
+    await dbQuery(`UPDATE posts SET created_at = '2021-01-01T00:00:00Z' WHERE title = 'Pub by B'`);
+
+    const { posts } = await postService.listPosts({ role: 'admin', userId: 'someone' });
+    const titles = posts.map((p: any) => p.title);
+    // Oldest first — the FE sorts the full array client-side.
+    expect(titles.indexOf('Pub by A')).toBeLessThan(titles.indexOf('Pub by B'));
   });
 });
 
