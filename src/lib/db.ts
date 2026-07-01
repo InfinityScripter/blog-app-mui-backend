@@ -183,6 +183,30 @@ const schemaSql = `
     generated_at TIMESTAMPTZ NOT NULL,
     pushed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  -- AI model release changelog. TEXT pk + app-side uuidv4 (matches users/posts).
+  -- All indexes are plain btree (no GIN) so this stays pg-mem + boot safe.
+  CREATE TABLE IF NOT EXISTS model_releases (
+    id TEXT PRIMARY KEY,
+    vendor TEXT NOT NULL,
+    model TEXT NOT NULL,
+    version TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    released_at TIMESTAMPTZ NOT NULL,
+    context_tokens INTEGER,
+    price_in NUMERIC,
+    price_out NUMERIC,
+    changes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    verdict TEXT,
+    source_url TEXT NOT NULL,
+    source_name TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS model_releases_slug_unique ON model_releases (slug);
+  CREATE INDEX IF NOT EXISTS model_releases_released_at_idx ON model_releases (released_at DESC);
+  CREATE INDEX IF NOT EXISTS model_releases_vendor_idx ON model_releases (vendor);
 `;
 
 type PoolLike = NodePool;
@@ -292,6 +316,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM posts');
   await pool.query('DELETE FROM audit_logs');
   await pool.query('DELETE FROM llm_stats_snapshots');
+  await pool.query('DELETE FROM model_releases');
   await pool.query('DELETE FROM users');
 }
 
