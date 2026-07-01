@@ -4,6 +4,7 @@ import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { withRateLimit } from '@/src/utils/rate-limit';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Public POST endpoint: bumps a post's view counter atomically. Called once
@@ -37,4 +38,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default handler;
+// ~30/min per IP — one view per reader is deduped client-side; this caps abuse.
+export default withRateLimit({ routeName: 'post.view', windowMs: 60_000, max: 30 })(handler);

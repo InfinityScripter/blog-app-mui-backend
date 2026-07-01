@@ -7,6 +7,7 @@ import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { withRateLimit } from '@/src/utils/rate-limit';
 
 // Optional auth: dashboard=true searches the caller's own posts (token
 // required), otherwise published only. Logic lives in postService.searchPosts.
@@ -36,4 +37,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default handler;
+// ~30/min per IP — search is user-typed, so a moderate cap is plenty.
+export default withRateLimit({ routeName: 'post.search', windowMs: 60_000, max: 30 })(handler);

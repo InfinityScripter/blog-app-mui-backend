@@ -1,3 +1,5 @@
+import type { IPost } from '@/src/models/Post';
+
 import User from '@/src/models/User';
 import { dbQuery } from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
@@ -16,6 +18,26 @@ interface ListParams {
   tag?: string;
   /** Optional tag to exclude (e.g. hide 'новости' from the blog/home feed). */
   excludeTag?: string;
+  /** 1-based page number. When set (with limit), the result is paginated. */
+  page?: number;
+  /** Page size. When set (with page), the result is paginated. */
+  limit?: number;
+}
+
+interface ListResult {
+  posts: ReturnType<typeof mapListPost>[];
+  /** Total rows matching the filter (ignoring pagination). Set only when paginated. */
+  total?: number;
+  /** Whether more rows exist past this page. Set only when paginated. */
+  hasMore?: boolean;
+}
+
+/** Attaches the derived totalComments field to a lean post row. */
+function mapListPost(post: IPost) {
+  return {
+    ...post,
+    totalComments: post.comments ? post.comments.length : 0,
+  };
 }
 
 /**
@@ -25,15 +47,26 @@ interface ListParams {
  *  - anonymous       → only published posts
  * An optional `tag` narrows to posts carrying that tag; `excludeTag` drops posts
  * carrying that tag. Each post gets a derived totalComments field.
+ *
+ * Pagination is OPT-IN: without page/limit the full array is returned (feeds
+ * generateStaticParams + sitemap on the FE). With page/limit, LIMIT/OFFSET is
+ * applied and { total, hasMore } are returned alongside the posts.
  */
-async function listPosts({ role, userId, tag, excludeTag }: ListParams) {
-  let filter: Record<string, unknown>;
+async function listPosts({
+  role,
+  userId,
+  tag,
+  excludeTag,
+  page,
+  limit,
+}: ListParams): Promise<ListResult> {
+  const filter: Record<string, unknown> = {};
   if (role === 'admin') {
-    filter = {};
+    // all posts
   } else if (userId) {
-    filter = { userId };
+    filter.userId = userId;
   } else {
-    filter = { publish: 'published' };
+    filter.publish = 'published';
   }
 
   if (tag) {
@@ -44,11 +77,27 @@ async function listPosts({ role, userId, tag, excludeTag }: ListParams) {
     filter.excludeTag = excludeTag;
   }
 
-  const posts = await Post.find(filter).lean();
-  return posts.map((post: any) => ({
-    ...post,
-    totalComments: post.comments ? post.comments.length : 0,
-  }));
+  const paginated = page !== undefined && limit !== undefined;
+
+  if (!paginated) {
+    const posts = await Post.find(filter).lean();
+    return { posts: posts.map(mapListPost) };
+  }
+
+  const offset = (page - 1) * limit;
+  // Paginated feed slices newest-first, so LIMIT/OFFSET reaches recent posts.
+  // The default (unpaginated) path keeps created_at ASC — the FE sorts it client-side.
+  const query = Post.find(filter).sort({ createdAt: -1 });
+  const [rows, total] = await Promise.all([
+    query.limit(limit).offset(offset).lean(),
+    Post.find(filter).count(),
+  ]);
+
+  return {
+    posts: rows.map(mapListPost),
+    total,
+    hasMore: offset + rows.length < total,
+  };
 }
 
 /**

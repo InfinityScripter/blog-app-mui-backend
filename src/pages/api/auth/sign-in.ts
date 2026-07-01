@@ -9,6 +9,7 @@ import { signInSchema } from '@/src/schemas/auth';
 import { authService } from '@/src/services/auth';
 import { validateBody } from '@/src/utils/validate';
 import { emitAudit } from '@/src/utils/audit-context';
+import { withRateLimit } from '@/src/utils/rate-limit';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
 
@@ -42,4 +43,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods([HTTP_METHOD.POST])(validateBody(signInSchema)(handler));
+// ~5/min per IP — brute-force guard on credential submission (outermost).
+export default withRateLimit({ routeName: 'auth.sign-in', windowMs: 60_000, max: 5 })(
+  withMethods([HTTP_METHOD.POST])(validateBody(signInSchema)(handler))
+);
