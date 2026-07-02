@@ -14,6 +14,16 @@ describe('utils/cors (per-route CORS)', () => {
     expect(res.getHeader('Access-Control-Allow-Credentials')).toBe('true');
   });
 
+  it('reflects the teacher.dog production origin', async () => {
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { origin: 'https://teacher.dog' },
+    });
+    await cors(req as any, res as any);
+    expect(res.getHeader('Access-Control-Allow-Origin')).toBe('https://teacher.dog');
+    expect(res.getHeader('Access-Control-Allow-Credentials')).toBe('true');
+  });
+
   it('allows localhost dev origin', async () => {
     const { req, res } = createMocks({
       method: HTTP_METHOD.GET,

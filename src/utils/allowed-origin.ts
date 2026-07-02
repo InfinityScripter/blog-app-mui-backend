@@ -7,6 +7,8 @@ export const allowedOrigins = [
   'http://localhost:7272',
   'https://aifirst.us.com',
   'https://www.aifirst.us.com',
+  'https://teacher.dog',
+  'https://www.teacher.dog',
 ];
 
 /**
