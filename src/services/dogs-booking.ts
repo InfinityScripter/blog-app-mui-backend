@@ -471,6 +471,17 @@ async function getClientById(clientId: string) {
 }
 
 async function linkTelegramClient(accessToken: string, telegramUserId: string) {
+  // Re-linking must be idempotent: telegram_user_id is UNIQUE, and one person
+  // legitimately books under a second phone/client (another dog, a test
+  // request). Without the unlink step the second /start <token> dies on the
+  // unique constraint with a 500 in the bot chat (seen live in prod logs).
+  await dogsDbQuery(
+    `UPDATE dogs_clients
+     SET telegram_user_id = NULL, updated_at = NOW()
+     WHERE telegram_user_id = $1 AND access_token <> $2`,
+    [telegramUserId, accessToken]
+  );
+
   const result = await dogsDbQuery<DogsClientRow>(
     `UPDATE dogs_clients
      SET telegram_user_id = $1, updated_at = NOW()
