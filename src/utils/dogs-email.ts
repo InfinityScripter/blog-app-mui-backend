@@ -25,6 +25,7 @@ interface DogsEmailClient {
 }
 
 interface DogsEmailRequest {
+  id: string;
   status: string;
   dog: string;
   slot: { startsAt: string; endsAt?: string };
@@ -126,6 +127,11 @@ interface DetailRow {
   value: string;
 }
 
+interface DogsEmailCalendarLinks {
+  google: string;
+  ics: string;
+}
+
 interface DogsEmailTemplate {
   preheader: string;
   title: string;
@@ -133,13 +139,15 @@ interface DogsEmailTemplate {
   chip?: { text: string; bg: string; ink: string };
   rows: DetailRow[];
   cta: { text: string; url: string };
-  calendarUrl?: string | null;
+  calendar?: DogsEmailCalendarLinks | null;
   outro?: string;
 }
 
-// Google Calendar "add event" deep link. Times are passed in UTC (Z suffix) so
+// Calendar links: a Google "add event" deep link plus an .ics file served by
+// the frontend (/api/calendar/<token>/<id>) — the .ics opens straight in the
+// iPhone/Apple Calendar (and Outlook). Times are passed in UTC (Z suffix) so
 // the calendar renders them in the invitee's own timezone.
-function buildCalendarUrl(request: DogsEmailRequest) {
+function buildCalendarLinks(request: DogsEmailRequest): DogsEmailCalendarLinks | null {
   const start = new Date(request.slot.startsAt);
   if (Number.isNaN(start.getTime())) {
     return null;
@@ -159,7 +167,10 @@ function buildCalendarUrl(request: DogsEmailRequest) {
     details: `Кинолог Виктория Фролова. Ваши заявки: ${cabinetLink(request.client.accessToken)}`,
     location: CONTACTS.address,
   });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  return {
+    google: `https://calendar.google.com/calendar/render?${params.toString()}`,
+    ics: `${getSiteUrl()}/api/calendar/${request.client.accessToken}/${request.id}`,
+  };
 }
 
 function buildDetailRows(request: DogsEmailRequest): DetailRow[] {
@@ -196,9 +207,12 @@ function renderDogsEmail(template: DogsEmailTemplate) {
     ? `<div style="display:inline-block;padding:6px 14px;border-radius:999px;background:${template.chip.bg};color:${template.chip.ink};font:600 13px/1.2 -apple-system,'Segoe UI',Roboto,Arial,sans-serif;margin:0 0 16px;">${template.chip.text}</div>`
     : '';
 
-  const calendarLink = template.calendarUrl
-    ? `<p style="margin:14px 0 0;font:400 14px/1.5 -apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
-         <a href="${template.calendarUrl}" style="color:${BRAND.green};text-decoration:underline;">➕ Добавить занятие в календарь</a>
+  const calendarLink = template.calendar
+    ? `<p style="margin:14px 0 0;font:400 14px/1.5 -apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:${BRAND.muted};">
+         ➕ Добавить занятие в календарь:
+         <a href="${template.calendar.google}" style="color:${BRAND.green};text-decoration:underline;">Google</a>
+         &nbsp;·&nbsp;
+         <a href="${template.calendar.ics}" style="color:${BRAND.green};text-decoration:underline;">Apple / iPhone (.ics)</a>
        </p>`
     : '';
 
@@ -276,6 +290,8 @@ function renderDogsEmailText(template: DogsEmailTemplate) {
     rows,
     '',
     `${template.cta.text}: ${template.cta.url}`,
+    template.calendar ? `Добавить в календарь (Google): ${template.calendar.google}` : '',
+    template.calendar ? `Файл для Apple/iPhone (.ics): ${template.calendar.ics}` : '',
     template.outro ?? '',
     '',
     `DOG-CITY · ${CONTACTS.address} · ${CONTACTS.phone}`,
@@ -360,7 +376,7 @@ export async function sendDogsStatusChanged(client: DogsEmailClient, request: Do
     chip: { text: meta.chip, bg: meta.chipBg, ink: meta.chipInk },
     rows: buildDetailRows(request),
     cta: { text: 'Мои заявки', url: cabinetLink(request.client.accessToken) },
-    calendarUrl: request.status === 'confirmed' ? buildCalendarUrl(request) : null,
+    calendar: request.status === 'confirmed' ? buildCalendarLinks(request) : null,
     outro:
       request.status === 'declined'
         ? `Позвоните нам — ${CONTACTS.phone} — или выберите другое время в пару кликов.`
@@ -391,7 +407,7 @@ export async function sendDogsReminder(client: DogsEmailClient, request: DogsEma
     },
     rows: buildDetailRows(request),
     cta: { text: 'Мои заявки', url: cabinetLink(request.client.accessToken) },
-    calendarUrl: buildCalendarUrl(request),
+    calendar: buildCalendarLinks(request),
     outro: `Если не получается прийти — отмените запись в кабинете или позвоните: ${CONTACTS.phone}.`,
   });
 }
