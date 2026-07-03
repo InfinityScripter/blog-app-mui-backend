@@ -90,6 +90,21 @@ async function applyDogsSafeMigrations(pool: PoolLike) {
     );
   }
 
+  // dogs_booking_requests.reminder_sent_at — at-most-once claim flag for the
+  // lesson reminder scheduler (src/services/dogs-reminders.ts). NULL = the
+  // reminder for this request has not been sent yet.
+  try {
+    await pool.query(
+      'ALTER TABLE dogs_booking_requests ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ'
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[dogs-db] Failed to add dogs_booking_requests.reminder_sent_at column.',
+      error instanceof Error ? error.message : error
+    );
+  }
+
   try {
     await pool.query(
       'CREATE UNIQUE INDEX IF NOT EXISTS dogs_booking_slots_starts_at_unique ON dogs_booking_slots (starts_at)'

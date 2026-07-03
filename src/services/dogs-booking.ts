@@ -494,6 +494,7 @@ export const dogsBookingService = {
   getClientById,
   getClientByTelegramId,
   getClientPortal,
+  getRequestDetails,
   linkTelegramClient,
   listAdminBookings,
   listAdminSlots,

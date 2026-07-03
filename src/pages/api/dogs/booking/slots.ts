@@ -7,6 +7,11 @@ import { validateQuery } from '@/src/utils/validate';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 import { dogsSlotsQuerySchema } from '@/src/schemas/dogs-booking';
+import { armDogsReminderScheduler } from '@/src/services/dogs-reminder-scheduler';
+
+// Highest-traffic dogs route (every booking page load) — arms the in-process
+// lesson reminder scheduler as a side effect of normal traffic.
+armDogsReminderScheduler();
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await cors(req, res);

@@ -7,6 +7,7 @@ import uuidv4 from '@/src/utils/uuidv4';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { dogsDbQuery } from '@/src/lib/dogs-db';
+import { formatDogsClock, formatDogsDateTime, formatDogsDayLabel } from '@/src/utils/dogs-format';
 
 interface DogsPushSubscriptionRow {
   id: string;
@@ -135,10 +136,10 @@ function toWebPushSubscription(row: DogsPushSubscriptionRow): WebPushSubscriptio
   };
 }
 
-// Push every subscription belonging to the request's client with the status
-// update. No-op unless both VAPID keys are set. Dead subscriptions (404 Not
-// Found / 410 Gone from the push service) are pruned so the table self-heals.
-async function notifyClientStatusChange(request: DogsBookingRequest) {
+// Delivers one payload to every subscription of the given client. No-op unless
+// both VAPID keys are set. Dead subscriptions (404 Not Found / 410 Gone from
+// the push service) are pruned so the table self-heals.
+async function pushToClient(clientId: string, payload: DogsPushPayload) {
   if (!isConfigured()) {
     return;
   }
@@ -146,18 +147,12 @@ async function notifyClientStatusChange(request: DogsBookingRequest) {
 
   const subscriptions = await dogsDbQuery<DogsPushSubscriptionRow>(
     'SELECT * FROM dogs_push_subscriptions WHERE client_id = $1',
-    [request.client.id]
+    [clientId]
   );
   if (!subscriptions.rows.length) {
     return;
   }
 
-  const title = STATUS_TITLES[request.status] ?? STATUS_TITLES.pending;
-  const payload: DogsPushPayload = {
-    title,
-    body: `Время занятия: ${new Date(request.slot.startsAt).toLocaleString('ru-RU')}`,
-    url: `${getSiteUrl()}/booking/client/${request.client.accessToken}`,
-  };
   const body = JSON.stringify(payload);
 
   await Promise.allSettled(
@@ -177,10 +172,40 @@ async function notifyClientStatusChange(request: DogsBookingRequest) {
   );
 }
 
+function describeLesson(request: DogsBookingRequest) {
+  const when = formatDogsDateTime(request.slot.startsAt);
+  return request.dog ? `${when} · ${request.dog}` : when;
+}
+
+// Push every subscription belonging to the request's client with the status
+// update.
+async function notifyClientStatusChange(request: DogsBookingRequest) {
+  const title = STATUS_TITLES[request.status] ?? STATUS_TITLES.pending;
+  await pushToClient(request.client.id, {
+    title,
+    body: describeLesson(request),
+    url: `${getSiteUrl()}/booking/client/${request.client.accessToken}`,
+  });
+}
+
+// Reminder for a confirmed lesson within the next ~day. Fired by the reminder
+// scheduler (src/services/dogs-reminders.ts), at most once per request.
+async function notifyClientReminder(request: DogsBookingRequest) {
+  const dayLabel = formatDogsDayLabel(request.slot.startsAt);
+  const clock = formatDogsClock(request.slot.startsAt);
+  const whenShort = dayLabel ? `${dayLabel} в ${clock}` : formatDogsDateTime(request.slot.startsAt);
+  await pushToClient(request.client.id, {
+    title: '🔔 Скоро занятие',
+    body: `Ждём вас ${whenShort} в центре «DOG-CITY»${request.dog ? ` · ${request.dog}` : ''}`,
+    url: `${getSiteUrl()}/booking/client/${request.client.accessToken}`,
+  });
+}
+
 export const dogsWebPushService = {
   deleteSubscription,
   getVapidPublicKey,
   isConfigured,
+  notifyClientReminder,
   notifyClientStatusChange,
   saveSubscription,
 };
