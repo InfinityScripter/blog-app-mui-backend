@@ -8,6 +8,12 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Serialize deploys: two close pushes to main must not race each other over
+# the shared staging dir / live-dir swap on the VDS.
+concurrency:
+  group: backend-vds-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,7 +29,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Upload backend sources to VDS
+      # Sources go to a STAGING dir, not the live one. The old deploy scheme
+      # (scp rm:true straight into /opt/blog-app/backend, then install+build
+      # in place) wiped .next under the running `next start`: routes not yet
+      # in Node's require cache 500'd with MODULE_NOT_FOUND for the whole
+      # install+build window (~2-3 min per deploy). On 2026-07-03 a Vercel
+      # frontend build ran inside that window, every /post/[id] prerender got
+      # a 500 → notFound(), and the site shipped with all posts as 404s.
+      - name: Upload backend sources to VDS (staging dir)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VDS_HOST }}
@@ -31,11 +44,11 @@ jobs:
           key: ${{ secrets.VDS_SSH_PRIVATE_KEY || secrets.VDS }}
           port: ${{ secrets.VDS_PORT }}
           source: '.'
-          target: '/opt/blog-app/backend'
+          target: '/opt/blog-app/backend-staging'
           rm: true
           strip_components: 0
 
-      - name: Build and restart backend service
+      - name: Build in staging, swap, restart backend service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VDS_HOST }}
@@ -50,26 +63,42 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            cd /opt/blog-app/backend
+            LIVE=/opt/blog-app/backend
+            STAGING=/opt/blog-app/backend-staging
+            OLD=/opt/blog-app/backend-old
+
+            cd "$STAGING"
             find . -name "._*" -delete
-            cp /opt/blog-backend/.env.production /opt/blog-app/backend/.env
+            cp /opt/blog-backend/.env.production "$STAGING/.env"
             corepack enable
             corepack prepare yarn@1.22.22 --activate
+
+            # Seed node_modules from the live dir as hardlinks: near-free on
+            # disk/time, and yarn v1 replaces changed files by unlink+extract,
+            # so the live copies are never mutated through the shared inodes.
+            if [ -d "$LIVE/node_modules" ]; then
+              cp -al "$LIVE/node_modules" "$STAGING/node_modules"
+            fi
             yarn install --frozen-lockfile
 
-            # Abort the deploy if the build fails — do NOT restart onto a stale
-            # or incomplete .next (e.g. an OOM-killed type-check leaves the
-            # server build missing and every new route 500s).
+            # Build in staging while the live service keeps serving the old
+            # .next untouched. A failed build leaves prod exactly as it was.
             if ! yarn build; then
-              echo "BUILD FAILED — not restarting blog-backend"
+              echo "BUILD FAILED — live service untouched, not restarting"
               exit 1
             fi
 
+            # Swap: two renames on the same filesystem. The old process keeps
+            # serving from the renamed dir (cwd and require cache follow the
+            # inode) until systemd restarts it into the new one, so the
+            # user-visible gap is just the restart (~1s), not the build.
+            rm -rf "$OLD"
+            mv "$LIVE" "$OLD"
+            mv "$STAGING" "$LIVE"
             systemctl restart blog-backend
 
             # Post-restart healthcheck: the service must answer a known public
-            # route, else the deploy is a failure even though the build passed.
-            # Retry briefly to let `next start` finish booting.
+            # route, else roll back to the previous build and fail the deploy.
             ok=0
             for i in 1 2 3 4 5 6; do
               code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:7272/api/post/list || true)
@@ -78,10 +107,15 @@ jobs:
               sleep 5
             done
             if [ "$ok" != "1" ]; then
-              echo "HEALTHCHECK FAILED — backend did not return 200 after restart"
+              echo "HEALTHCHECK FAILED — rolling back to previous build"
               systemctl status blog-backend --no-pager || true
               journalctl -u blog-backend --no-pager -n 40 || true
+              rm -rf "$LIVE"
+              mv "$OLD" "$LIVE"
+              systemctl restart blog-backend
+              echo "rollback done, previous build restored"
               exit 1
             fi
             echo "healthcheck OK (200)"
+            rm -rf "$OLD"
             systemctl status blog-backend --no-pager
