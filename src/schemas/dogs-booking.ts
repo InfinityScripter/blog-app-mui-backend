@@ -95,8 +95,29 @@ export const dogsAdminLoginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Web Push subscription payload — mirrors the browser's
+// JSON.stringify(PushSubscription): an endpoint URL plus the p256dh/auth keys.
+const dogsPushSubscriptionSchema = z.object({
+  endpoint: z.string().trim().url().max(2000),
+  keys: z.object({
+    p256dh: z.string().trim().min(1).max(500),
+    auth: z.string().trim().min(1).max(500),
+  }),
+});
+
+export const dogsPushSubscribeSchema = z.object({
+  accessToken: z.string().trim().min(20),
+  subscription: dogsPushSubscriptionSchema,
+});
+
+export const dogsPushUnsubscribeSchema = z.object({
+  accessToken: z.string().trim().min(20),
+  endpoint: z.string().trim().url().max(2000),
+});
+
 export type CreateDogsBookingRequestInput = z.infer<typeof createDogsBookingRequestSchema>;
 export type CreateDogsSlotInput = z.infer<typeof createDogsSlotSchema>;
 export type CreateDogsSlotsBatchInput = z.infer<typeof createDogsSlotsBatchSchema>;
 export type DogsBookingStatus = z.infer<typeof dogsBookingStatusSchema>;
 export type DogsSlotsQuery = z.infer<typeof dogsSlotsQuerySchema>;
+export type DogsPushSubscriptionInput = z.infer<typeof dogsPushSubscriptionSchema>;

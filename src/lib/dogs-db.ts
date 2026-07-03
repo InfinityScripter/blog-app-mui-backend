@@ -53,6 +53,18 @@ const dogsSchemaSql = `
   CREATE UNIQUE INDEX IF NOT EXISTS dogs_booking_requests_active_slot_unique
     ON dogs_booking_requests (slot_id)
     WHERE status IN ('pending', 'confirmed');
+
+  CREATE TABLE IF NOT EXISTS dogs_push_subscriptions (
+    id TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL REFERENCES dogs_clients(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS dogs_push_subscriptions_client_id_idx
+    ON dogs_push_subscriptions (client_id);
 `;
 
 type PoolLike = NodePool;
@@ -156,6 +168,7 @@ export async function dogsDbQuery<T extends QueryResultRow = QueryResultRow>(
 
 export async function resetDogsDatabase() {
   const pool = await dogsDbConnect();
+  await pool.query('DELETE FROM dogs_push_subscriptions');
   await pool.query('DELETE FROM dogs_booking_requests');
   await pool.query('DELETE FROM dogs_booking_slots');
   await pool.query('DELETE FROM dogs_clients');
