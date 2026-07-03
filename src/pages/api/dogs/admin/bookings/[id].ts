@@ -7,6 +7,7 @@ import { withMethods } from '@/src/middlewares/with-methods';
 import { requireDogsAdmin } from '@/src/utils/dogs-admin-auth';
 import { sendDogsStatusChanged } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { dogsWebPushService } from '@/src/services/dogs-webpush';
 import { validateBody, validateQuery } from '@/src/utils/validate';
 import { notifyDogsClientStatusChange } from '@/src/services/dogs-telegram';
 import { dogsIdQuerySchema, updateDogsBookingStatusSchema } from '@/src/schemas/dogs-booking';
@@ -26,6 +27,10 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
     sendDogsStatusChanged(booking.client, booking).catch((error) => {
       // eslint-disable-next-line no-console
       console.warn('[dogs-booking] client email notification failed', String(error));
+    });
+    dogsWebPushService.notifyClientStatusChange(booking).catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn('[dogs-booking] client web-push notification failed', String(error));
     });
   }
   return ok(res, { booking });
