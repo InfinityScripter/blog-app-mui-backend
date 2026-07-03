@@ -229,6 +229,43 @@ describe('dogs telegram service', () => {
     expect(contacts?.url).toContain('/#location');
   });
 
+  it('re-links the same Telegram account to a second client without a unique-key error', async () => {
+    const makeRequest = async (startsAt: string, endsAt: string, phone: string) => {
+      const slot = await dogsBookingService.createSlot({ startsAt, endsAt });
+      return dogsBookingService.createRequest({
+        name: 'Ольга',
+        phone,
+        serviceId: 'training',
+        slotId: slot!.id,
+        source: 'site',
+      });
+    };
+    const first = await makeRequest(
+      '2027-06-09T09:00:00.000Z',
+      '2027-06-09T10:00:00.000Z',
+      '+7 900 111 00 11'
+    );
+    const second = await makeRequest(
+      '2027-06-10T09:00:00.000Z',
+      '2027-06-10T10:00:00.000Z',
+      '+7 900 222 00 22'
+    );
+
+    await dogsBookingService.linkTelegramClient(first.client.accessToken, '717171');
+    // The same person books under another phone and taps /start <token> again —
+    // must move the link, not blow up on the telegram_user_id unique constraint.
+    const relinked = await dogsBookingService.linkTelegramClient(
+      second.client.accessToken,
+      '717171'
+    );
+
+    expect(relinked.telegramUserId).toBe('717171');
+    const firstClient = await dogsBookingService.getClientById(first.client.id);
+    expect(firstClient?.telegramUserId).toBeNull();
+    const byTelegram = await dogsBookingService.getClientByTelegramId('717171');
+    expect(byTelegram?.id).toBe(second.client.id);
+  });
+
   it('does not notify anyone when DOGS_OWNER_TELEGRAM_ID is unset', async () => {
     const slot = await dogsBookingService.createSlot({
       startsAt: '2027-06-05T09:00:00.000Z',
