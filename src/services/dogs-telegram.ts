@@ -30,8 +30,11 @@ function getSiteUrl() {
   return (process.env.DOGS_SITE_URL || 'https://dogs-teacher.vercel.app').replace(/\/$/, '');
 }
 
-function getOwnerChatId() {
-  return process.env.DOGS_OWNER_TELEGRAM_ID;
+function getOwnerChatIds() {
+  return (process.env.DOGS_OWNER_TELEGRAM_ID || '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
 }
 
 // Contact details for the bot's "Контакты" reply. Defaults mirror the site
@@ -178,8 +181,8 @@ export async function handleDogsTelegramUpdate(update: TelegramUpdate) {
 }
 
 export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {
-  const ownerChatId = getOwnerChatId();
-  if (!ownerChatId || !process.env.DOGS_TELEGRAM_BOT_TOKEN) {
+  const ownerChatIds = getOwnerChatIds();
+  if (!ownerChatIds.length || !process.env.DOGS_TELEGRAM_BOT_TOKEN) {
     return;
   }
 
@@ -193,14 +196,14 @@ export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {
     `Админка: ${adminUrl}`,
   ].join('\n');
 
-  await sendMessage(ownerChatId, text);
+  await Promise.all(ownerChatIds.map((chatId) => sendMessage(chatId, text)));
 }
 
 // Notify the owner when a client cancels their own request from the site or
 // cabinet. No-op unless the bot + owner chat id are configured.
 export async function notifyDogsOwnerClientCancelled(request: DogsBookingRequest) {
-  const ownerChatId = getOwnerChatId();
-  if (!ownerChatId || !process.env.DOGS_TELEGRAM_BOT_TOKEN) {
+  const ownerChatIds = getOwnerChatIds();
+  if (!ownerChatIds.length || !process.env.DOGS_TELEGRAM_BOT_TOKEN) {
     return;
   }
 
@@ -213,7 +216,7 @@ export async function notifyDogsOwnerClientCancelled(request: DogsBookingRequest
     `Админка: ${adminUrl}`,
   ].join('\n');
 
-  await sendMessage(ownerChatId, text);
+  await Promise.all(ownerChatIds.map((chatId) => sendMessage(chatId, text)));
 }
 
 // Notify the client in Telegram when the owner changes a request's status.
