@@ -1,3 +1,5 @@
+import type { Profile, VerifyCallback } from 'passport-google-oauth20';
+
 import dotenv from 'dotenv';
 import passport from 'passport';
 import User from '@/src/models/User';
@@ -15,11 +17,11 @@ passport.use(
       proxy: true,
       scope: ['profile', 'email'],
     },
-    async (accessToken, refreshToken, profile, done) => {
+    async (accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
       try {
         const email = profile.emails && profile.emails[0].value;
         if (!email) {
-          return done(new Error('Email не найден в профиле'), null);
+          return done(new Error('Email не найден в профиле'));
         }
         const user = await User.findOne({ email });
         if (user) {
@@ -41,17 +43,17 @@ passport.use(
         await newUser.save();
         return done(null, newUser);
       } catch (err) {
-        return done(err, null);
+        return done(err as Error);
       }
     }
   )
 );
 
 passport.serializeUser((user, done) => {
-  done(null, user.id);
+  done(null, (user as { id?: string; _id?: string }).id ?? (user as { _id?: string })._id);
 });
 
-passport.deserializeUser(async (id, done) => {
+passport.deserializeUser(async (id: string, done) => {
   try {
     const user = await User.findById(id);
     done(null, user);

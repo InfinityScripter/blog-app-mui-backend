@@ -1,391 +1,127 @@
-// @mui
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Paper from '@mui/material/Paper';
-import Divider from '@mui/material/Divider';
-import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
+// Human-readable API index served at "/". Plain JSX on purpose — this backend
+// has no UI stack; the real reference lives in README.md.
 
-import { HOST_API } from '../config-global';
-
-// ----------------------------------------------------------------------
-
-type BlockProps = {
-  path: React.ReactNode;
-  method: string;
-  description?: string;
+type RouteGroup = {
+  title: string;
+  routes: { method: string; path: string; note?: string }[];
 };
 
+const GROUPS: RouteGroup[] = [
+  {
+    title: 'Auth',
+    routes: [
+      { method: 'POST', path: '/api/auth/sign-up' },
+      { method: 'POST', path: '/api/auth/sign-in' },
+      { method: 'GET', path: '/api/auth/me', note: 'JWT' },
+      { method: 'POST', path: '/api/auth/verify' },
+      { method: 'POST', path: '/api/auth/resend-verification' },
+      { method: 'POST', path: '/api/auth/reset-password' },
+      { method: 'POST', path: '/api/auth/update-password' },
+      { method: 'GET', path: '/api/auth/google → /api/auth/google/callback', note: 'OAuth' },
+      { method: 'GET', path: '/api/auth/yandex → /api/auth/yandex/callback', note: 'OAuth' },
+    ],
+  },
+  {
+    title: 'Blog',
+    routes: [
+      { method: 'GET', path: '/api/post/list' },
+      { method: 'GET', path: '/api/post/details?title={slug}' },
+      { method: 'GET', path: '/api/post/latest?title={slug}' },
+      { method: 'GET', path: '/api/post/search?query={q}' },
+      { method: 'POST', path: '/api/post/new', note: 'JWT' },
+      { method: 'PATCH', path: '/api/post/{id}/edit', note: 'JWT, владелец' },
+      { method: 'DELETE', path: '/api/post/{id}/delete', note: 'JWT, владелец' },
+      { method: 'POST', path: '/api/post/{id}/publish', note: 'JWT' },
+      { method: 'POST', path: '/api/post/{id}/view' },
+      { method: 'POST/PUT/DELETE', path: '/api/post/{id}/comments', note: 'JWT' },
+    ],
+  },
+  {
+    title: 'Changelog (AI-релизы)',
+    routes: [
+      { method: 'GET', path: '/api/changelog/list' },
+      { method: 'GET', path: '/api/changelog/{slug}' },
+      { method: 'POST', path: '/api/changelog/new', note: 'admin/bot' },
+    ],
+  },
+  {
+    title: 'Newsletter',
+    routes: [
+      { method: 'POST', path: '/api/newsletter/subscribe' },
+      { method: 'GET', path: '/api/newsletter/confirm?token={t}' },
+      { method: 'GET', path: '/api/newsletter/unsubscribe?token={t}' },
+      { method: 'POST', path: '/api/newsletter/send', note: 'admin' },
+    ],
+  },
+  {
+    title: 'Files',
+    routes: [
+      { method: 'POST', path: '/api/upload', note: 'JWT, multipart' },
+      { method: 'GET', path: '/api/file/{id}' },
+      { method: 'DELETE', path: '/api/file/delete?fileId={id}', note: 'JWT, владелец' },
+    ],
+  },
+  {
+    title: 'User / Admin',
+    routes: [
+      { method: 'PATCH', path: '/api/user/profile', note: 'JWT' },
+      { method: 'POST/DELETE', path: '/api/user/avatar', note: 'JWT' },
+      { method: 'POST', path: '/api/user/change-password', note: 'JWT' },
+      { method: 'GET', path: '/api/admin/users · /audit-logs · /system-metrics', note: 'admin' },
+      { method: '*', path: '/api/admin/bot/* · /api/admin/llm-stats/snapshot', note: 'admin' },
+    ],
+  },
+  {
+    title: 'Приложения (chat / kanban / calendar / dogs)',
+    routes: [
+      { method: '*', path: '/api/chat/channels · /api/chat/{channelId}/…', note: 'JWT' },
+      { method: '*', path: '/api/kanban/boards · columns · tasks', note: 'JWT' },
+      { method: '*', path: '/api/calendar/events', note: 'JWT' },
+      { method: '*', path: '/api/dogs/… (booking, admin, push, telegram)', note: 'см. README' },
+    ],
+  },
+];
+
+const styles = {
+  page: {
+    margin: '0 auto',
+    padding: '40px 24px',
+    maxWidth: 760,
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+    color: '#1c2025',
+    lineHeight: 1.5,
+  },
+  method: {
+    display: 'inline-block',
+    minWidth: 64,
+    fontWeight: 700,
+    color: '#0b6e4f',
+  },
+  note: { color: '#8a919b' },
+  group: { margin: '24px 0 8px', fontSize: 18 },
+} as const;
+
 export default function IndexPage() {
-  const renderHead = (
-    <Stack spacing={2} sx={{ textAlign: 'center' }}>
-      <Typography variant="h5" component="h1" sx={{ fontWeight: 'fontWeightBold' }}>
-        The starting point for your next project v6.0.0
-      </Typography>
-
-      <Typography variant="body2">
-        Host API: <strong>{HOST_API}</strong>
-      </Typography>
-    </Stack>
-  );
-
-  const renderAuth = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Auth
-      </Typography>
-
-      <Block method="GET" description="Get user info after login" path="/api/auth/me" />
-      <Block method="POST" description="Login" path="/api/auth/login" />
-      <Block method="POST" description="Register" path="/api/auth/register" />
-    </Stack>
-  );
-
-  const renderBlog = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Blog
-      </Typography>
-
-      <Block method="GET" description="Get all posts" path="/api/post/list" />
-      <Block
-        method="GET"
-        description="Get post details by title"
-        path={
-          <>
-            /api/post/details?title=<strong>{`{title}`}</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Get latest posts"
-        path={
-          <>
-            /api/post/latest?title=<strong>{`{title}`}</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Search post"
-        path={
-          <>
-            /api/post/search?query=<strong>{`{query}`}</strong>
-          </>
-        }
-      />
-    </Stack>
-  );
-
-  const renderCalendar = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Calendar
-      </Typography>
-
-      <Block method="GET" description="Get all events" path="/api/calendar" />
-      <Block method="POST" description="Create new event" path="/api/calendar" />
-      <Block method="PUT" description="Update event" path="/api/calendar" />
-      <Block method="PATCH" description="Delete event" path="/api/calendar" />
-    </Stack>
-  );
-
-  const renderChat = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Chat
-      </Typography>
-
-      <Block
-        method="GET"
-        description="Search contacts"
-        path={
-          <>
-            /api/chat?endpoint=<strong>contacts</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Get all conversations"
-        path={
-          <>
-            /api/chat?endpoint=<strong>conversations</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Get conversation details by ID"
-        path={
-          <>
-            /api/chat?conversationId=<strong>{`{conversationId}`}</strong>&endpoint=
-            <strong>conversation</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Mark conversation as seen when click"
-        path={
-          <>
-            /api/chat?conversationId=<strong>{`{conversationId}`}</strong>&endpoint=
-            <strong>mark-as-seen</strong>
-          </>
-        }
-      />
-
-      <Block method="POST" description="Create new conversation" path={`${HOST_API}/api/chat`} />
-      <Block method="PUT" description="Update conversation" path={`${HOST_API}/api/chat`} />
-    </Stack>
-  );
-
-  const renderKanban = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Kanban
-      </Typography>
-
-      <Block method="GET" path="/api/kanban" description="Get Board" />
-      <Block
-        method="POST"
-        description="Create column"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>create-column</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Update column"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>update-column</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Move column"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>move-column</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Clear column"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>clear-column</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Delete column"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>delete-column</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Create task"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>delete-task</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Update task"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>update-task</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Move task"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>move-task</strong>
-          </>
-        }
-      />
-      <Block
-        method="POST"
-        description="Delete task"
-        path={
-          <>
-            /api/kanban?endpoint=<strong>delete-task</strong>
-          </>
-        }
-      />
-    </Stack>
-  );
-
-  const renderMail = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Mail
-      </Typography>
-
-      <Block method="GET" description="Get all labels" path="/api/mail/labels" />
-      <Block
-        method="GET"
-        description="Get mails by labelId"
-        path={
-          <>
-            /api/mail/list?labelId=<strong>{`{labelId}`}</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Get mail details by ID"
-        path={
-          <>
-            /api/mail/details?mailId=<strong>{`{mailId}`}</strong>
-          </>
-        }
-      />
-    </Stack>
-  );
-
-  const renderProduct = (
-    <Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 'fontWeightBold' }}>
-        Product
-      </Typography>
-
-      <Block method="GET" description="Get all products" path="/api/product/list" />
-      <Block
-        method="GET"
-        description="Get product details by ID"
-        path={
-          <>
-            /api/product/details?productId=<strong>{`{productId}`}</strong>
-          </>
-        }
-      />
-      <Block
-        method="GET"
-        description="Search product"
-        path={
-          <>
-            /api/product/search?query=<strong>{`{query}`}</strong>
-          </>
-        }
-      />
-    </Stack>
-  );
-
   return (
-    <Container
-      maxWidth="md"
-      sx={{
-        p: 5,
-        my: 5,
-        borderRadius: 2,
-        bgcolor: '#F4F6F8',
-        minHeight: '100vh',
-        fontFamily: 'fontFamily',
-      }}
-    >
-      <Stack spacing={3}>
-        {renderHead}
-
-        <Divider sx={{ borderStyle: 'dashed' }} />
-
-        {renderAuth}
-
-        {renderBlog}
-
-        {renderCalendar}
-
-        {renderChat}
-
-        {renderKanban}
-
-        {renderMail}
-
-        {renderProduct}
-      </Stack>
-    </Container>
-  );
-}
-
-// ----------------------------------------------------------------------
-
-function Block({ method, path, description }: BlockProps) {
-  const renderDescription = (
-    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-      {description}
-    </Typography>
-  );
-
-  const renderMethod = (
-    <Box
-      component="span"
-      sx={{
-        mr: 1,
-        px: 0.75,
-        py: 0.25,
-        borderRadius: 1,
-        typography: 'caption',
-        color: 'common.white',
-
-        fontWeight: 'fontWeightBold',
-        ...(method === 'GET' && {
-          bgcolor: 'success.light',
-        }),
-        ...(method === 'POST' && {
-          bgcolor: 'info.light',
-        }),
-        ...(method === 'PUT' && {
-          bgcolor: 'warning.light',
-        }),
-        ...(method === 'PATCH' && {
-          bgcolor: 'error.light',
-        }),
-      }}
-    >
-      {method}
-    </Box>
-  );
-
-  const renderPath = (
-    <Box component="span" sx={{ flexGrow: 1 }}>
-      {path}
-    </Box>
-  );
-
-  return (
-    <Stack
-      component={Paper}
-      spacing={1}
-      elevation={0}
-      sx={{
-        p: 1.5,
-        '& strong': {
-          color: 'error.main',
-        },
-      }}
-    >
-      {description && renderDescription}
-      <Stack direction="row" alignItems="center">
-        {renderMethod}
-
-        {renderPath}
-      </Stack>
-    </Stack>
+    <main style={styles.page}>
+      <h1>blog-app-mui-backend</h1>
+      <p>
+        Next.js API-сервер (порт 7272): блог, auth, changelog AI-моделей, рассылка, файлы, админка и
+        запись к кинологу (dogs-teacher). Полное описание — в README.md репозитория.
+      </p>
+      {GROUPS.map((group) => (
+        <section key={group.title}>
+          <h2 style={styles.group}>{group.title}</h2>
+          <ul>
+            {group.routes.map((route) => (
+              <li key={route.path}>
+                <span style={styles.method}>{route.method}</span> <code>{route.path}</code>
+                {route.note ? <span style={styles.note}> — {route.note}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </main>
   );
 }

@@ -41,6 +41,11 @@ module.exports = {
     'no-restricted-exports': 0,
     'no-promise-executor-return': 0,
     'import/prefer-default-export': 0,
+    // dev-only imports (@jest/globals, supertest, …) are fine in test files
+    'import/no-extraneous-dependencies': [
+      'error',
+      { devDependencies: ['src/tests/**', '**/*.test.ts', '**/*.test.tsx', 'jest.config.js'] },
+    ],
     'prefer-destructuring': [1, { object: true, array: false }],
     // typescript
     '@typescript-eslint/naming-convention': 0,
