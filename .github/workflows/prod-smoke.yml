@@ -1,0 +1,123 @@
+name: Prod Smoke
+
+# End-to-end production monitor: catches the class of incident where the
+# backend or the Vercel frontend serves errors/404s/empty feeds while both
+# deploy pipelines look green (2026-07-03: every post page shipped as a
+# cached 404). Runs from the default branch on a schedule; on failure it
+# opens (or comments on) a `prod-smoke` issue so it can't fail silently.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: prod-smoke
+  cancel-in-progress: false
+
+env:
+  API_URL: https://api.aifirst.us.com:8444
+  SITE_URL: https://aifirst.us.com
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Probe API and frontend
+        run: |
+          set -uo pipefail
+          fails=""
+
+          # Every check retries once after 15s before counting as a failure:
+          # a single request can land mid-ISR-regeneration and flake, and a
+          # false positive here means a noisy GitHub issue.
+          probe() { # probe <name> <url> — expect HTTP 200
+            local name="$1" url="$2" code
+            for _try in 1 2; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo "000")
+              if [ "$code" = "200" ]; then break; fi
+              sleep 15
+            done
+            if [ "$code" != "200" ]; then
+              echo "FAIL $name: $url -> $code"
+              fails="$fails\n- $name: $url -> $code"
+            else
+              echo "ok   $name: $code"
+            fi
+          }
+
+          # 1. Backend API: list answers and actually contains posts.
+          list_json=$(curl -s --max-time 20 "$API_URL/api/post/list" || true)
+          post_id=$(echo "$list_json" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+          if [ -z "$post_id" ]; then
+            echo "FAIL api-list: no posts in response"
+            fails="$fails\n- api-list: empty or unreachable ($API_URL/api/post/list)"
+          else
+            echo "ok   api-list: got posts (sample id $post_id)"
+            # 2. Cold-loaded details route — 500s here while list is fine is
+            #    the deploy-window signature.
+            probe "api-details" "$API_URL/api/post/details?id=$post_id"
+            # 3. The prerendered post page must not be a cached 404.
+            probe "site-post-page" "$SITE_URL/post/$post_id/"
+          fi
+
+          # 4. Public pages render (200 = not an error page; Next 404/500
+          #    pages return their own status codes).
+          probe "site-home" "$SITE_URL/"
+          probe "site-news" "$SITE_URL/news/"
+          probe "site-blog" "$SITE_URL/post/"
+
+          # 5. The news feed page actually SHOWS news: the /news HTML must
+          #    reference at least one /post/ link — an empty ISR-cached feed
+          #    renders 200 but links to nothing.
+          # NB: no `echo "$html" | grep -q` here — grep exits on first match,
+          # echo takes SIGPIPE (141) and pipefail fails the whole check. Pure
+          # shell substring match instead.
+          news_ok=0
+          for _try in 1 2; do
+            news_html=$(curl -s --max-time 20 "$SITE_URL/news/" || true)
+            case "$news_html" in
+              */post/*) news_ok=1 ;;
+            esac
+            if [ "$news_ok" = "1" ]; then break; fi
+            sleep 15
+          done
+          if [ "$news_ok" != "1" ]; then
+            echo "FAIL site-news-content: no post links in /news/ HTML"
+            fails="$fails\n- site-news-content: /news/ renders but contains no post links (empty feed cached?)"
+          else
+            echo "ok   site-news-content"
+          fi
+
+          if [ -n "$fails" ]; then
+            printf "PROD_SMOKE_FAILS<<EOF\n%b\nEOF\n" "$fails" >> "$GITHUB_ENV"
+            echo "::error::Prod smoke failed:$(printf '%b' "$fails")"
+            exit 1
+          fi
+
+      - name: Open or update prod-smoke issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          title="Prod smoke failing: посты/новости недоступны или API отвечает ошибками"
+          body="Автоматический смоук прода упал ($(date -u '+%Y-%m-%d %H:%M UTC')).
+
+          Проверки:${PROD_SMOKE_FAILS:-см. лог}
+
+          Ран: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Куда смотреть: nginx access.log и \`journalctl -u blog-backend\` на VDS (ssh blog), Vercel deployments фронта. Плейбук инцидента: memory deploy-outage-window."
+          existing=$(gh issue list --repo "${{ github.repository }}" --label prod-smoke --state open --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ] && [ "$existing" != "null" ]; then
+            gh issue comment "$existing" --repo "${{ github.repository }}" --body "$body"
+          else
+            gh label create prod-smoke --repo "${{ github.repository }}" --color B60205 --description "Автосмоук прода упал" 2>/dev/null || true
+            gh issue create --repo "${{ github.repository }}" --title "$title" --label prod-smoke --body "$body"
+          fi
