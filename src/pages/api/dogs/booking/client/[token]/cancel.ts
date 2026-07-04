@@ -6,6 +6,7 @@ import { ok, sendError } from '@/src/utils/response';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { sendDogsStatusChanged } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { dogsWebPushService } from '@/src/services/dogs-webpush';
 import { validateBody, validateQuery } from '@/src/utils/validate';
 import {
   dogsClientTokenQuerySchema,
@@ -40,6 +41,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     sendDogsStatusChanged(booking.client, booking).catch((error) => {
       // eslint-disable-next-line no-console
       console.warn('[dogs-booking] client email notification failed', String(error));
+    });
+    // Confirms the cancellation on the client's other subscribed devices too.
+    dogsWebPushService.notifyClientStatusChange(booking).catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn('[dogs-booking] client web-push notification failed', String(error));
     });
 
     return ok(res, { booking });

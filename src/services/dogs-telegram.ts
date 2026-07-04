@@ -1,8 +1,14 @@
 import type { DogsBookingRequest } from '@/src/services/dogs-booking';
 
-import { AppError } from '@/src/types/api';
+import { AppError, isAppError } from '@/src/types/api';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import {
+  formatDogsClock,
+  dogsServiceTitle,
+  formatDogsDateTime,
+  formatDogsDayLabel,
+} from '@/src/utils/dogs-format';
 
 interface TelegramMessage {
   text?: string;
@@ -98,31 +104,39 @@ async function sendMessage(
   }
 }
 
-function mainMenuMarkup(): TelegramReplyMarkup {
-  const siteUrl = getSiteUrl();
-  return {
-    inline_keyboard: [
-      [{ text: 'Записаться', url: `${siteUrl}/booking?source=telegram` }],
-      [{ text: 'Мои заявки', url: `${siteUrl}/booking` }],
-      [{ text: 'Контакты', url: `${siteUrl}/#booking` }],
-    ],
-  };
-}
-
 function bookingLink(accessToken: string) {
   return `${getSiteUrl()}/booking/client/${accessToken}`;
 }
 
-async function sendStart(chatId: number | string) {
+// Personalised main menu: a linked client's "Мои заявки" button deep-links
+// straight into their cabinet; anyone else lands on the booking page. The
+// "Контакты" button targets the landing location section (map + address).
+function mainMenuMarkup(accessToken?: string | null): TelegramReplyMarkup {
+  const siteUrl = getSiteUrl();
+  return {
+    inline_keyboard: [
+      [{ text: 'Записаться', url: `${siteUrl}/booking?source=telegram` }],
+      [{ text: 'Мои заявки', url: accessToken ? bookingLink(accessToken) : `${siteUrl}/booking` }],
+      [{ text: 'Контакты', url: `${siteUrl}/#location` }],
+    ],
+  };
+}
+
+async function menuForTelegramUser(telegramUserId: string) {
+  const client = await dogsBookingService.getClientByTelegramId(telegramUserId).catch(() => null);
+  return mainMenuMarkup(client?.accessToken);
+}
+
+async function sendStart(chatId: number | string, telegramUserId: string) {
   await sendMessage(
     chatId,
     'Здравствуйте! Здесь можно записаться на занятие к кинологу и посмотреть свои заявки.',
-    mainMenuMarkup()
+    await menuForTelegramUser(telegramUserId)
   );
 }
 
-async function sendContacts(chatId: number | string) {
-  await sendMessage(chatId, buildContactsText(), mainMenuMarkup());
+async function sendContacts(chatId: number | string, telegramUserId: string) {
+  await sendMessage(chatId, buildContactsText(), await menuForTelegramUser(telegramUserId));
 }
 
 async function sendMyBookings(chatId: number | string, telegramUserId: string) {
@@ -140,10 +154,30 @@ async function sendMyBookings(chatId: number | string, telegramUserId: string) {
 }
 
 async function linkClient(chatId: number | string, telegramUserId: string, accessToken: string) {
-  const client = await dogsBookingService.linkTelegramClient(accessToken, telegramUserId);
+  let client;
+  try {
+    client = await dogsBookingService.linkTelegramClient(accessToken, telegramUserId);
+  } catch (error) {
+    // A bad deep-link token (stale, mistyped, client deleted) is a business
+    // outcome, not a failure: tell the user what to do and let the webhook
+    // ack with 200 — otherwise Telegram redelivers the update indefinitely.
+    // The reply itself can still throw (Telegram API down → AppError 503);
+    // that intentionally bubbles out as 5xx so the update gets retried.
+    if (isAppError(error) && error.status < HTTP.INTERNAL) {
+      await sendMessage(
+        chatId,
+        'Не получилось привязать Telegram: ссылка устарела или неверна. Откройте свежую личную ссылку из вашей заявки на сайте.',
+        mainMenuMarkup()
+      );
+      return;
+    }
+    throw error;
+  }
+
   await sendMessage(
     chatId,
-    `Готово, Telegram привязан. Ваши заявки: ${bookingLink(client.accessToken)}`
+    'Готово, Telegram привязан! Здесь будут приходить подтверждения и напоминания о занятиях.',
+    mainMenuMarkup(client.accessToken)
   );
 }
 
@@ -163,7 +197,7 @@ export async function handleDogsTelegramUpdate(update: TelegramUpdate) {
   }
 
   if (text === '/start') {
-    await sendStart(chatId);
+    await sendStart(chatId, telegramUserId);
     return;
   }
 
@@ -173,11 +207,11 @@ export async function handleDogsTelegramUpdate(update: TelegramUpdate) {
   }
 
   if (text === '/contacts' || text === 'Контакты') {
-    await sendContacts(chatId);
+    await sendContacts(chatId, telegramUserId);
     return;
   }
 
-  await sendStart(chatId);
+  await sendStart(chatId, telegramUserId);
 }
 
 export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {
@@ -188,12 +222,16 @@ export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {
 
   const adminUrl = `${getSiteUrl()}/admin`;
   const text = [
-    'Новая заявка на занятие',
+    '🐾 Новая заявка на занятие',
+    '',
+    `Когда: ${formatDogsDateTime(request.slot.startsAt)}`,
+    `Услуга: ${dogsServiceTitle(request.serviceId) ?? 'не указана'}`,
     `Клиент: ${request.client.name}`,
     `Телефон: ${request.client.phone}`,
     `Собака: ${request.dog || 'не указано'}`,
-    `Время: ${new Date(request.slot.startsAt).toLocaleString('ru-RU')}`,
-    `Админка: ${adminUrl}`,
+    ...(request.comment ? [`Комментарий: ${request.comment}`] : []),
+    '',
+    `Подтвердить в админке: ${adminUrl}`,
   ].join('\n');
 
   await Promise.all(ownerChatIds.map((chatId) => sendMessage(chatId, text)));
@@ -209,25 +247,32 @@ export async function notifyDogsOwnerClientCancelled(request: DogsBookingRequest
 
   const adminUrl = `${getSiteUrl()}/admin`;
   const text = [
-    'Клиент отменил заявку',
+    '↩️ Клиент отменил заявку',
+    '',
+    `Когда было: ${formatDogsDateTime(request.slot.startsAt)}`,
     `Клиент: ${request.client.name}`,
     `Телефон: ${request.client.phone}`,
-    `Время: ${new Date(request.slot.startsAt).toLocaleString('ru-RU')}`,
-    `Админка: ${adminUrl}`,
+    '',
+    `Слот снова свободен. Админка: ${adminUrl}`,
   ].join('\n');
 
   await Promise.all(ownerChatIds.map((chatId) => sendMessage(chatId, text)));
 }
 
+// Resolves the linked Telegram chat for a request's client, or null when the
+// bot is unconfigured / the client never linked Telegram.
+async function getLinkedTelegramUserId(request: DogsBookingRequest) {
+  if (!process.env.DOGS_TELEGRAM_BOT_TOKEN) {
+    return null;
+  }
+  const client = await dogsBookingService.getClientById(request.client.id);
+  return client?.telegramUserId ?? null;
+}
+
 // Notify the client in Telegram when the owner changes a request's status.
 // No-op unless the bot is configured AND the client linked their Telegram.
 export async function notifyDogsClientStatusChange(request: DogsBookingRequest) {
-  if (!process.env.DOGS_TELEGRAM_BOT_TOKEN) {
-    return;
-  }
-
-  const client = await dogsBookingService.getClientById(request.client.id);
-  const telegramUserId = client?.telegramUserId;
+  const telegramUserId = await getLinkedTelegramUserId(request);
   if (!telegramUserId) {
     return;
   }
@@ -236,8 +281,51 @@ export async function notifyDogsClientStatusChange(request: DogsBookingRequest) 
   const text = [
     statusLine,
     '',
-    `Время: ${new Date(request.slot.startsAt).toLocaleString('ru-RU')}`,
+    `Когда: ${formatDogsDateTime(request.slot.startsAt)}`,
+    ...(request.dog ? [`Собака: ${request.dog}`] : []),
     `Все ваши заявки: ${bookingLink(request.client.accessToken)}`,
+  ].join('\n');
+
+  await sendMessage(telegramUserId, text);
+}
+
+// Instant Telegram acknowledgement for a returning client who already linked
+// the bot: their new request landed and awaits confirmation. First-time
+// clients aren't linked yet, so this is a silent no-op for them.
+export async function notifyDogsClientRequestReceived(request: DogsBookingRequest) {
+  const telegramUserId = await getLinkedTelegramUserId(request);
+  if (!telegramUserId) {
+    return;
+  }
+
+  const text = [
+    '🐾 Заявка получена — ждёт подтверждения.',
+    '',
+    `Когда: ${formatDogsDateTime(request.slot.startsAt)}`,
+    ...(request.dog ? [`Собака: ${request.dog}`] : []),
+    'Подтверждение придёт сюда же.',
+  ].join('\n');
+
+  await sendMessage(telegramUserId, text);
+}
+
+// Reminder for a confirmed lesson within the next ~day. Fired by the reminder
+// scheduler (src/services/dogs-reminders.ts), at most once per request.
+export async function notifyDogsClientReminder(request: DogsBookingRequest) {
+  const telegramUserId = await getLinkedTelegramUserId(request);
+  if (!telegramUserId) {
+    return;
+  }
+
+  const dayLabel = formatDogsDayLabel(request.slot.startsAt);
+  const clock = formatDogsClock(request.slot.startsAt);
+  const whenShort = dayLabel ? `${dayLabel} в ${clock}` : formatDogsDateTime(request.slot.startsAt);
+  const text = [
+    `🔔 Напоминание: занятие ${whenShort}. Ждём вас!`,
+    '',
+    buildContactsText(),
+    '',
+    `Ваши заявки: ${bookingLink(request.client.accessToken)}`,
   ].join('\n');
 
   await sendMessage(telegramUserId, text);

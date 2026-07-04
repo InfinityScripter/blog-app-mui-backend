@@ -17,6 +17,7 @@ import { sendDogsStatusChanged, sendDogsRequestReceived } from '@/src/utils/dogs
 
 type EmailClient = { name: string; email: string | null };
 type EmailRequest = {
+  id: string;
   status: string;
   dog: string;
   slot: { startsAt: string };
@@ -25,6 +26,7 @@ type EmailRequest = {
 
 const client = (email: string | null): EmailClient => ({ name: 'Анна', email });
 const request = (status = 'pending'): EmailRequest => ({
+  id: 'req_123',
   status,
   dog: 'Бим',
   slot: { startsAt: '2027-04-10T09:00:00.000Z' },
@@ -53,6 +55,20 @@ describe('dogs-email', () => {
     await sendDogsStatusChanged(client('anna@example.com'), request('confirmed'));
     expect(sendMailMock).toHaveBeenCalledTimes(1);
     expect(sendMailMock.mock.calls[0][0].to).toBe('anna@example.com');
+  });
+
+  it('confirmed email carries both Google and Apple (.ics) calendar links', async () => {
+    await sendDogsStatusChanged(client('anna@example.com'), request('confirmed'));
+    const html = sendMailMock.mock.calls[0][0].html as string;
+    expect(html).toContain('calendar.google.com/calendar/render');
+    expect(html).toContain('/api/calendar/tok_123/req_123');
+  });
+
+  it('pending email has no calendar links (nothing confirmed yet)', async () => {
+    await sendDogsStatusChanged(client('anna@example.com'), request('pending'));
+    const html = sendMailMock.mock.calls[0][0].html as string;
+    expect(html).not.toContain('calendar.google.com');
+    expect(html).not.toContain('/api/calendar/');
   });
 
   it('does not send when the client has no email', async () => {
