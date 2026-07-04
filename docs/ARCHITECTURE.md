@@ -14,14 +14,17 @@ src/
   models/               DB access (class-based User/Post/File). No HTTP.
   schemas/<domain>.ts   zod request schemas + inferred body types.
   middlewares/          Handler wrappers: requireAuth, requireAdmin,
-                        validateBody, cors. Compose around a handler.
-  lib/                  External clients / infra: db, jwt, email, passport.
-  constants/            http status codes, user-facing messages, enums,
-                        env-default literals. NO logic.
-  types/                Shared TS types (ApiResponse, JwtPayload, AppError…).
-  utils/                PURE helpers only (change-case, format-time, uuid).
-                        No HTTP, no side effects, no DB.
-  config/               env reading + app config (config-global).
+                        requireDogsAdmin, validateBody/validateQuery,
+                        withRateLimit, withMethods. Compose around a handler.
+                        (CORS is NOT here — it lives in src/middleware.ts,
+                        the Next.js edge middleware, one place for all /api/*.)
+  lib/                  External clients / infra: db, dogs-db, jwt, passport.
+  constants/            http status codes, user-facing messages, shared
+                        domain constants (auth, pagination, dogs). NO logic.
+  types/                Shared TS contracts (api, audit, bot-control,
+                        system-metrics, subscriber, model-release, kanban, dogs).
+  utils/                PURE helpers only (response, email, audit-context,
+                        normalize-email, slug, uuid…). No route logic.
 ```
 
 ## Hard rules (enforced in review; lint where possible)
@@ -75,8 +78,10 @@ export default withMethods(['POST'])(validateBody(signInSchema)(handler));
    reference implementation (authService, thin sign-in/sign-up).
 2. post domain → `services/post`, thin routes.
 3. chat / kanban / calendar domains.
-4. Move `utils/{auth,admin,cors,validate,response}` → `middlewares/`;
-   `config-global` → `config/`. Keep only pure helpers in `utils/`.
+4. ✅ DONE (2026-07-04): `utils/{auth,admin,dogs-admin-auth,validate,rate-limit}`
+   → `middlewares/` (kebab-case names). Per-route `utils/cors` deleted — the
+   edge middleware (`src/middleware.ts`) is the single CORS source.
+   `utils/response` intentionally stays in `utils/` (helper, not a wrapper).
 
 ## Frontend contract caveat
 
