@@ -1,0 +1,924 @@
+[
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-4o",
+    "version": "2024-05-13",
+    "releasedAt": "2024-05-13T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": 5,
+    "priceOut": 15,
+    "changes": [
+      "Первая по-настоящему мультимодальная модель («omni»): единый вход текст+аудио+изображение, вывод текста, аудио и изображений",
+      "Голосовой ответ за ~320 мс в среднем — близко к скорости человеческого разговора",
+      "На уровне GPT-4 Turbo по тексту и коду, заметно лучше на не-английских языках",
+      "В API вдвое дешевле и заметно быстрее GPT-4 Turbo",
+      "Контекст 128K токенов; в августе 2024 цена снижена до $2.50 / $10 за 1M"
+    ],
+    "verdict": "GPT-4o задал стандарт мультимодального ассистента реального времени и вдвое удешевил флагманский интеллект в API.",
+    "sourceUrl": "https://openai.com/index/hello-gpt-4o/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-4o mini",
+    "version": "mini",
+    "releasedAt": "2024-07-18T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": 0.15,
+    "priceOut": 0.6,
+    "changes": [
+      "Дешёвая компактная модель: $0.15 за 1M входных и $0.60 за 1M выходных токенов",
+      "Более чем на 60% дешевле GPT-3.5 Turbo и на порядок доступнее прежних флагманов",
+      "Обходит GPT-3.5 Turbo по бенчмаркам (MMLU и др.) при мультимодальном входе",
+      "Контекст 128K токенов, до 16K токенов на выход",
+      "Пришла на смену GPT-3.5 Turbo как базовая модель по умолчанию"
+    ],
+    "verdict": "GPT-4o mini сделала «умную» модель настолько дешёвой, что закрыла эпоху GPT-3.5 Turbo и открыла массовые high-volume сценарии.",
+    "sourceUrl": "https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "o1-preview",
+    "version": "preview",
+    "releasedAt": "2024-09-12T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": 15,
+    "priceOut": 60,
+    "changes": [
+      "Первая reasoning-модель OpenAI: «думает» перед ответом, выстраивая внутреннюю цепочку рассуждений",
+      "Обучена через reinforcement learning — пробует стратегии и находит свои ошибки",
+      "83% задач на отборочном экзамене IMO против 13% у GPT-4o",
+      "89-й перцентиль на соревнованиях Codeforces по программированию",
+      "Оплачиваемые «reasoning tokens» по цене выхода ($60 за 1M) — новая статья расходов",
+      "Самая дорогая модель OpenAI на тот момент: $15 / $60 за 1M против $5 / $15 у GPT-4o"
+    ],
+    "verdict": "o1-preview открыла целый класс reasoning-моделей, показав, что «время на размышление» резко поднимает результаты в математике и коде.",
+    "sourceUrl": "https://openai.com/index/introducing-openai-o1-preview/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "o1",
+    "version": "",
+    "releasedAt": "2024-12-17T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 15,
+    "priceOut": 60,
+    "changes": [
+      "Полноценный релиз o1 (снапшот o1-2024-12-17) на смену o1-preview",
+      "Контекст расширен до 200K токенов, до 100K токенов на выход",
+      "Добавлены function calling, Structured Outputs и developer messages",
+      "Появилось зрение — модель рассуждает по изображениям",
+      "Новый параметр reasoning_effort управляет глубиной размышления",
+      "Выше точность и cost-эффективность на бенчмарках, чем у preview"
+    ],
+    "verdict": "Полная o1 превратила reasoning-эксперимент в продакшн-инструмент с функциями, зрением и увеличенным контекстом.",
+    "sourceUrl": "https://openai.com/index/o1-and-new-tools-for-developers/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "o3-mini",
+    "version": "mini",
+    "releasedAt": "2025-01-31T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 1.1,
+    "priceOut": 4.4,
+    "changes": [
+      "Компактная reasoning-модель нового поколения: $1.10 / $4.40 за 1M токенов",
+      "Три уровня усилия рассуждения (low/medium/high) через reasoning_effort",
+      "Поддержка function calling, Structured Outputs и developer messages",
+      "Заметно сильнее в математике, коде и науке, чем o1-mini, при сопоставимой цене",
+      "Контекст 200K токенов, до 100K на выход",
+      "Первая reasoning-модель, доступная бесплатным пользователям ChatGPT"
+    ],
+    "verdict": "o3-mini сделала пошаговое рассуждение дешёвым и быстрым, доведя reasoning до массового и бесплатного использования.",
+    "sourceUrl": "https://openai.com/index/openai-o3-mini/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-4.5",
+    "version": "preview",
+    "releasedAt": "2025-02-27T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": 75,
+    "priceOut": 150,
+    "changes": [
+      "Крупнейшая на тот момент не-reasoning модель (кодовое имя Orion), research preview",
+      "Упор на широту знаний, естественность общения и меньше галлюцинаций, а не на рассуждение",
+      "Лучше следует намерению пользователя и держит связность в длинном диалоге",
+      "Очень высокая цена: $75 за 1M входных и $150 за 1M выходных токенов",
+      "Контекст 128K токенов",
+      "Отключена в API 14 июля 2025 — заменена на более дешёвую GPT-4.1"
+    ],
+    "verdict": "GPT-4.5 стала пиком «просто большой» модели без рассуждения — и своим ценником показала, что этот путь дальше нежизнеспособен.",
+    "sourceUrl": "https://openai.com/index/introducing-gpt-4-5/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-4.1",
+    "version": "",
+    "releasedAt": "2025-04-14T00:00:00.000Z",
+    "contextTokens": 1047576,
+    "priceIn": 2,
+    "priceOut": 8,
+    "changes": [
+      "Контекст расширен до ~1M токенов (1 047 576) — кратно больше прежних 128K",
+      "Заметный прирост в коде и следовании инструкциям против GPT-4o",
+      "Дешевле и быстрее GPT-4.5 при сопоставимом качестве: $2 / $8 за 1M",
+      "Семейство из трёх моделей: GPT-4.1, mini и nano под разные бюджеты",
+      "Свежий cutoff знаний — июнь 2024",
+      "Изначально только в API; вытеснила research preview GPT-4.5"
+    ],
+    "verdict": "GPT-4.1 принесла контекст в миллион токенов и сильный код по низкой цене, став рабочей лошадкой API вместо дорогой GPT-4.5.",
+    "sourceUrl": "https://openai.com/index/gpt-4-1/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "o3 / o4-mini",
+    "version": "",
+    "releasedAt": "2025-04-16T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 10,
+    "priceOut": 40,
+    "changes": [
+      "Самые сильные на тот момент reasoning-модели OpenAI по математике, коду и науке",
+      "Впервые «думают с изображениями» — анализируют картинки прямо в цепочке рассуждений",
+      "Полный доступ к инструментам в рассуждении: веб, Python, работа с изображениями",
+      "o3 на старте $10 / $40 за 1M; 10 июня 2025 цена срезана на 80% до $2 / $8",
+      "o4-mini — быстрый и дешёвый reasoning по цене o3-mini ($1.10 / $4.40)",
+      "Контекст 200K токенов, до 100K на выход у обеих моделей"
+    ],
+    "verdict": "o3 и o4-mini объединили reasoning с полноценным использованием инструментов и зрением, а летнее падение цены o3 на 80% сделало топовое рассуждение доступным.",
+    "sourceUrl": "https://openai.com/index/introducing-o3-and-o4-mini/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-5",
+    "version": "",
+    "releasedAt": "2025-08-07T00:00:00.000Z",
+    "contextTokens": 400000,
+    "priceIn": 1.25,
+    "priceOut": 10,
+    "changes": [
+      "Первая «единая» модель: быстрый ответчик и глубокий reasoning (GPT-5 thinking) с авто-роутером",
+      "Роутер в реальном времени сам выбирает режим по сложности запроса и намерению",
+      "SOTA по коду, математике, письму, здоровью и визуальному восприятию",
+      "Контекст 400K токенов, до 128K на выход",
+      "Агрессивная цена для флагмана: $1.25 за 1M входных и $10 за 1M выходных токенов",
+      "Впервые reasoning-модель стала доступна всем бесплатным пользователям ChatGPT по умолчанию"
+    ],
+    "verdict": "GPT-5 свела o-серию и GPT-серию в одну систему с авто-выбором режима, убрав необходимость вручную выбирать модель.",
+    "sourceUrl": "https://openai.com/index/introducing-gpt-5/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-5.1",
+    "version": "",
+    "releasedAt": "2025-11-13T00:00:00.000Z",
+    "contextTokens": 400000,
+    "priceIn": 1.25,
+    "priceOut": 10,
+    "changes": [
+      "Флагман семейства GPT-5: варианты Instant (gpt-5.1-chat-latest) и Thinking (gpt-5.1) с адаптивным рассуждением",
+      "Instant впервые сам решает, когда «подумать» перед ответом; Thinking точнее дозирует время на сложные и простые задачи",
+      "Расширенное кэширование промпта до 24 часов и более дешёвые повторные запросы",
+      "reasoning_effort можно выставить в 'none' для латентно-чувствительных сценариев без рассуждения",
+      "Новые инструменты apply_patch и shell, улучшенный кодинг; Codex-варианты gpt-5.1-codex и gpt-5.1-codex-mini",
+      "Контекст 400K токенов, до 128K на выход; цена совпадает с GPT-5"
+    ],
+    "verdict": "Аккуратный минорный апгрейд GPT-5: тот же ценник и контекст, но заметно живее в общении и умнее дозирует рассуждение.",
+    "sourceUrl": "https://openai.com/index/gpt-5-1-for-developers/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-5.2",
+    "version": "",
+    "releasedAt": "2025-12-11T00:00:00.000Z",
+    "contextTokens": 400000,
+    "priceIn": 1.75,
+    "priceOut": 14,
+    "changes": [
+      "Самая сильная на тот момент линейка для профессиональной умственной работы: варианты Instant, Thinking и Pro",
+      "Прирост в общем интеллекте, понимании длинного контекста, агентном вызове инструментов и работе с изображениями",
+      "Новый эндпоинт Responses /compact расширяет эффективный контекст для длинных tool-heavy задач",
+      "Заявлен новый SOTA на ряде бенчмарков, включая GDPval по знаниевой работе в 44 профессиях",
+      "Контекст 400K токенов, до 128K на выход; Codex-вариант gpt-5.2-codex"
+    ],
+    "verdict": "Рабочая лошадка «под задачи аналитика»: упор на длинный контекст, таблицы, презентации и агентные цепочки, а не на разговорный вайб.",
+    "sourceUrl": "https://openai.com/index/introducing-gpt-5-2/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-5.4",
+    "version": "",
+    "releasedAt": "2026-03-05T00:00:00.000Z",
+    "contextTokens": 1050000,
+    "priceIn": 2.5,
+    "priceOut": 15,
+    "changes": [
+      "Фронтир-модель для профессиональной работы: объединяет кодинг GPT-5.3-Codex с работой по инструментам, таблицам, презентациям и документам",
+      "Первая general-purpose модель OpenAI с нативным state-of-the-art computer use в Codex и API",
+      "Interactive Planning в ChatGPT: показывает план рассуждения, курс можно корректировать по ходу ответа",
+      "Самая токен-эффективная reasoning-модель OpenAI на тот момент; на бенчмарке таблиц 87.3% против 68.4% у GPT-5.2",
+      "Контекст 1.05M токенов; промпты свыше 272K тарифицируются ×2 на вход и ×1.5 на выход",
+      "Также вышли GPT-5.4 Pro и компактные GPT-5.4 mini/nano"
+    ],
+    "verdict": "Первый по-настоящему «агентный» флагман OpenAI: миллион контекста и родной computer use превращают модель из собеседника в исполнителя задач.",
+    "sourceUrl": "https://openai.com/index/introducing-gpt-5-4/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-5.5",
+    "version": "",
+    "releasedAt": "2026-04-24T00:00:00.000Z",
+    "contextTokens": 1050000,
+    "priceIn": 5,
+    "priceOut": 30,
+    "changes": [
+      "«Новый класс интеллекта» для кодинга и профессиональной работы (кодовое имя Spud); варианты GPT-5.5 и GPT-5.5 Pro",
+      "Упор на агентность: справляется с грязными многосоставными задачами — сам планирует, вызывает инструменты, проверяет себя и доводит до конца",
+      "Сильный прирост в агентном кодинге, computer use, knowledge work и раннем научном ресёрче",
+      "Бенчмарки: 82.7% на Terminal-Bench 2.0, 51.7% FrontierMath Tier 1–3, 35.4% Tier 4",
+      "По латентности на токен сопоставима с GPT-5.4 при более высоком уровне интеллекта",
+      "Контекст 1.05M токенов, до 128K на выход; в ChatGPT/Codex с 23 апреля, в API с 24 апреля 2026"
+    ],
+    "verdict": "Флагман, оптимизированный под доверие агенту: даёшь размытую задачу целиком — и он сам ведёт её до результата, но вдвое дороже GPT-5.4.",
+    "sourceUrl": "https://openai.com/index/introducing-gpt-5-5/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude 3",
+    "version": "Opus / Sonnet / Haiku (2024-03-04)",
+    "releasedAt": "2024-03-04T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 15,
+    "priceOut": 75,
+    "changes": [
+      "Первое поколение из трёх моделей: Opus (флагман), Sonnet (баланс), Haiku (быстрая/дешёвая)",
+      "Контекст 200K токенов, near-perfect recall на длинном контексте у Opus",
+      "Впервые в линейке — обработка изображений (фото, графики, диаграммы)",
+      "Цены на старте: Opus $15/$75, Sonnet $3/$15, Haiku $0.25/$1.25 за 1M токенов",
+      "Opus и Sonnet доступны сразу в 159 странах, Haiku — чуть позже"
+    ],
+    "verdict": "Первое серьёзное поколение Claude: три уровня цена/качество и мультимодальность, задавшие структуру всей линейки.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-3-family",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude 3.5 Sonnet",
+    "version": "(2024-06-20)",
+    "releasedAt": "2024-06-20T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Обгоняет Claude 3 Opus по бенчмаркам, но вдвое быстрее и заметно дешевле",
+      "Рост в кодинге (HumanEval), рассуждениях (GPQA, MMLU) и работе с нюансами текста",
+      "Лучшее на тот момент зрение в линейке — превосходит Opus на визуальных задачах",
+      "Цена $3/$15 за 1M токенов, контекст 200K",
+      "Одновременно запущены Artifacts — рабочая область для кода и документов"
+    ],
+    "verdict": "Sonnet-класс впервые обошёл прошлый флагман Opus по интеллекту при цене втрое ниже — переломная модель для практического использования.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-3-5-sonnet",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude 3.5 Sonnet",
+    "version": "v2 + Claude 3.5 Haiku (2024-10-22)",
+    "releasedAt": "2024-10-22T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Обновлённый 3.5 Sonnet: скачок в кодинге на SWE-bench Verified с 33.4% до 49.0%",
+      "Впервые — computer use в бете: Claude управляет курсором, кликами и вводом текста",
+      "Улучшена работа с инструментами (TAU-bench), цена и скорость те же — $3/$15",
+      "Новый Claude 3.5 Haiku: уровень Claude 3 Opus по многим тестам, 40.6% на SWE-bench",
+      "Haiku 3.5 вышел позже в октябре по цене $0.80/$4 за 1M токенов (пересмотрена с $0.25/$1.25)"
+    ],
+    "verdict": "Апгрейд Sonnet резко поднял планку в кодинге и первым принёс computer use, а Haiku 3.5 дотянул малую модель до уровня прежнего флагмана.",
+    "sourceUrl": "https://www.anthropic.com/news/3-5-models-and-computer-use",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude 3.7 Sonnet",
+    "version": "(2025-02-24)",
+    "releasedAt": "2025-02-24T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Первая гибридная reasoning-модель: мгновенный ответ или видимое пошаговое рассуждение",
+      "API-контроль над бюджетом мышления — до 128K токенов на размышления",
+      "Extended thinking даёт прирост в математике, науке и агентских задачах",
+      "Цена без изменений — $3/$15, токены мышления считаются как output",
+      "Вместе с моделью представлен Claude Code — CLI-инструмент для агентного кодинга"
+    ],
+    "verdict": "Первое объединение обычной и reasoning-модели в одной: думает столько, сколько нужно, по той же цене — плюс дебют Claude Code.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-3-7-sonnet",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude 4",
+    "version": "Opus 4 / Sonnet 4 (2025-05-22)",
+    "releasedAt": "2025-05-22T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 15,
+    "priceOut": 75,
+    "changes": [
+      "Opus 4 — «лучшая в мире модель для кодинга»: 72.5% на SWE-bench, работа часами без потери фокуса",
+      "Sonnet 4 — крупный апгрейд 3.7 с 72.7% на SWE-bench, точнее следует инструкциям",
+      "Гибридные модели: мгновенный ответ или extended thinking с использованием инструментов",
+      "Параллельные вызовы инструментов и улучшенная память через работу с файлами",
+      "Цены прежние: Opus 4 $15/$75, Sonnet 4 $3/$15; Claude Code вышел в общий доступ"
+    ],
+    "verdict": "Поколение, заточенное под кодинг и длинные агентские задачи; Opus 4 удерживал фокус на многочасовых задачах в тысячи шагов.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-4",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Opus 4.1",
+    "version": "(2025-08-05)",
+    "releasedAt": "2025-08-05T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 15,
+    "priceOut": 75,
+    "changes": [
+      "Апгрейд Opus 4 в агентских задачах, реальном кодинге и рассуждениях",
+      "State-of-the-art кодинг — 74.5% на SWE-bench Verified",
+      "Точнее отслеживает детали и правки в больших кодовых базах без лишних изменений",
+      "Улучшены глубокое исследование и анализ данных, агентный поиск",
+      "Цена без изменений — $15/$75 за 1M токенов"
+    ],
+    "verdict": "Инкрементальный, но заметный апгрейд Opus 4: аккуратнее в больших кодовых базах и точнее в многофайловом рефакторинге при той же цене.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-1",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Sonnet 4.5",
+    "version": "(2025-09-29)",
+    "releasedAt": "2025-09-29T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "На момент выхода — «лучшая в мире модель для кодинга» и для построения сложных агентов",
+      "State-of-the-art на SWE-bench Verified, удержание фокуса свыше 30 часов на многошаговых задачах",
+      "Лучшая модель для computer use, крупный рост в рассуждениях и математике",
+      "Новые context editing и memory tool в API для более длинных агентских прогонов",
+      "Цена прежняя $3/$15; вместе с моделью вышел Claude Agent SDK и чекпоинты в Claude Code"
+    ],
+    "verdict": "Sonnet-класс догнал флагманский уровень в кодинге и агентах при цене $3/$15, а Agent SDK открыл инфраструктуру Claude Code разработчикам.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-sonnet-4-5",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Haiku 4.5",
+    "version": "(2025-10-15)",
+    "releasedAt": "2025-10-15T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 1,
+    "priceOut": 5,
+    "changes": [
+      "Малая модель на уровне Sonnet 4 по кодингу, computer use и агентским задачам",
+      "73.3% на SWE-bench Verified — одна из лучших моделей для кода в своём классе",
+      "До 4–5 раз быстрее Sonnet 4.5 при доле его стоимости",
+      "Цена $1/$5 за 1M токенов; drop-in замена Haiku 3.5 и Sonnet 4",
+      "Работает в связке с Sonnet 4.5: оркестрация параллельных подзадач"
+    ],
+    "verdict": "То, что полгода назад было фронтиром (Sonnet 4), теперь в быстрой и дешёвой Haiku — идеальна для параллельных агентских подзадач.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-haiku-4-5",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Opus 4.5",
+    "version": "(2025-11-24)",
+    "releasedAt": "2025-11-24T00:00:00.000Z",
+    "contextTokens": 200000,
+    "priceIn": 5,
+    "priceOut": 25,
+    "changes": [
+      "Самая интеллектуальная модель Anthropic на момент выхода: 80.9% на SWE-bench Verified",
+      "Резкое снижение цены Opus-класса — $5/$25 против $15/$75 у прошлых Opus",
+      "Лучшая модель для computer use — 66.3% на OSWorld",
+      "Effort control, context compaction и продвинутая работа с инструментами для долгих агентов",
+      "На medium-effort повторяет результат Sonnet 4.5 на SWE-bench, тратя на 76% меньше токенов"
+    ],
+    "verdict": "Opus-уровень подешевел втрое при новом рекорде в кодинге и computer use — самый резкий скачок цена/качество в линейке Opus.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-5",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Opus 4.6",
+    "version": "",
+    "releasedAt": "2026-02-05T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 5,
+    "priceOut": 25,
+    "changes": [
+      "Первый Opus-класс с контекстным окном 1M токенов (в бете)",
+      "Adaptive thinking: модель сама решает, сколько «думать», плюс новые контролы effort",
+      "Компакция контекста в API для длительных агентных задач без упора в лимиты",
+      "Резкий рост длинноконтекстного поиска: с 18.5% до 76%",
+      "Лидер на Terminal-Bench 2.0 и Humanity's Last Exam; команды агентов в Claude Code"
+    ],
+    "verdict": "Умный Opus стал выносливее и внимательнее к своим ошибкам — заявка на флагман начала 2026-го.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-6",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Opus 4.7",
+    "version": "",
+    "releasedAt": "2026-04-16T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 5,
+    "priceOut": 25,
+    "changes": [
+      "Добавлен уровень усилий xhigh (между high и max) — лучший для кодинга и агентики",
+      "Первая модель Claude с high-res зрением: до 2576px по длинной стороне, координаты 1:1 с пикселями",
+      "Task Budgets (бета): модель видит бюджет токенов на всю агентную сессию и распределяет его сама",
+      "Более автономна на длинных задачах; убраны sampling-параметры и budget_tokens",
+      "+13% к решению задач на 93-задачном бенчмарке кодинга против Opus 4.6; защитные механизмы кибербезопасности"
+    ],
+    "verdict": "Опус с прицелом на автономных агентов: xhigh-усилие и зрение высокого разрешения — заметный шаг вперёд.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-7",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Opus 4.8",
+    "version": "",
+    "releasedAt": "2026-05-28T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 5,
+    "priceOut": 25,
+    "changes": [
+      "Флагман Opus-класса: рекордная автономность на длинных агентных задачах, знаниевой работе и памяти",
+      "Примерно вчетверо реже пропускает собственные ошибки в коде, чем Opus 4.7; выше честность",
+      "System-сообщения посреди сессии: инструкции оператора без сброса кэша промпта",
+      "Более тёплый и ясный стиль письма; fast mode вдвое-с-половиной быстрее и втрое дешевле",
+      "69.2% на SWE-Bench Pro; тот же API-контур, что у 4.7 (никаких новых ломающих изменений)"
+    ],
+    "verdict": "Самый сильный Opus: та же цена и API, но заметно надёжнее и приятнее в работе.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-opus-4-8",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Fable 5",
+    "version": "",
+    "releasedAt": "2026-06-09T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 10,
+    "priceOut": 50,
+    "changes": [
+      "Самая мощная широко доступная модель Anthropic — публичный «страж» Mythos-класса",
+      "Мышление всегда включено; сырую цепочку рассуждений API не возвращает (только сводки)",
+      "Safety-классификаторы могут отклонить запрос (stop_reason: refusal) с откатом на Opus 4.8",
+      "Контекст 1M токенов по умолчанию, до 128K токенов вывода; требует 30-дневного хранения данных",
+      "12 июня 2026 отозвана из-за экспортного контроля США, возвращена 1 июля 2026 с усиленными фильтрами"
+    ],
+    "verdict": "Пиковый интеллект Anthropic для самых сложных задач — но с ценой выше Opus и оговорками по доступности.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-fable-5-mythos-5",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Anthropic",
+    "model": "Claude Sonnet 5",
+    "version": "",
+    "releasedAt": "2026-06-30T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Самый агентный Sonnet: качество близко к Opus 4.8 при заметно меньшей цене",
+      "Вводная цена $2 / $10 за 1M токенов до 31 августа 2026, затем штатные $3 / $15",
+      "Новый токенизатор (~на 30% больше токенов на тот же текст); adaptive thinking включён по умолчанию",
+      "Впервые в линейке Sonnet: уровень усилий xhigh и зрение высокого разрешения (2576px)",
+      "Drop-in замена Sonnet 4.6 — тот же API, контекст 1M и 128K вывода; стал моделью по умолчанию для Free и Pro"
+    ],
+    "verdict": "Почти-Opus в агентике по цене Sonnet — самый выгодный способ гонять автономных агентов.",
+    "sourceUrl": "https://www.anthropic.com/news/claude-sonnet-5",
+    "sourceName": "Anthropic"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 1.5 Pro",
+    "version": "128k→1M context (GA май 2024)",
+    "releasedAt": "2024-05-14T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 7,
+    "priceOut": 21,
+    "changes": [
+      "Первый массовый прорыв в длинном контексте: до 1M токенов (в исследованиях тестировали до 10M) — тогда рекорд среди foundation-моделей",
+      "Новая архитектура Mixture-of-Experts на базе Transformer: выше качество при меньших вычислениях",
+      "Нативная мультимодальность: до 1 часа видео, 11 часов аудио, кодовые базы 30k+ строк в одном запросе",
+      "Цена на старте многоуровневая: базовый тариф до 128k токенов ($7/$21), выше 128k — вдвое дороже",
+      "В июне 2024 контекст расширили до 2M токенов; в октябре 2024 цену снизили (до ~$2.5/$10)"
+    ],
+    "verdict": "Модель, которая в одиночку сделала «миллион токенов контекста» новым стандартом индустрии и задала темп всей линейке Gemini.",
+    "sourceUrl": "https://blog.google/technology/developers/gemini-gemma-developer-updates-may-2024/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 1.5 Flash",
+    "version": "1M context",
+    "releasedAt": "2024-05-14T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 0.35,
+    "priceOut": 1.05,
+    "changes": [
+      "Лёгкая и быстрая версия 1.5 с тем же контекстом 1M токенов — под high-volume и low-latency задачи",
+      "Дистилляция из 1.5 Pro: близкое качество при заметно меньшей цене и задержке",
+      "Нативная мультимодальность (текст, изображения, аудио, видео) в одном запросе",
+      "Цена на старте многоуровневая по длине промпта; в августе 2024 её срезали до $0.075/$0.30",
+      "Позже вышел ещё более дешёвый вариант Flash-8B ($0.0375/$0.15)"
+    ],
+    "verdict": "Рабочая лошадка линейки: миллион токенов контекста по бросовой цене, любимый разработчиками за соотношение цена/скорость.",
+    "sourceUrl": "https://blog.google/technology/developers/gemini-gemma-developer-updates-may-2024/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 2.0 Flash",
+    "version": "GA (5 февраля 2025)",
+    "releasedAt": "2025-02-05T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 0.1,
+    "priceOut": 0.4,
+    "changes": [
+      "Первый GA-релиз поколения 2.0: контекст 1M токенов, нативный tool use и мультимодальный ввод",
+      "Упрощённый прайсинг — единая цена за тип ввода без деления на короткий/длинный контекст",
+      "Заметно выше производительность и rate limits при цене всего $0.10/$0.40 за 1M токенов",
+      "Одновременно вышли Flash-Lite (самый дешёвый вариант) и экспериментальный 2.0 Pro",
+      "Аудио на входе тарифицируется отдельно ($0.70/1M)"
+    ],
+    "verdict": "Дешёвый мультимодальный воркхорс с миллионным контекстом и нативными инструментами — базовая рабочая модель большинства продовых интеграций 2025 года.",
+    "sourceUrl": "https://blog.google/technology/google-deepmind/gemini-model-updates-february-2025/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 2.5 Pro",
+    "version": "thinking (анонс 25 марта 2025)",
+    "releasedAt": "2025-03-25T00:00:00.000Z",
+    "contextTokens": 1048576,
+    "priceIn": 1.25,
+    "priceOut": 10,
+    "changes": [
+      "Первая «думающая» флагманская модель Google: reasoning встроен в модель, а не прикручен сверху; дебют #1 на LMArena",
+      "SOTA по математике/науке/коду без test-time трюков: GPQA, AIME 2025, 18.8% на Humanity's Last Exam, 63.8% на SWE-Bench Verified",
+      "Контекст 1M токенов (~1.05M), сильный скачок в агентном и веб-кодинге",
+      "Цена многоуровневая по длине промпта: до 200k токенов $1.25/$10, свыше 200k — $2.50/$15 (в output входят thinking-токены)",
+      "Быстрые обновления превью (май, июнь), стабильная 06-05 версия зафиксирована на GA"
+    ],
+    "verdict": "Разворот Google к reasoning-first: флагман, который вернул компанию на вершину бенчмарков и задал шаблон «модели с бюджетом на размышление».",
+    "sourceUrl": "https://blog.google/technology/google-deepmind/gemini-model-thinking-updates-march-2025/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 2.5 Flash",
+    "version": "thinking (GA 17 июня 2025)",
+    "releasedAt": "2025-06-17T00:00:00.000Z",
+    "contextTokens": 1048576,
+    "priceIn": 0.3,
+    "priceOut": 2.5,
+    "changes": [
+      "Первая Flash-модель с thinking и управляемым «бюджетом на размышление» через API",
+      "Улучшена по всем осям (reasoning, мультимодальность, код, длинный контекст) при экономии 20–30% токенов",
+      "Контекст 1M токенов; позиционируется как самый эффективный воркхорс линейки",
+      "На GA прайсинг унифицирован: единый тариф $0.30/$2.50 (input поднят с $0.15, output снижен с $3.50)",
+      "Аудио на входе — отдельно ($1.00/1M); рядом вышел ещё более дешёвый 2.5 Flash-Lite"
+    ],
+    "verdict": "Reasoning для масс: думающая модель по цене воркхорса, с ручкой «сколько думать» — лучший баланс цены и интеллекта в линейке 2.5.",
+    "sourceUrl": "https://developers.googleblog.com/en/gemini-2-5-thinking-model-updates/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 3 Pro",
+    "version": "preview + Deep Think (18 ноября 2025)",
+    "releasedAt": "2025-11-18T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 2,
+    "priceOut": 12,
+    "changes": [
+      "Флагман поколения 3: рекордные 1501 Elo на LMArena и PhD-уровень reasoning, обгоняет 2.5 Pro на всех ключевых бенчмарках",
+      "Лучшая в мире мультимодальность: 81% MMMU-Pro, 87.6% Video-MMMU; 76.2% на SWE-Bench Verified для агентного кодинга",
+      "Режим Deep Think — усиленное рассуждение (41.0% на Humanity's Last Exam, 45.1% на ARC-AGI-2) для подписчиков AI Ultra",
+      "Контекст 1M токенов на вход, до 64k на выход; сразу доступен в Gemini App, Search, AI Studio и Vertex AI",
+      "Цена многоуровневая: до 200k токенов $2/$12, свыше 200k — $4/$18; вместе с моделью — платформа Antigravity и новый Gemini CLI"
+    ],
+    "verdict": "Самый мощный Gemini на конец 2025 года и прямой ответ фронтиру: reasoning-first флагман, выкаченный сразу во все продукты в день анонса.",
+    "sourceUrl": "https://blog.google/products/gemini/gemini-3/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 3 Flash",
+    "version": "",
+    "releasedAt": "2025-12-17T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 0.5,
+    "priceOut": 3,
+    "changes": [
+      "Pro-уровневое рассуждение Gemini 3 при латентности и цене класса Flash",
+      "Фронтир-результаты на GPQA Diamond (90.4%) и Humanity's Last Exam (33.7% без инструментов), обходит даже Gemini 3 Pro на части бенчмарков",
+      "SWE-bench Verified 78%, MMMU Pro 81.2% — сильный кодинг и мультимодальность",
+      "Примерно в 3 раза быстрее Gemini 2.5 Pro и в среднем на ~30% экономнее по токенам",
+      "Контекст 1M токенов на вход, до 64K на выход; есть бесплатный тариф в Gemini API"
+    ],
+    "verdict": "Лучшее соотношение «ум/цена/скорость» в линейке: почти Pro-интеллект за $0.5/$3 — дефолтный выбор для массовых продакшн-нагрузок.",
+    "sourceUrl": "https://blog.google/products/gemini/gemini-3-flash/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 3.1 Pro",
+    "version": "Preview",
+    "releasedAt": "2026-02-19T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 2,
+    "priceOut": 12,
+    "changes": [
+      "Обновлённое ядро Pro-линейки на базе Gemini 3 Pro: лучше рассуждение, токен-эффективность и фактологичность",
+      "На ARC-AGI-2 верифицированные 77.1% — более чем вдвое выше reasoning-показателя Gemini 3 Pro",
+      "Оптимизирован под software-engineering и агентные сценарии с точным многошаговым вызовом инструментов",
+      "Отдельный эндпоинт gemini-3.1-pro-preview-customtools для приоритета кастомных инструментов над bash",
+      "Контекст 1M токенов на вход, до 64K на выход; цена $2/$12 для промптов ≤200K, выше для длинных"
+    ],
+    "verdict": "Главный скачок Google в чистом рассуждении: удвоенный ARC-AGI-2 при том же 1M-контексте делает 3.1 Pro новым базовым флагманом для сложных задач.",
+    "sourceUrl": "https://blog.google/technology/google-deepmind/gemini-3-1-pro/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Google",
+    "model": "Gemini 3.5 Flash",
+    "version": "",
+    "releasedAt": "2026-05-19T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 1.5,
+    "priceOut": 9,
+    "changes": [
+      "Старт новой линейки Gemini 3.5 «frontier intelligence with action»; первой вышла именно Flash",
+      "Обходит Gemini 3.1 Pro на сложных кодинг- и агентных бенчмарках: Terminal-Bench 2.1 76.2%, MCP Atlas 83.6%, GDPval-AA 1656 Elo",
+      "Заявлена примерно в 4 раза более высокая скорость вывода, чем у других фронтир-моделей",
+      "Уровни thinking для баланса качества, цены и латентности; мультимодальный CharXiv Reasoning 84.2%",
+      "Контекст 1M токенов на вход, до 64K на выход; стала моделью за алиасом gemini-flash-latest"
+    ],
+    "verdict": "Самая свежая GA-модель Google: Pro-уровневый интеллект и агентность на скорости Flash, при этом дороже прошлого поколения ($1.5/$9 против $0.5/$3).",
+    "sourceUrl": "https://blog.google/technology/google-deepmind/gemini-3-5/",
+    "sourceName": "Google"
+  },
+  {
+    "vendor": "Meta",
+    "model": "Llama 3.1 405B",
+    "version": "405B",
+    "releasedAt": "2024-07-23T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Первая открытая модель фронтир-уровня: 405B параметров, открытые веса",
+      "Плотный (dense) декодер-трансформер, обучен на >15 трлн токенов на 16K+ GPU H100",
+      "Контекст 128K токенов, 8 языков, продвинутый tool use",
+      "Лицензия Llama 3.1 Community License; веса на Hugging Face",
+      "Одновременно версии 8B и 70B обновлены до контекста 128K"
+    ],
+    "verdict": "Первая открытая модель, реально конкурирующая с топовыми закрытыми на момент выхода, — переломный момент для open-weight LLM.",
+    "sourceUrl": "https://ai.meta.com/blog/meta-llama-3-1/",
+    "sourceName": "Meta AI"
+  },
+  {
+    "vendor": "Meta",
+    "model": "Llama 3.3 70B",
+    "version": "70B Instruct",
+    "releasedAt": "2024-12-06T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "70B параметров, открытые веса; выпущена только instruct-версия",
+      "Качество близко к Llama 3.1 405B при кратно меньшем размере",
+      "Только текст, мультиязычность (8 языков), контекст 128K токенов",
+      "Построена на базе Llama 3.1 70B, оптимизированный трансформер (SFT + RLHF)",
+      "Лицензия Llama 3.3 Community License; веса на Hugging Face"
+    ],
+    "verdict": "Компактная 70B, вплотную подошедшая к флагманской 405B по качеству, — лучший баланс цена/качество в линейке Llama 3.",
+    "sourceUrl": "https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct",
+    "sourceName": "Meta AI"
+  },
+  {
+    "vendor": "Meta",
+    "model": "Llama 4 Maverick",
+    "version": "17B-128E",
+    "releasedAt": "2025-04-05T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "MoE-архитектура: 17B активных параметров из ~400B всего, 128 экспертов",
+      "Нативно мультимодальная (текст + изображения), early fusion; открытые веса",
+      "Контекст до 1M токенов; со-дистилляция из Llama 4 Behemoth",
+      "По заявлению Meta обходит GPT-4o и Gemini 2.0 Flash в своём классе",
+      "Лицензия Llama 4 Community License; веса на Hugging Face. (Младшая Llama 4 Scout — до 10M контекста.)"
+    ],
+    "verdict": "Флагман открытой линейки Llama 4 — мультимодальная MoE-модель уровня топовых закрытых конкурентов при всего 17B активных параметров.",
+    "sourceUrl": "https://huggingface.co/meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+    "sourceName": "Meta AI"
+  },
+  {
+    "vendor": "Mistral",
+    "model": "Mistral Large 2",
+    "version": "24.07",
+    "releasedAt": "2024-07-24T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": 2,
+    "priceOut": 6,
+    "changes": [
+      "Флагман на 123 млрд параметров, рассчитан на инференс на одном узле с длинным контекстом",
+      "Контекстное окно 128K токенов; сильная поддержка кода (80+ языков) и многоязычности",
+      "MMLU 84.0% у предобученной версии — новая точка на Парето-фронте цена/качество",
+      "Model id mistral-large-2407; веса открыты под Mistral Research License (некоммерческая)",
+      "На старте стоил ~$3/$9 за 1M, позже снижен до текущих $2/$6 за 1M (in/out)"
+    ],
+    "verdict": "Первый по-настоящему конкурентный флагман Mistral: 123B на одном узле, 128K контекста и агрессивная цена, задавшая планку линейке Large.",
+    "sourceUrl": "https://mistral.ai/news/mistral-large-2407/",
+    "sourceName": "Mistral AI"
+  },
+  {
+    "vendor": "Mistral",
+    "model": "Mistral Medium 3",
+    "version": "25.05",
+    "releasedAt": "2025-05-07T00:00:00.000Z",
+    "contextTokens": 128000,
+    "priceIn": 0.4,
+    "priceOut": 2,
+    "changes": [
+      "Новый класс моделей: фронтир-качество на порядок дешевле конкурентов",
+      "≥90% от уровня Claude Sonnet 3.7 в бенчмарках при радикально меньшей цене",
+      "Особенно силён в коде и адаптации под корпоративные сценарии (API или self-deploy)",
+      "Контекстное окно 128K токенов; model id mistral-medium-2505 (закрытая, не open-weight)",
+      "Стартовая цена $0.40/$2 за 1M токенов (in/out) — заметно ниже линейки Large"
+    ],
+    "verdict": "Ход «medium — это новый large»: цена $0.40/$2 при качестве около Sonnet 3.7 сделала эту модель самым выгодным флагман-эквивалентом Mistral середины 2025-го.",
+    "sourceUrl": "https://mistral.ai/news/mistral-medium-3/",
+    "sourceName": "Mistral AI"
+  },
+  {
+    "vendor": "Mistral",
+    "model": "Mistral Large 3",
+    "version": "25.12",
+    "releasedAt": "2025-12-02T00:00:00.000Z",
+    "contextTokens": 256000,
+    "priceIn": 0.5,
+    "priceOut": 1.5,
+    "changes": [
+      "Новый флагман: разреженная MoE-архитектура, 41B активных из 675B суммарных параметров",
+      "Мультимодальная, open-weight, base и instruct под лицензией Apache 2.0",
+      "Контекстное окно расширено до 256K токенов (вдвое против линейки Large 2)",
+      "Model id mistral-large-3-25-12 (алиас mistral-large-latest)",
+      "Цена La Plateforme — всего $0.5/$1.5 за 1M токенов (in/out), кратно дешевле Large 2"
+    ],
+    "verdict": "Возврат к линейке Large с размахом: 675B-MoE, 256K контекста и открытые веса Apache 2.0 при цене $0.5/$1.5 — самый амбициозный и при этом дешёвый флагман Mistral к 2026 году.",
+    "sourceUrl": "https://mistral.ai/news/mistral-3/",
+    "sourceName": "Mistral AI"
+  },
+  {
+    "vendor": "DeepSeek",
+    "model": "DeepSeek-V3",
+    "version": "",
+    "releasedAt": "2024-12-26T00:00:00.000Z",
+    "contextTokens": 65536,
+    "priceIn": 0.27,
+    "priceOut": 1.1,
+    "changes": [
+      "MoE-модель на 671B параметров (37B активны на токен), обучена на ~14.8 трлн токенов",
+      "Уровень GPT-4o и Claude 3.5 Sonnet при радикально меньшей цене",
+      "Открытые веса (MIT), обучение обошлось всего в ~$5.5 млн (2.788 млн H800-часов)",
+      "Контекст API 64K токенов, максимум вывода 8K",
+      "Стартовый промо-прайс действовал до 8 февраля 2025, затем стандартный тариф $0.27/$1.10"
+    ],
+    "verdict": "V3 сделала фронтир-уровень почти бесплатным и запустила ценовую войну на рынке LLM.",
+    "sourceUrl": "https://api-docs.deepseek.com/news/news1226",
+    "sourceName": "DeepSeek"
+  },
+  {
+    "vendor": "DeepSeek",
+    "model": "DeepSeek-R1",
+    "version": "",
+    "releasedAt": "2025-01-20T00:00:00.000Z",
+    "contextTokens": 65536,
+    "priceIn": 0.55,
+    "priceOut": 2.19,
+    "changes": [
+      "Первая reasoning-модель DeepSeek (deepseek-reasoner) с открытой цепочкой рассуждений",
+      "Сопоставима с OpenAI o1 по математике, коду и логике при цене в разы ниже",
+      "Открытые веса (MIT) плюс дистилляты на Qwen и Llama (1.5B–70B)",
+      "Контекст 64K токенов, до 32K токенов на размышления (CoT)",
+      "Цена: $0.55/1M вход (cache-miss), $2.19/1M выход"
+    ],
+    "verdict": "R1 показала, что открытая модель может конкурировать с o1 за проценты от цены, и обвалила акции ИИ-компаний.",
+    "sourceUrl": "https://api-docs.deepseek.com/news/news250120",
+    "sourceName": "DeepSeek"
+  },
+  {
+    "vendor": "DeepSeek",
+    "model": "DeepSeek-V3.1",
+    "version": "",
+    "releasedAt": "2025-08-21T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": 0.56,
+    "priceOut": 1.68,
+    "changes": [
+      "Гибридная архитектура: один чекпойнт переключает thinking/non-thinking режимы токенами <think>",
+      "Контекст расширен до 128K токенов (двухфазное дообучение на V3-Base)",
+      "Сильнее в агентных сценариях и tool-use, чем V3-0324 и R1-0528",
+      "Обучение в FP8; открытые веса (MIT для кода)",
+      "С 5 сентября 2025 введён тариф $0.56/$1.68 и отменены ночные (off-peak) скидки"
+    ],
+    "verdict": "V3.1 объединила чат и reasoning в одной модели и стала первым по-настоящему агентным релизом DeepSeek.",
+    "sourceUrl": "https://api-docs.deepseek.com/news/news250821",
+    "sourceName": "DeepSeek"
+  },
+  {
+    "vendor": "xAI",
+    "model": "Grok-2",
+    "version": "grok-2-1212",
+    "releasedAt": "2024-08-14T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": 2,
+    "priceOut": 10,
+    "changes": [
+      "Анонсирован 14 августа 2024 вместе с лёгкой версией Grok-2 mini",
+      "Мультимодальная модель: текст плюс обработка изображений (vision)",
+      "Генерация картинок через движок Flux от Black Forest Labs",
+      "Публичный enterprise-API открыт позже, в декабре 2024 (сборка grok-2-1212)",
+      "Цена API — $2 за 1M входных и $10 за 1M выходных токенов; контекст 131 072 токена"
+    ],
+    "verdict": "Первый по-настоящему конкурентный релиз xAI — уровень GPT-4 по бенчмаркам, но публичный прайс API появился лишь спустя месяцы.",
+    "sourceUrl": "https://x.ai/news/grok-2",
+    "sourceName": "xAI"
+  },
+  {
+    "vendor": "xAI",
+    "model": "Grok-3",
+    "version": "Grok 3 Beta",
+    "releasedAt": "2025-02-17T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Представлен 17 февраля 2025, GA через API — в апреле 2025",
+      "Обучен на суперкластере Colossus с ~10x приростом вычислений против прошлого поколения",
+      "Reasoning-режим с масштабным RL: думает от секунд до минут, исправляя ошибки",
+      "Маркетинг заявлял окно 1M токенов, но реальный API-лимит — 131 072 токена",
+      "Цена API — $3 за 1M входных и $15 за 1M выходных; рядом вышла экономичная Grok 3 mini ($0.30/$0.50 за 1M)"
+    ],
+    "verdict": "Заявка xAI на топ-лигу reasoning-моделей, но ценник как у Claude Sonnet при фактическом контексте 128K вместо обещанного миллиона.",
+    "sourceUrl": "https://x.ai/news/grok-3",
+    "sourceName": "xAI"
+  },
+  {
+    "vendor": "xAI",
+    "model": "Grok-4",
+    "version": "",
+    "releasedAt": "2025-07-09T00:00:00.000Z",
+    "contextTokens": 256000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Выпущен 9 июля 2025 как флагманская reasoning-модель xAI",
+      "Окно контекста удвоено до 256K токенов против 128K у Grok 3",
+      "Нативная мультимодальность: вход текст плюс изображения",
+      "Цена API — $3 за 1M входных, $15 за 1M выходных; кэш-вход $0.75 за 1M",
+      "Тариф растёт для запросов свыше 128K токенов; одновременно представлена мощная Grok 4 Heavy для подписки SuperGrok"
+    ],
+    "verdict": "Самый production-ready релиз xAI на тот момент: удвоенный контекст и сильные бенчмарки, но цена осталась на премиальном уровне Grok 3.",
+    "sourceUrl": "https://x.ai/news/grok-4",
+    "sourceName": "xAI"
+  }
+]
