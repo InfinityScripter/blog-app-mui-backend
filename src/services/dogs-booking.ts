@@ -470,18 +470,50 @@ async function getClientById(clientId: string) {
   return result.rows[0] ? mapClient(result.rows[0]) : null;
 }
 
+// Links a Telegram account to the client owning this access token. Idempotent:
+// telegram_user_id is UNIQUE, and one person can own several client rows
+// (bookings under different phones), so tapping a newer deep link must MOVE
+// the link to that client — not crash. A bare UPDATE here used to hit the
+// unique constraint → webhook 500 → Telegram retried the same update forever.
 async function linkTelegramClient(accessToken: string, telegramUserId: string) {
-  const result = await dogsDbQuery<DogsClientRow>(
-    `UPDATE dogs_clients
-     SET telegram_user_id = $1, updated_at = NOW()
-     WHERE access_token = $2
-     RETURNING *`,
-    [telegramUserId, accessToken]
+  const target = await dogsDbQuery<DogsClientRow>(
+    'SELECT * FROM dogs_clients WHERE access_token = $1',
+    [accessToken]
   );
-  if (!result.rows[0]) {
+  if (!target.rows[0]) {
     throw new AppError(HTTP.NOT_FOUND, 'Client not found');
   }
-  return mapClient(result.rows[0]);
+  if (target.rows[0].telegram_user_id === telegramUserId) {
+    return mapClient(target.rows[0]);
+  }
+
+  // Release the telegram id from any other client row first (latest link
+  // wins). Runs only after the token is validated, so a stale link can never
+  // unlink the current holder as a side effect.
+  await dogsDbQuery(
+    `UPDATE dogs_clients
+     SET telegram_user_id = NULL, updated_at = NOW()
+     WHERE telegram_user_id = $1 AND id <> $2`,
+    [telegramUserId, target.rows[0].id]
+  );
+
+  try {
+    const result = await dogsDbQuery<DogsClientRow>(
+      `UPDATE dogs_clients
+       SET telegram_user_id = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [telegramUserId, target.rows[0].id]
+    );
+    return mapClient(result.rows[0]);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      // Concurrent claim between the release and this write — a business
+      // conflict the webhook acknowledges with 200, not a 500 retry loop.
+      throw new AppError(HTTP.CONFLICT, 'Telegram account is already linked');
+    }
+    throw error;
+  }
 }
 
 export const dogsBookingService = {

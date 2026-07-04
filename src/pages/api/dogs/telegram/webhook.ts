@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { isAppError } from '@/src/types/api';
 import { ok, sendError } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
@@ -22,6 +23,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await handleDogsTelegramUpdate(req.body ?? {});
     return ok(res);
   } catch (error) {
+    // Telegram redelivers the same update on ANY non-2xx response. A handled
+    // business error (4xx AppError) must therefore be acknowledged with 200 —
+    // only genuine failures (unexpected errors, 5xx) keep an error status so
+    // transient problems get retried.
+    if (isAppError(error) && error.status < HTTP.INTERNAL) {
+      // eslint-disable-next-line no-console
+      console.warn('[dogs telegram webhook] handled business error:', error.message);
+      return ok(res);
+    }
     return sendError(res, error);
   }
 }

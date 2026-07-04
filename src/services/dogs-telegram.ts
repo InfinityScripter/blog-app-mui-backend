@@ -1,6 +1,6 @@
 import type { DogsBookingRequest } from '@/src/services/dogs-booking';
 
-import { AppError } from '@/src/types/api';
+import { AppError, isAppError } from '@/src/types/api';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 import {
@@ -154,7 +154,26 @@ async function sendMyBookings(chatId: number | string, telegramUserId: string) {
 }
 
 async function linkClient(chatId: number | string, telegramUserId: string, accessToken: string) {
-  const client = await dogsBookingService.linkTelegramClient(accessToken, telegramUserId);
+  let client;
+  try {
+    client = await dogsBookingService.linkTelegramClient(accessToken, telegramUserId);
+  } catch (error) {
+    // A bad deep-link token (stale, mistyped, client deleted) is a business
+    // outcome, not a failure: tell the user what to do and let the webhook
+    // ack with 200 — otherwise Telegram redelivers the update indefinitely.
+    // The reply itself can still throw (Telegram API down → AppError 503);
+    // that intentionally bubbles out as 5xx so the update gets retried.
+    if (isAppError(error) && error.status < HTTP.INTERNAL) {
+      await sendMessage(
+        chatId,
+        'Не получилось привязать Telegram: ссылка устарела или неверна. Откройте свежую личную ссылку из вашей заявки на сайте.',
+        mainMenuMarkup()
+      );
+      return;
+    }
+    throw error;
+  }
+
   await sendMessage(
     chatId,
     'Готово, Telegram привязан! Здесь будут приходить подтверждения и напоминания о занятиях.',
