@@ -132,4 +132,17 @@ jobs:
             fi
             echo "healthcheck OK (200)"
             rm -rf "$OLD"
+
+            # Seed the changelog with real AI-model releases. Idempotent
+            # (INSERT ... ON CONFLICT (slug) DO NOTHING), so running it on every
+            # deploy is safe: it fills the model_releases table on a fresh/empty
+            # prod DB and is a no-op once every seeded release is present (and
+            # never overwrites a release the bot published). Non-fatal: a seed
+            # hiccup must not roll back an already-healthy service.
+            (
+              cd "$LIVE"
+              set -a; . ./.env; set +a
+              node scripts/seed-changelog.mjs --apply
+            ) || echo "changelog seed step failed (non-fatal) — service is healthy, releases can be seeded on the next deploy"
+
             systemctl status blog-backend --no-pager
