@@ -6,8 +6,6 @@ import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/post/list';
 import { HTTP_METHOD } from '@/src/constants/http';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 const OWNER_ID = '7060694b2c21843bf8307f99';
 
 async function seed() {

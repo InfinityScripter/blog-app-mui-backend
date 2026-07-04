@@ -1,89 +1,62 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
+import { MSG } from '@/src/constants/messages';
+import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { normalizeEmail } from '@/src/utils/normalize-email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
     await dbConnect();
+
     const { email, code } = req.body;
 
-    console.log('Verification attempt:', {
-      email,
-      code,
-      timestamp: new Date().toISOString(),
-    });
-
     if (!email || !code) {
-      console.log('Missing email or verification code');
-      return res.status(400).json({ message: 'Email and verification code are required' });
+      return res
+        .status(HTTP.BAD_REQUEST)
+        .json({ message: 'Email and verification code are required' });
     }
 
-    const emailNormalized = String(email).trim();
-    const codeNormalized = String(code).trim();
-
-    const user = await User.findOne({
-      email: emailNormalized,
-      isEmailVerified: false,
-    });
-
+    const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) {
-      console.log('No unverified user found with email:', email);
-      return res.status(400).json({
-        message: 'Invalid email or user already verified',
-      });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'User not found with this email' });
     }
 
-    console.log('Found user:', {
-      email: user.email,
-      storedCode: user.emailVerificationCode,
-      receivedCode: code,
-      expiresAt: user.emailVerificationExpires,
-    });
-
-    // Проверяем срок действия кода
-    if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
-      console.log('Verification code expired');
-      return res.status(400).json({
-        message: 'Verification code has expired. Please request a new one.',
-      });
+    if (user.isEmailVerified) {
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is already verified' });
     }
 
-    // Проверяем код верификации
-    if (user.emailVerificationCode !== codeNormalized) {
-      console.log('Invalid verification code');
-      return res.status(400).json({
-        message: 'Invalid verification code',
-      });
+    if (user.emailVerificationCode !== String(code).trim()) {
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid verification code' });
     }
 
-    // Подтверждаем email
+    if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Verification code has expired' });
+    }
+
     user.isEmailVerified = true;
-    // @ts-ignore
-    user.emailVerificationCode = null;
-    // @ts-ignore
-    user.emailVerificationExpires = null;
+    user.emailVerificationCode = undefined;
+    user.emailVerificationExpires = undefined;
     await user.save();
 
-    console.log('User email verified successfully:', emailNormalized);
+    // Actor is the verifying user (anonymous request has no req.user).
+    emitAudit(req, {
+      actorId: user._id,
+      actorRole: user.role ?? 'user',
+      action: 'auth.email_verified',
+      targetType: 'user',
+      targetId: user._id,
+    });
 
-    return res.status(200).json({
-      message: 'Email verified successfully',
-    });
+    return res.status(HTTP.OK).json({ message: 'Email successfully verified', success: true });
   } catch (error: any) {
-    console.error('Error in verification endpoint:', error);
-    return res.status(500).json({
-      message: 'Internal server error',
-      error: error.message,
-    });
+    console.error('[Verify Email API]', error);
+    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
   }
 }

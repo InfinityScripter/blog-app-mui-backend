@@ -4,12 +4,12 @@ import User from '@/src/models/User';
 import uuidv4 from '@/src/utils/uuidv4';
 import { Post } from '@/src/models/Post';
 import { createMocks } from 'node-mocks-http';
-import handler from '@/src/pages/api/post/[id]/delete';
+import handler from '@/src/pages/api/post/[id]/edit';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'test_secret_key';
 
-describe('DELETE /api/post/[id]/delete', () => {
+describe('PATCH /api/post/[id]/edit', () => {
   let userId: string;
   let postId: string;
   let token: string;
@@ -28,9 +28,9 @@ describe('DELETE /api/post/[id]/delete', () => {
     token = jwt.sign({ userId, role: 'user' }, JWT_SECRET);
 
     const post = await Post.create({
-      title: 'Test Post',
-      description: 'Test Description',
-      content: 'Test Content',
+      title: 'Original Title',
+      description: 'Original Description',
+      content: 'Original Content',
       userId,
       author: { name: 'Test User', avatarUrl: 'http://test.com/avatar.jpg' },
       comments: [],
@@ -38,11 +38,16 @@ describe('DELETE /api/post/[id]/delete', () => {
     postId = post._id?.toString() || '';
   });
 
-  it('deletes a post successfully', async () => {
+  it('updates a post successfully', async () => {
     const { req, res } = createMocks({
-      method: HTTP_METHOD.DELETE,
+      method: HTTP_METHOD.PATCH,
       headers: { authorization: `Bearer ${token}` },
       query: { id: postId },
+      body: {
+        title: 'Updated Title',
+        description: 'Updated Description',
+        content: 'Updated Content',
+      },
     });
 
     await handler(req as any, res as any);
@@ -50,16 +55,19 @@ describe('DELETE /api/post/[id]/delete', () => {
     expect(res._getStatusCode()).toBe(HTTP.OK);
     const data = JSON.parse(res._getData());
     expect(data.success).toBe(true);
+    expect(data.post.title).toBe('Updated Title');
 
-    const deletedPost = await Post.findById(postId);
-    expect(deletedPost).toBeNull();
+    const updatedPost = await Post.findById(postId);
+    expect(updatedPost?.title).toBe('Updated Title');
+    expect(updatedPost?.description).toBe('Updated Description');
   });
 
   it('returns 400 when post id is missing', async () => {
     const { req, res } = createMocks({
-      method: HTTP_METHOD.DELETE,
+      method: HTTP_METHOD.PATCH,
       headers: { authorization: `Bearer ${token}` },
       query: {},
+      body: { title: 'Updated Title' },
     });
 
     await handler(req as any, res as any);
@@ -69,9 +77,10 @@ describe('DELETE /api/post/[id]/delete', () => {
 
   it('returns 404 when the post does not exist', async () => {
     const { req, res } = createMocks({
-      method: HTTP_METHOD.DELETE,
+      method: HTTP_METHOD.PATCH,
       headers: { authorization: `Bearer ${token}` },
       query: { id: uuidv4() },
+      body: { title: 'Updated Title' },
     });
 
     await handler(req as any, res as any);
@@ -81,8 +90,9 @@ describe('DELETE /api/post/[id]/delete', () => {
 
   it('returns 401 without a token', async () => {
     const { req, res } = createMocks({
-      method: HTTP_METHOD.DELETE,
+      method: HTTP_METHOD.PATCH,
       query: { id: postId },
+      body: { title: 'Updated Title' },
     });
 
     await handler(req as any, res as any);
@@ -103,9 +113,10 @@ describe('DELETE /api/post/[id]/delete', () => {
     );
 
     const { req, res } = createMocks({
-      method: HTTP_METHOD.DELETE,
+      method: HTTP_METHOD.PATCH,
       headers: { authorization: `Bearer ${anotherToken}` },
       query: { id: postId },
+      body: { title: 'Updated Title' },
     });
 
     await handler(req as any, res as any);
@@ -113,7 +124,7 @@ describe('DELETE /api/post/[id]/delete', () => {
     expect(res._getStatusCode()).toBe(HTTP.FORBIDDEN);
   });
 
-  it('returns 405 for non-DELETE methods', async () => {
+  it('returns 405 for non-PATCH/PUT methods', async () => {
     const { req, res } = createMocks({
       method: HTTP_METHOD.GET,
       headers: { authorization: `Bearer ${token}` },

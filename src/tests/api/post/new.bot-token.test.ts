@@ -6,8 +6,6 @@ import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/post/new';
 import { HTTP_METHOD } from '@/src/constants/http';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 const BOT_TOKEN = 'test_bot_service_token_value';
 const OWNER_EMAIL = 'owner@example.com';
 
