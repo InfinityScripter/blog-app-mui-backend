@@ -2,12 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
 import { File } from '@/src/models/File';
-import { requireAuth } from '@/src/utils/auth';
-import { HTTP_METHOD } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.DELETE) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
@@ -17,27 +18,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
 
     if (!id || typeof id !== 'string') {
-      return res.status(400).json({ message: 'Invalid file id' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid file id' });
     }
 
     // Find the file
     const file = await File.findById(id);
     if (!file) {
-      return res.status(404).json({ message: 'File not found' });
+      return res.status(HTTP.NOT_FOUND).json({ message: 'File not found' });
     }
 
     // Check if the user has permission to delete this file
     if (file.userId !== userId) {
-      return res.status(403).json({ message: 'Нет доступа к удалению данного файла' });
+      return res.status(HTTP.FORBIDDEN).json({ message: 'Нет доступа к удалению данного файла' });
     }
 
     // Delete the file
     await File.findByIdAndDelete(id);
 
-    return res.status(200).json({ message: 'File deleted successfully' });
+    return res.status(HTTP.OK).json({ message: 'File deleted successfully' });
   } catch (error: any) {
     console.error('[File Delete API]:', error);
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
+    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL, error: error.message });
   }
 }
 

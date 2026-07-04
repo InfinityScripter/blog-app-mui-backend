@@ -2,7 +2,7 @@ import '@jest/globals';
 import { z } from 'zod';
 import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
-import { validateBody } from '@/src/utils/validate';
+import { validateBody } from '@/src/middlewares/validate';
 
 const schema = z.object({
   email: z.string().email(),

@@ -1,18 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
-import { sendVerificationEmail } from '../../../utils/email';
-import { normalizeEmail } from '../../../utils/normalize-email';
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { sendVerificationEmail } from '@/src/utils/email';
+import { normalizeEmail } from '@/src/utils/normalize-email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
@@ -20,18 +17,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is required' });
     }
 
     const normalizedEmail = normalizeEmail(email);
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(HTTP.NOT_FOUND).json({ message: 'User not found' });
     }
 
     if (user.isEmailVerified) {
-      return res.status(400).json({ message: 'Email is already verified' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is already verified' });
     }
 
     // Генерируем новый 6-значный код
@@ -48,10 +45,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Отправляем новый код на email
     await sendVerificationEmail(normalizedEmail, verificationCode);
 
-    res.status(200).json({ message: 'Verification code sent successfully' });
+    res.status(HTTP.OK).json({ message: 'Verification code sent successfully' });
   } catch (error: any) {
     console.error('[Resend Verification API]', error);
-    res.status(500).json({
+    res.status(HTTP.INTERNAL).json({
       message: 'Failed to resend verification code',
       error: error.message,
     });

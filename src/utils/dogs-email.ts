@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { DOGS_MAPS_LINK, DOGS_CONTACT_PHONE, DOGS_CONTACT_PHONE_HREF } from '@/src/constants/dogs';
 import {
   formatDogsDate,
   formatDogsClock,
@@ -74,11 +75,10 @@ const BRAND = {
 };
 
 const CONTACTS = {
-  phone: '+7 922 254 14 87',
-  phoneHref: '+79222541487',
+  phone: DOGS_CONTACT_PHONE,
+  phoneHref: DOGS_CONTACT_PHONE_HREF,
   address: 'Ноябрьск, ул. Молодёжная, 4 — центр «DOG-CITY»',
-  mapsLink:
-    'https://yandex.ru/maps/11231/noyabrsk/house/molodyozhnaya_ulitsa_4/Y0wYcgZkTEQGQFhpfX10c3xnYQ==/?ll=75.414861%2C63.151911&z=17',
+  mapsLink: DOGS_MAPS_LINK,
 };
 
 interface StatusMeta {

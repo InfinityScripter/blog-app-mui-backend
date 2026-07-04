@@ -1,8 +1,9 @@
 import type { NextApiRequest } from 'next';
+import type { AuditRecord, AuditContext } from '@/src/types/audit';
 
 import uuidv4 from '@/src/utils/uuidv4';
 import { getClientIp } from '@/src/utils/client-ip';
-import { auditService, type AuditRecord, type AuditContext } from '@/src/services/audit';
+import { auditService } from '@/src/services/audit';
 
 /**
  * Builds the actor + request context for an audit record from the request.

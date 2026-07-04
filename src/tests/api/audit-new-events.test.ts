@@ -12,7 +12,6 @@ jest.mock('@/src/services/bot-control', () => ({
     setMock: jest.fn(() => Promise.resolve({ isMockEnabled: true })),
   },
 }));
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
 // Email is required for sign-up to proceed; stub it.
 jest.mock('@/src/utils/email', () => ({
   sendVerificationEmail: jest.fn(() => Promise.resolve()),

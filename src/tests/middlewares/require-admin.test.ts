@@ -1,9 +1,7 @@
 import '@jest/globals';
 import { createMocks } from 'node-mocks-http';
-import { requireAdmin } from '@/src/utils/admin';
 import { HTTP_METHOD } from '@/src/constants/http';
-
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
+import { requireAdmin } from '@/src/middlewares/require-admin';
 
 describe('requireAdmin middleware', () => {
   it('should call handler if role is admin', async () => {

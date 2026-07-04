@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { requireAuth } from '@/src/utils/auth';
+import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 // Thin route: requireAuth → postService.updatePost → respond. Keeps { post }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,7 +16,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
   }
   if (req.method !== HTTP_METHOD.PATCH && req.method !== HTTP_METHOD.PUT) {
-    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
   try {
     const post = await postService.updatePost(req.user!._id, id, req.body ?? {});

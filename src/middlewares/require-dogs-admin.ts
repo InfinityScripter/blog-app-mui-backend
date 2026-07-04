@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
 
 interface DogsAdminTokenPayload {
   scope: 'dogs-admin';
@@ -57,12 +58,12 @@ export const requireDogsAdmin =
   (handler: NextApiHandler) => async (req: NextApiRequest, res: NextApiResponse) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: 'Unauthorized' });
+      return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: MSG.UNAUTHORIZED });
     }
 
     const token = authHeader.split(' ')[1];
     if (!isDogsAdminToken(token)) {
-      return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: 'Unauthorized' });
+      return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: MSG.UNAUTHORIZED });
     }
 
     return handler(req, res);

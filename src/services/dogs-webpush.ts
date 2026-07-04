@@ -1,3 +1,4 @@
+import type { DogsPushPayload } from '@/src/types/dogs';
 import type { DogsBookingRequest } from '@/src/services/dogs-booking';
 import type { PushSubscription as WebPushSubscription } from 'web-push';
 import type { DogsPushSubscriptionInput } from '@/src/schemas/dogs-booking';
@@ -16,13 +17,6 @@ interface DogsPushSubscriptionRow {
   p256dh: string;
   auth: string;
   created_at: Date;
-}
-
-// Payload delivered to the service worker's `push` handler on the client.
-export interface DogsPushPayload {
-  title: string;
-  body: string;
-  url: string;
 }
 
 // Per-status headline mirrors the Telegram STATUS_MESSAGES wording so the

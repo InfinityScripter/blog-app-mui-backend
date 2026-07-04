@@ -1,3 +1,4 @@
+import type { ModelRelease } from '@/src/types/model-release';
 import type { ListModelReleasesQuery, CreateModelReleaseInput } from '@/src/schemas/model-release';
 
 import { dbQuery } from '@/src/lib/db';
@@ -5,27 +6,11 @@ import uuidv4 from '@/src/utils/uuidv4';
 import { slugify } from '@/src/utils/slug';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
+import { MAX_LIMIT } from '@/src/constants/pagination';
 
-// AI model release changelog. Raw dbQuery service mapping snake_case rows to the
-// frozen ModelRelease contract (camelCase, ISO timestamps, null for unknowns).
-
-export interface ModelRelease {
-  id: string;
-  slug: string;
-  vendor: string;
-  model: string;
-  version: string;
-  releasedAt: string;
-  contextTokens: number | null;
-  priceIn: number | null;
-  priceOut: number | null;
-  changes: string[];
-  verdict: string | null;
-  sourceUrl: string;
-  sourceName: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+// AI model release changelog. Raw dbQuery service mapping snake_case rows to
+// the frozen ModelRelease contract (camelCase, ISO timestamps, null for
+// unknowns — see src/types/model-release.ts).
 
 interface ModelReleaseRow {
   id: string;
@@ -80,8 +65,6 @@ function mapRow(row: ModelReleaseRow): ModelRelease {
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
 }
-
-const MAX_LIMIT = 100;
 
 async function list(params: ListModelReleasesQuery = {}) {
   const clauses: string[] = [];

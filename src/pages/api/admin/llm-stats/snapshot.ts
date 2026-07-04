@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
-import { requireAuth } from '@/src/utils/auth';
-import { requireAdmin } from '@/src/utils/admin';
+import { MSG } from '@/src/constants/messages';
 import { ok, sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
+import { requireAdmin } from '@/src/middlewares/require-admin';
 import { saveSnapshot, getLatestSnapshot } from '@/src/services/llm-stats-snapshot';
 
 // Admin-only LLM-usage snapshot.
@@ -13,8 +13,6 @@ import { saveSnapshot, getLatestSnapshot } from '@/src/services/llm-stats-snapsh
 // POST → replace the snapshot with the pushed bundle (project names already
 //        stripped client-side). requireAuth(requireAdmin) for both.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method === HTTP_METHOD.GET) {
     try {
       const snapshot = await getLatestSnapshot();
@@ -38,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+  return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
 }
 
 export default requireAuth(requireAdmin(handler));

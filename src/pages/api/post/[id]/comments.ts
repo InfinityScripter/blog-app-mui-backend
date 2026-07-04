@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { requireAuth } from '@/src/utils/auth';
+import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { commentService } from '@/src/services/comment';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 // Thin route: requireAuth → commentService.{add,edit,delete} → respond.
 // The frontend reads the returned `post`, so that key is preserved.
@@ -68,7 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ message: 'Comment deleted successfully', post });
     }
 
-    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   } catch (error) {
     return sendError(res, error);
   }

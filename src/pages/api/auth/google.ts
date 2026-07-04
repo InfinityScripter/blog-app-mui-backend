@@ -1,15 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import dbConnect from '@/src/lib/db';
 import nextConnect from 'next-connect';
-
-import dbConnect from '../../../lib/db';
-import passport from '../../../lib/passport';
+import passport from '@/src/lib/passport';
 
 const handler = nextConnect<NextApiRequest, NextApiResponse>();
 
 handler.use(async (req, res, next) => {
-    await dbConnect();
-    next();
+  await dbConnect();
+  next();
 });
 
 // Инициирует аутентификацию через Google

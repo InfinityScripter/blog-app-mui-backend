@@ -7,8 +7,6 @@ import { dogsBookingService } from '@/src/services/dogs-booking';
 import requestsHandler from '@/src/pages/api/dogs/booking/requests';
 import clientHandler from '@/src/pages/api/dogs/booking/client/[token]';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 jest.mock('@/src/utils/dogs-email', () => ({
   sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
   sendDogsStatusChanged: jest.fn().mockResolvedValue(undefined),

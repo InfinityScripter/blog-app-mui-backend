@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from 'src/utils/cors';
+import { HTTP } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
 
 import { _products } from 'src/_mock/_product';
 
@@ -8,15 +9,13 @@ import { _products } from 'src/_mock/_product';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await cors(req, res);
-
-    res.status(200).json({
+    res.status(HTTP.OK).json({
       products: _products,
     });
   } catch (error) {
     console.error('[Product API]: ', error);
-    res.status(500).json({
-      message: 'Internal server error',
+    res.status(HTTP.INTERNAL).json({
+      message: MSG.INTERNAL,
     });
   }
 }

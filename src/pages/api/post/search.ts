@@ -1,13 +1,12 @@
 // src/pages/api/post/search.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
-import { withRateLimit } from '@/src/utils/rate-limit';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 
 // Optional auth: dashboard=true searches the caller's own posts (token
 // required), otherwise published only. Logic lives in postService.searchPosts.
@@ -22,7 +21,6 @@ function readUserId(req: NextApiRequest): string | undefined {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   try {
     await dbConnect();
     const { query, dashboard } = req.query;

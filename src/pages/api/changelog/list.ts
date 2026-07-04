@@ -1,11 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { HTTP } from '@/src/constants/http';
 import { sendError } from '@/src/utils/response';
-import { validateQuery } from '@/src/utils/validate';
-import { withRateLimit } from '@/src/utils/rate-limit';
+import { validateQuery } from '@/src/middlewares/validate';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { modelReleaseService } from '@/src/services/model-release';
 import { listModelReleasesQuerySchema } from '@/src/schemas/model-release';
 
@@ -13,7 +12,6 @@ import { listModelReleasesQuerySchema } from '@/src/schemas/model-release';
 // the frontend and bot read the array directly. Query is validated + coerced by
 // validateQuery(listModelReleasesQuerySchema), so req.query is already typed.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   try {
     await dbConnect();
     const query = listModelReleasesQuerySchema.parse(req.query);

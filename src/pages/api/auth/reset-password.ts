@@ -2,21 +2,18 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 // @ts-ignore
 import nodemailer from 'nodemailer';
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
-import { normalizeEmail } from '../../../utils/normalize-email';
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { normalizeEmail } from '@/src/utils/normalize-email';
 
 const NEUTRAL_RESET_MESSAGE =
   'If an account exists for that email, a password reset code has been sent.';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
@@ -24,13 +21,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is required' });
     }
 
     const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) {
       // Anti-enumeration: respond the same whether or not the account exists.
-      return res.status(200).json({ message: NEUTRAL_RESET_MESSAGE });
+      return res.status(HTTP.OK).json({ message: NEUTRAL_RESET_MESSAGE });
     }
 
     // Генерируем 6-значный код
@@ -92,10 +89,10 @@ If you did not request this code, please ignore this email.`,
 
     await transporter.sendMail(mailOptions);
 
-    res.status(200).json({ message: NEUTRAL_RESET_MESSAGE });
+    res.status(HTTP.OK).json({ message: NEUTRAL_RESET_MESSAGE });
   } catch (error) {
     console.error('[Reset Password API Error]:', error);
-    res.status(500).json({
+    res.status(HTTP.INTERNAL).json({
       message: 'Failed to send reset code. Please try again later.',
     });
   }

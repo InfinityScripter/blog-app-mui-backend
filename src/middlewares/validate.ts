@@ -1,6 +1,8 @@
 import type { ZodType } from 'zod';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
+import { HTTP } from '@/src/constants/http';
+
 // ----------------------------------------------------------------------
 // Body-validation middleware. Wrap a handler with a zod schema; an invalid
 // req.body is rejected with 400 (consistent { success:false, message } shape)
@@ -14,7 +16,7 @@ export function validateBody<T>(schema: ZodType<T>) {
       const first = result.error.issues[0];
       const path = first?.path.join('.');
       const message = first ? `${path ? `${path}: ` : ''}${first.message}` : 'Invalid request body';
-      return res.status(400).json({ success: false, message });
+      return res.status(HTTP.BAD_REQUEST).json({ success: false, message });
     }
     req.body = result.data;
     return handler(req, res);
@@ -28,7 +30,7 @@ export function validateQuery<T>(schema: ZodType<T>) {
       const first = result.error.issues[0];
       const path = first?.path.join('.');
       const message = first ? `${path ? `${path}: ` : ''}${first.message}` : 'Invalid query';
-      return res.status(400).json({ success: false, message });
+      return res.status(HTTP.BAD_REQUEST).json({ success: false, message });
     }
     req.query = result.data as NextApiRequest['query'];
     return handler(req, res);

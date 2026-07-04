@@ -3,6 +3,7 @@ import type { DogsBookingRequest } from '@/src/services/dogs-booking';
 import { AppError, isAppError } from '@/src/types/api';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { DOGS_MAPS_LINK, DOGS_CONTACT_PHONE } from '@/src/constants/dogs';
 import {
   formatDogsClock,
   dogsServiceTitle,
@@ -47,11 +48,10 @@ function getOwnerChatIds() {
 // persona (DOG-CITY, Ноябрьск); each line is overridable via env so the bot
 // can be reused without code changes.
 const CONTACT_DEFAULTS = {
-  phone: '+7 922 254 14 87',
+  phone: DOGS_CONTACT_PHONE,
   address: 'Ноябрьск, ул. Молодёжная, 4 (ближнее СМП), центр DOG-CITY',
   landmark: 'Следующее здание после ветклиники «Айболит»',
-  mapsLink:
-    'https://yandex.ru/maps/11231/noyabrsk/house/molodyozhnaya_ulitsa_4/Y0wYcgZkTEQGQFhpfX10c3xnYQ==/?ll=75.414861%2C63.151911&z=17',
+  mapsLink: DOGS_MAPS_LINK,
 };
 
 function buildContactsText() {

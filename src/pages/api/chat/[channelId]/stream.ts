@@ -3,22 +3,22 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 import { dbQuery } from '@/src/lib/db';
 import { JWT_SECRET } from '@/src/lib/jwt';
-import { HTTP_METHOD } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   const token = req.query.token as string;
-  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+  if (!token) return res.status(HTTP.UNAUTHORIZED).json({ message: MSG.UNAUTHORIZED });
 
   let userId: string;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    userId = decoded.userId;
+    ({ userId } = jwt.verify(token, JWT_SECRET) as { userId: string });
   } catch {
-    return res.status(401).json({ message: 'Invalid token' });
+    return res.status(HTTP.UNAUTHORIZED).json({ message: 'Invalid token' });
   }
 
   const { channelId } = req.query as { channelId: string };
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     [channelId, userId]
   );
   if (!membership.rows.length) {
-    return res.status(403).json({ message: 'Forbidden' });
+    return res.status(HTTP.FORBIDDEN).json({ message: 'Forbidden' });
   }
 
   res.setHeader('Content-Type', 'text/event-stream');

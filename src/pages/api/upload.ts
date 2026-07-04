@@ -3,9 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import formidable from 'formidable';
 import dbConnect from '@/src/lib/db';
 import { File } from '@/src/models/File';
-import { requireAuth } from '@/src/utils/auth';
-import { HTTP_METHOD } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
 import { unlink, readFile } from 'node:fs/promises';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 import uuidv4 from 'src/utils/uuidv4';
 
@@ -17,7 +18,7 @@ export const config = {
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
@@ -36,13 +37,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       form.parse(req, async (err, fields, files) => {
         if (err) {
           console.error('[Upload API] Form parse error:', err);
-          res.status(500).json({ message: 'Error parsing form data' });
+          res.status(HTTP.INTERNAL).json({ message: 'Error parsing form data' });
           return resolve();
         }
 
         const file = files.file?.[0];
         if (!file) {
-          res.status(400).json({ message: 'No file uploaded' });
+          res.status(HTTP.BAD_REQUEST).json({ message: 'No file uploaded' });
           return resolve();
         }
 
@@ -68,7 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           // Clean up the temporary file
           await unlink(file.filepath);
 
-          res.status(200).json({
+          res.status(HTTP.OK).json({
             message: 'File uploaded successfully',
             file: {
               name: uniqueFilename,
@@ -79,14 +80,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           return resolve();
         } catch (error) {
           console.error('[Upload API] File processing error:', error);
-          res.status(500).json({ message: 'Error processing file' });
+          res.status(HTTP.INTERNAL).json({ message: 'Error processing file' });
           return resolve();
         }
       });
     });
   } catch (error) {
     console.error('[Upload API]:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
   }
 }
 

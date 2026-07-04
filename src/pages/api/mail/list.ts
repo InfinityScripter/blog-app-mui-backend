@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from 'src/utils/cors';
+import { HTTP } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
 
 import { _mails, _labels } from 'src/_mock/_mail';
 
@@ -8,14 +9,12 @@ import { _mails, _labels } from 'src/_mock/_mail';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await cors(req, res);
-
     const { labelId } = req.query;
 
     const labelInvalid = _labels.map((label) => label.id).includes(`${labelId}`);
 
     if (!labelInvalid) {
-      res.status(404).json({
+      res.status(HTTP.NOT_FOUND).json({
         message: 'Label not found!',
       });
       return;
@@ -49,13 +48,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    res.status(200).json({
+    res.status(HTTP.OK).json({
       mails: filtered,
     });
   } catch (error) {
     console.error('[Mail API]: ', error);
-    res.status(500).json({
-      message: 'Internal server error',
+    res.status(HTTP.INTERNAL).json({
+      message: MSG.INTERNAL,
     });
   }
 }

@@ -4,9 +4,6 @@ import { dbQuery } from '@/src/lib/db';
 import { signToken } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
-
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
-
 // eslint-disable-next-line import/first, import/order
 import handler from '@/src/pages/api/admin/audit/ingest';
 

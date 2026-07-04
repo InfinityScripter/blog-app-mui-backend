@@ -1,25 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import User from '@/src/models/User';
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import cors from 'src/utils/cors';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 import dbConnect from 'src/lib/db';
 import { Post } from 'src/models/Post';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.GET) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
     await dbConnect();
     const { id } = req.query;
     if (!id || typeof id !== 'string') {
-      return res.status(400).json({ message: 'Invalid post id' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid post id' });
     }
 
     // Pure read. View counting lives in POST /api/post/[id]/view so that SSR
@@ -27,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const post = await Post.findById(id);
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(HTTP.NOT_FOUND).json({ message: 'Post not found' });
     }
 
     post.totalComments = post.comments.length;
@@ -53,9 +50,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await populateUserData();
 
-    return res.status(200).json({ post });
+    return res.status(HTTP.OK).json({ post });
   } catch (error) {
     console.error('[Post Details API]:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
   }
 }

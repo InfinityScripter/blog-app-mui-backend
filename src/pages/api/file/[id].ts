@@ -2,11 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
 import { File } from '@/src/models/File';
-import { HTTP_METHOD } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
@@ -14,12 +15,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id } = req.query;
 
     if (!id || typeof id !== 'string') {
-      return res.status(400).json({ message: 'Invalid file id' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid file id' });
     }
 
     const file = await File.findById(id);
     if (!file) {
-      return res.status(404).json({ message: 'File not found' });
+      return res.status(HTTP.NOT_FOUND).json({ message: 'File not found' });
     }
 
     // Set appropriate headers
@@ -30,6 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.send(file.data);
   } catch (error: any) {
     console.error('[File API]:', error);
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
+    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL, error: error.message });
   }
 }

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { isAppError } from '@/src/types/api';
+import { MSG } from '@/src/constants/messages';
 import { ok, sendError } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
@@ -16,7 +17,7 @@ function hasValidSecret(req: NextApiRequest) {
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!hasValidSecret(req)) {
-    return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: 'Unauthorized' });
+    return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: MSG.UNAUTHORIZED });
   }
 
   try {

@@ -1,3 +1,11 @@
+import type {
+  DiskMetrics,
+  SwapMetrics,
+  MemoryMetrics,
+  SystemMetrics,
+  DatabaseMetrics,
+} from '@/src/types/system-metrics';
+
 import os from 'os';
 import { promises as fs } from 'fs';
 import { dbQuery } from '@/src/lib/db';
@@ -5,68 +13,8 @@ import { dbQuery } from '@/src/lib/db';
 // Live server metrics for the admin dashboard. Collection is best-effort:
 // each block degrades to null instead of failing the whole request, so the
 // endpoint stays useful when a source is unavailable (macOS dev machine
-// without /proc, pg-mem in tests without pg_database_size, …).
-
-export interface CpuMetrics {
-  cores: number;
-  loadAvg: number[];
-  usagePercent: number | null;
-}
-
-export interface SwapMetrics {
-  totalBytes: number;
-  usedBytes: number;
-  usedPercent: number;
-}
-
-export interface MemoryMetrics {
-  totalBytes: number;
-  usedBytes: number;
-  availableBytes: number;
-  usedPercent: number;
-  swap: SwapMetrics | null;
-}
-
-export interface DiskMetrics {
-  mount: string;
-  totalBytes: number;
-  usedBytes: number;
-  availableBytes: number;
-  usedPercent: number;
-  inodesUsedPercent: number | null;
-}
-
-export interface HostMetrics {
-  hostname: string;
-  platform: string;
-  kernel: string;
-  distro: string | null;
-  uptimeSeconds: number;
-  timestamp: string;
-}
-
-export interface ProcessMetrics {
-  pid: number;
-  nodeVersion: string;
-  uptimeSeconds: number;
-  rssBytes: number;
-  heapUsedBytes: number;
-  heapTotalBytes: number;
-}
-
-export interface DatabaseMetrics {
-  sizeBytes: number | null;
-  activeConnections: number | null;
-}
-
-export interface SystemMetrics {
-  host: HostMetrics;
-  cpu: CpuMetrics;
-  memory: MemoryMetrics;
-  disk: DiskMetrics | null;
-  process: ProcessMetrics;
-  database: DatabaseMetrics;
-}
+// without /proc, pg-mem in tests without pg_database_size, …). The payload
+// shape lives in src/types/system-metrics.ts.
 
 const DISK_MOUNT = '/';
 const CPU_SAMPLE_MIN_AGE_MS = 500;

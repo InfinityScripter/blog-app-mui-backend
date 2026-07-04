@@ -5,12 +5,11 @@ import User from '@/src/models/User';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
+import { SALT_ROUNDS } from '@/src/constants/auth';
 import { toPublicUser } from '@/src/utils/public-user';
 
 // Business logic for the authenticated user profile. No HTTP here — throws
-// AppError on failure; routes map it via sendError(). Matches the salt rounds
-// used by the auth flow (sign-up / reset-password).
-const SALT_ROUNDS = 10;
+// AppError on failure; routes map it via sendError().
 
 /** Updates the caller's display name. Returns the public user. */
 async function updateProfile(userId: string, { name }: UpdateProfileBody) {

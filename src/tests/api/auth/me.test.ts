@@ -5,8 +5,6 @@ import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/me';
 import { HTTP_METHOD } from '@/src/constants/http';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 const JWT_SECRET = process.env.JWT_SECRET || 'test_secret_key';
 
 describe('GET /api/auth/me', () => {

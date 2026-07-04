@@ -13,7 +13,9 @@ function resolveSecret(): string {
   if (secret) return secret;
 
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET is not set — refusing to start in production with a default secret.');
+    throw new Error(
+      'JWT_SECRET is not set — refusing to start in production with a default secret.'
+    );
   }
   // dev/test convenience only; never reached in production.
   return 'dev_only_insecure_secret';

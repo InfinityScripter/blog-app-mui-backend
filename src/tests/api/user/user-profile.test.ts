@@ -9,8 +9,6 @@ import avatarHandler from '@/src/pages/api/user/avatar';
 import profileHandler from '@/src/pages/api/user/profile';
 import changePasswordHandler from '@/src/pages/api/user/change-password';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 const JWT_SECRET = process.env.JWT_SECRET || 'test_secret_key';
 const CURRENT_PASSWORD = 'password123';
 

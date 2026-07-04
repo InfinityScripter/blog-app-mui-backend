@@ -6,8 +6,6 @@ import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import handler from '@/src/pages/api/calendar/events';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 const makeToken = (userId: string) => `Bearer ${jwt.sign({ userId, role: 'user' }, JWT_SECRET)}`;
 
 describe('Calendar events API', () => {

@@ -18,7 +18,7 @@ function isPlausibleBundle(value: unknown): value is { meta: { generatedAt: stri
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   if (!('kpis' in v) || !('meta' in v)) return false;
-  const {meta} = v;
+  const { meta } = v;
   return (
     !!meta &&
     typeof meta === 'object' &&
@@ -30,7 +30,7 @@ export async function saveSnapshot(bundle: unknown): Promise<{ pushedAt: string 
   if (!isPlausibleBundle(bundle)) {
     throw new AppError(HTTP.BAD_REQUEST, 'Invalid stats bundle');
   }
-  const {generatedAt} = bundle.meta;
+  const { generatedAt } = bundle.meta;
   const rows = await dbQuery<{ pushed_at: string }>(
     `INSERT INTO llm_stats_snapshots (id, bundle, generated_at, pushed_at)
      VALUES ($1, $2, $3, NOW())

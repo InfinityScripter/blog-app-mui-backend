@@ -6,8 +6,6 @@ import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-in';
 import { HTTP_METHOD } from '@/src/constants/http';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 describe('POST /api/auth/sign-in', () => {
   beforeEach(async () => {
     await User.deleteMany({});

@@ -1,22 +1,14 @@
+import type { Subscriber, SubscriberStatus } from '@/src/types/subscriber';
+
 import { dbQuery } from '@/src/lib/db';
 import uuidv4 from '@/src/utils/uuidv4';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 
 // Newsletter subscribers (double-opt-in). Raw dbQuery service mapping snake_case
-// rows to the frozen Subscriber contract (camelCase, ISO timestamps). Tokens
-// (confirm_token / unsubscribe_token / confirm_expires_at) are secret and are
-// NEVER mapped into the returned DTO.
-
-export type SubscriberStatus = 'pending' | 'confirmed' | 'unsubscribed';
-
-export interface Subscriber {
-  id: string;
-  email: string;
-  status: SubscriberStatus;
-  createdAt: string;
-  confirmedAt: string | null;
-}
+// rows to the frozen Subscriber contract (camelCase, ISO timestamps — see
+// src/types/subscriber.ts). Tokens (confirm_token / unsubscribe_token /
+// confirm_expires_at) are secret and are NEVER mapped into the returned DTO.
 
 interface SubscriberRow {
   id: string;

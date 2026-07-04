@@ -4,7 +4,6 @@ import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-up';
 import { HTTP_METHOD } from '@/src/constants/http';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
 jest.mock('@/src/utils/email', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue(true),
 }));

@@ -1,13 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
-import { validateQuery } from '@/src/utils/validate';
 import { emitAudit } from '@/src/utils/audit-context';
-import { withRateLimit } from '@/src/utils/rate-limit';
+import { validateQuery } from '@/src/middlewares/validate';
 import { tokenQuerySchema } from '@/src/schemas/newsletter';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { subscriberService } from '@/src/services/subscriber';
 
@@ -15,7 +14,6 @@ import { subscriberService } from '@/src/services/subscriber';
 // cors() first. 404 unknown token / 410 expired (mapped from AppError). Success
 // returns ok() envelope: { success, data: { subscriber } } with status confirmed.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   try {
     await dbConnect();
     const { token } = tokenQuerySchema.parse(req.query);

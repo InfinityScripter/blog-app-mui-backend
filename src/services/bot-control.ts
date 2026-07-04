@@ -1,39 +1,17 @@
+import type {
+  BotModel,
+  BotStatus,
+  BotProvider,
+  BotModelsHealth,
+  BotModelHealthCheck,
+} from '@/src/types/bot-control';
+
 import { AppError } from '@/src/types/api';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 // Business logic for proxying the admin panel to the bot's localhost control
-// server. No HTTP-framework types here — routes adapt the result.
-
-export type ControlProviderName = 'glm' | 'deepseek' | 'mock';
-
-export interface BotModel {
-  id: string;
-  tier: 'free' | 'paid';
-  note?: string;
-}
-export interface BotProvider {
-  name: ControlProviderName;
-  label: string;
-  hasKey: boolean;
-}
-export interface BotStatus {
-  isAlive: boolean;
-  provider?: string;
-  model?: string;
-  isMockEnabled?: boolean;
-}
-export interface BotModelHealthCheck {
-  provider: string;
-  label: string;
-  model: string;
-  ok: boolean;
-  ms: number;
-  error?: string;
-}
-export interface BotModelsHealth {
-  healthy: boolean;
-  checks: BotModelHealthCheck[];
-}
+// server. No HTTP-framework types here — routes adapt the result. Contracts
+// live in src/types/bot-control.ts.
 
 const TIMEOUT_MS = 8_000;
 

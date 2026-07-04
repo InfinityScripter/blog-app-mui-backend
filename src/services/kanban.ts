@@ -1,9 +1,12 @@
+import type { Board } from '@/src/types/kanban';
+
 import { dbQuery } from '@/src/lib/db';
 import uuidv4 from '@/src/utils/uuidv4';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 
 // Business logic for the kanban board domain. No HTTP — throws AppError.
+// Public DTOs live in src/types/kanban.ts.
 
 interface BoardRow {
   id: string;
@@ -11,14 +14,6 @@ interface BoardRow {
   description: string | null;
   created_by: string;
   created_at: Date;
-}
-
-export interface Board {
-  id: string;
-  name: string;
-  description: string | null;
-  createdBy: string;
-  createdAt: Date;
 }
 
 function mapBoard(r: BoardRow): Board {

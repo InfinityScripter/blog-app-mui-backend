@@ -1,20 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
-import { requireAuth } from '@/src/utils/auth';
+import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 // Thin route: requireAuth → kanbanService.addColumn → respond. Keeps { column }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   const { boardId } = req.query as { boardId: string };
 
   try {
     if (req.method !== HTTP_METHOD.POST) {
-      return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+      return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
     }
     const column = await kanbanService.addColumn(boardId, req.body?.name);
     emitAudit(req, {

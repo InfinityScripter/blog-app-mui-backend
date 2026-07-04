@@ -19,8 +19,6 @@ import { apiResolver } from 'next/dist/server/api-utils/node/api-resolver';
 // handler. The bot's own publisher is covered separately by its unit test that
 // asserts the exact request shape this server validates.
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 const BOT_TOKEN = 'e2e_bot_service_token_value';
 const OWNER_EMAIL = 'e2e-owner@example.com';
 

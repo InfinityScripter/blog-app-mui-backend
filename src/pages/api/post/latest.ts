@@ -1,27 +1,27 @@
 // src/pages/api/post/latest.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
+import { HTTP } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
 import { paramCase } from '@/src/utils/change-case';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
-    await cors(req, res);
     const { title } = req.query;
     if (!title || typeof title !== 'string') {
-      return res.status(400).json({ message: 'Query parameter "title" is required.' });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Query parameter "title" is required.' });
     }
     const posts = await Post.find({}).sort({ createdAt: -1 }).lean();
     const latestPosts = posts.filter((p) => paramCase(p.title) !== title);
     if (latestPosts.length === 0) {
-      return res.status(404).json({ message: 'Posts not found!' });
+      return res.status(HTTP.NOT_FOUND).json({ message: 'Posts not found!' });
     }
-    res.status(200).json({ latestPosts });
+    res.status(HTTP.OK).json({ latestPosts });
   } catch (error: any) {
     console.error('[Post Latest API]: ', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
   }
 }

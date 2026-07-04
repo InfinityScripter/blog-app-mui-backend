@@ -1,15 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
-import { requireAuth } from '@/src/utils/auth';
+import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { kanbanService } from '@/src/services/kanban';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 // Thin route: requireAuth → kanbanService → respond. Keeps { success }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   const { taskId } = req.query as { taskId: string };
 
   try {
@@ -39,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ success: true });
     }
 
-    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   } catch (error) {
     return sendError(res, error);
   }

@@ -1,23 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { randomBytes } from 'crypto';
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import cors from '../../../utils/cors';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
 const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
 const backendURL = process.env.BACKEND_URL || 'http://localhost:7272';
 const redirectURI = process.env.YANDEX_REDIRECT_URI || `${backendURL}/api/auth/yandex/callback`;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.GET) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   if (!yandexClientId) {
-    return res.status(500).json({ message: 'Yandex OAuth is not configured' });
+    return res.status(HTTP.INTERNAL).json({ message: 'Yandex OAuth is not configured' });
   }
 
   const authorizeUrl = new URL('https://oauth.yandex.com/authorize');

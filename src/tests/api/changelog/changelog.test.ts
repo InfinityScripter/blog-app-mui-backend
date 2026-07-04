@@ -8,8 +8,6 @@ import listHandler from '@/src/pages/api/changelog/list';
 import slugHandler from '@/src/pages/api/changelog/[slug]';
 import { modelReleaseService } from '@/src/services/model-release';
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
-
 const BOT_TOKEN = 'test_changelog_bot_token_value';
 const OWNER_EMAIL = 'owner@example.com';
 

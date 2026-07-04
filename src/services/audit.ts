@@ -1,25 +1,13 @@
+import type { AuditRecord, AuditLogRow, ListAuditParams } from '@/src/types/audit';
+
 import { dbQuery } from '@/src/lib/db';
 import uuidv4 from '@/src/utils/uuidv4';
+import { MAX_LIMIT } from '@/src/constants/pagination';
 
 // Audit trail of business actions. No HTTP. Fire-and-forget: record() NEVER
 // throws and is NEVER awaited in the business path — an audit failure must not
 // break or roll back the action it describes (best-effort, like applySafeMigrations).
-
-export interface AuditContext {
-  actorId?: string | null;
-  actorRole?: string | null;
-  ip?: string | null;
-  requestId?: string | null;
-}
-
-export interface AuditRecord extends AuditContext {
-  /** dot.case event name, e.g. 'post.created'. */
-  action: string;
-  targetType?: string | null;
-  targetId?: string | null;
-  /** Non-PII context only (ids, enums, field names, counts). */
-  metadata?: Record<string, unknown>;
-}
+// Contracts live in src/types/audit.ts.
 
 const INSERT_SQL = `
   INSERT INTO audit_logs
@@ -69,29 +57,6 @@ async function recordAndWait(rec: AuditRecord): Promise<void> {
   ];
   await dbQuery(INSERT_SQL, params);
 }
-
-export interface ListAuditParams {
-  action?: string;
-  actorId?: string;
-  targetType?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export interface AuditLogRow {
-  id: string;
-  action: string;
-  actorId: string | null;
-  actorRole: string | null;
-  targetType: string | null;
-  targetId: string | null;
-  metadata: Record<string, unknown>;
-  ip: string | null;
-  requestId: string | null;
-  createdAt: Date;
-}
-
-const MAX_LIMIT = 100;
 
 /**
  * Lists audit logs newest-first with optional filters and pagination.

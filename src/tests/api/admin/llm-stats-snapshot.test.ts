@@ -6,8 +6,6 @@ import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import snapshotHandler from '@/src/pages/api/admin/llm-stats/snapshot';
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
-
 function makeToken(userId: string, role: string) {
   return `Bearer ${jwt.sign({ userId, role }, JWT_SECRET)}`;
 }

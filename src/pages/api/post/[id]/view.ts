@@ -1,20 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
+import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
-import { withRateLimit } from '@/src/utils/rate-limit';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 
 // Public POST endpoint: bumps a post's view counter atomically. Called once
 // per reader from the client (deduped via localStorage there). Kept out of the
 // details GET so SSR/ISR prerenders and SWR revalidations don't inflate views.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {

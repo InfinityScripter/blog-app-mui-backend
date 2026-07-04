@@ -8,8 +8,6 @@ import { HTTP_METHOD } from '@/src/constants/http';
 import newPostHandler from '@/src/pages/api/post/new';
 import signInHandler from '@/src/pages/api/auth/sign-in';
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
-
 interface AuditRow {
   action: string;
   actor_id: string | null;

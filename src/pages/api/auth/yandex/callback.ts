@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
 import { signToken } from '@/src/lib/jwt';
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import dbConnect from '../../../../lib/db';
-import User from '../../../../models/User';
-import { normalizeEmail } from '../../../../utils/normalize-email';
+import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { normalizeEmail } from '@/src/utils/normalize-email';
 
 const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
 const yandexClientSecret = process.env.YANDEX_CLIENT_SECRET || '';
@@ -43,11 +43,11 @@ const getCookieValue = (cookieHeader: string | undefined, key: string) => {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   if (!yandexClientId || !yandexClientSecret) {
-    return res.status(500).json({ message: 'Yandex OAuth is not configured' });
+    return res.status(HTTP.INTERNAL).json({ message: 'Yandex OAuth is not configured' });
   }
 
   const { code, error, state } = req.query;

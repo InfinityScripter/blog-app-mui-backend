@@ -6,8 +6,6 @@ import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import handler from '@/src/pages/api/chat/channels';
 
-jest.mock('@/src/utils/cors', () => jest.fn((req, res) => Promise.resolve()));
-
 function makeToken(userId: string) {
   return `Bearer ${jwt.sign({ userId, role: 'user' }, JWT_SECRET)}`;
 }

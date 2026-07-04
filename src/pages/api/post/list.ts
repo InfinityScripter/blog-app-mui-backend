@@ -1,13 +1,13 @@
 // src/pages/api/post/list.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
 import dbConnect from '@/src/lib/db';
 import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
-import { withRateLimit } from '@/src/utils/rate-limit';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { MAX_LIMIT, DEFAULT_LIMIT } from '@/src/constants/pagination';
 
 // Optional auth: a valid token scopes the list (admin → all, user → own);
 // no/invalid token → published only. Logic lives in postService.listPosts.
@@ -23,9 +23,6 @@ function readAuth(req: NextApiRequest): { role?: string; userId?: string } {
   }
 }
 
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
-
 /** Parses a positive-integer query param, clamped to [min, max]; undefined if absent/invalid. */
 function parsePositiveInt(raw: string | string[] | undefined, min: number, max: number) {
   if (typeof raw !== 'string') return undefined;
@@ -35,7 +32,6 @@ function parsePositiveInt(raw: string | string[] | undefined, min: number, max: 
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   try {
     await dbConnect();
     const tag = typeof req.query.tag === 'string' ? req.query.tag : undefined;

@@ -6,7 +6,7 @@ import {
   SWEEP_INTERVAL,
   __rateLimitStoreSize,
   __resetRateLimitStore,
-} from '@/src/utils/rate-limit';
+} from '@/src/middlewares/rate-limit';
 
 // The limiter is gated OFF under NODE_ENV==='test' so route e2e never trips.
 // These unit tests force it on via enabledInTest to exercise the real path.

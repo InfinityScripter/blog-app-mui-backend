@@ -8,8 +8,6 @@ import requestsHandler from '@/src/pages/api/dogs/booking/requests';
 import slotsBatchHandler from '@/src/pages/api/dogs/admin/slots/batch';
 import bookingIdHandler from '@/src/pages/api/dogs/admin/bookings/[id]';
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
-
 jest.mock('@/src/utils/dogs-email', () => ({
   sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
   sendDogsStatusChanged: jest.fn().mockResolvedValue(undefined),

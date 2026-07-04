@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import User from '@/src/models/User';
 import uuidv4 from '@/src/utils/uuidv4';
 import { verifyToken } from '@/src/lib/jwt';
+import { HTTP } from '@/src/constants/http';
+import { MSG } from '@/src/constants/messages';
 
 /**
  * Constant-time equality for the bot service token. Length is compared first so
@@ -40,14 +42,16 @@ async function resolveBotUser(
 
   const ownerEmail = process.env.OWNER_EMAIL;
   if (!ownerEmail) {
-    res.status(500).json({ success: false, message: 'OWNER_EMAIL is not configured' });
+    res.status(HTTP.INTERNAL).json({ success: false, message: 'OWNER_EMAIL is not configured' });
     return 'handled';
   }
 
   // Case-insensitive lookup — User.findOne matches on LOWER(email).
   const owner = await User.findOne({ email: ownerEmail });
   if (!owner || owner.role !== 'admin') {
-    res.status(401).json({ success: false, message: 'Bot owner not found or not an admin' });
+    res
+      .status(HTTP.UNAUTHORIZED)
+      .json({ success: false, message: 'Bot owner not found or not an admin' });
     return 'handled';
   }
 
@@ -85,7 +89,7 @@ export const requireAuth =
       // Получаем токен из заголовка Authorization
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
+        return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: MSG.UNAUTHORIZED });
       }
 
       const token = authHeader.split(' ')[1];
@@ -117,6 +121,8 @@ export const requireAuth =
       // Передаем управление следующему обработчику
       return handler(req, res);
     } catch (error) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+      return res
+        .status(HTTP.UNAUTHORIZED)
+        .json({ success: false, message: 'Invalid or expired token' });
     }
   };

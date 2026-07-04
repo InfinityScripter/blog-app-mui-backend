@@ -1,33 +1,27 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// @ts-ignore
 import bcrypt from 'bcrypt';
-import { HTTP_METHOD } from '@/src/constants/http';
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
+import { MSG } from '@/src/constants/messages';
+import { SALT_ROUNDS } from '@/src/constants/auth';
+import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
-import { emitAudit } from '../../../utils/audit-context';
-
+// Completes the reset-by-code flow: reset-password.ts emails the code, this
+// route exchanges a valid code for a new password. Codes/emails are never
+// logged — a reset code in the logs is a account-takeover primitive.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
-
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
 
   try {
     await dbConnect();
     const { email, code, password } = req.body;
 
-    console.log('Update password request:', {
-      email,
-      code,
-      hasPassword: !!password,
-    });
-
     if (!email || !code || !password) {
-      return res.status(400).json({
+      return res.status(HTTP.BAD_REQUEST).json({
         message: 'Email, verification code, and new password are required',
       });
     }
@@ -39,25 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (!user) {
-      console.log('Invalid reset attempt:', {
-        email,
-        code,
-        found: !!user,
-      });
-      return res.status(400).json({
-        message: 'Invalid or expired reset code',
-      });
+      return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid or expired reset code' });
     }
 
-    console.log('Valid reset code for user:', {
-      email: user.email,
-      resetCode: user.passwordResetCode,
-      expiresAt: user.passwordResetExpires,
-    });
-
-    // Хэшируем новый пароль
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     // Обновляем пароль и очищаем код сброса
     user.passwordHash = passwordHash;
@@ -66,8 +45,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // @ts-ignore
     user.passwordResetExpires = null;
     await user.save();
-
-    console.log('Password updated successfully for user:', user.email);
 
     // Emitted here (not in reset-password.ts, which only sends the code) because
     // this is where the password is actually changed. Actor is the user.
@@ -79,12 +56,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       targetId: user._id,
     });
 
-    res.status(200).json({
-      message: 'Password has been updated successfully',
-    });
+    return res.status(HTTP.OK).json({ message: 'Password has been updated successfully' });
   } catch (error) {
     console.error('[Update Password API Error]:', error);
-    res.status(500).json({
+    return res.status(HTTP.INTERNAL).json({
       message: 'Failed to update password. Please try again later.',
     });
   }

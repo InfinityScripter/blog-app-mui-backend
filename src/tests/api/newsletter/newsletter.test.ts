@@ -5,13 +5,12 @@ import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import sendHandler from '@/src/pages/api/newsletter/send';
 import { subscriberService } from '@/src/services/subscriber';
-import { __resetRateLimitStore } from '@/src/utils/rate-limit';
 import confirmHandler from '@/src/pages/api/newsletter/confirm';
 import subscribeHandler from '@/src/pages/api/newsletter/subscribe';
+import { __resetRateLimitStore } from '@/src/middlewares/rate-limit';
 import { sendDigestEmail, sendConfirmEmail } from '@/src/utils/email';
 import unsubscribeHandler from '@/src/pages/api/newsletter/unsubscribe';
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/utils/email', () => ({
   sendConfirmEmail: jest.fn(() => Promise.resolve()),
   sendDigestEmail: jest.fn(() => Promise.resolve()),

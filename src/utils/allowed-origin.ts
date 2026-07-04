@@ -1,6 +1,5 @@
 // Single source of truth for CORS origin allow-listing.
-// Used by both the edge middleware (src/middleware.ts) and the per-route
-// CORS helper (src/utils/cors.ts) so the policy can't diverge.
+// Used by the edge CORS middleware (src/middleware.ts).
 
 export const allowedOrigins = [
   'http://localhost:3033',

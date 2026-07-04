@@ -22,8 +22,6 @@ jest.mock('web-push', () => ({
   },
 }));
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
-
 jest.mock('@/src/utils/dogs-email', () => ({
   sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
   sendDogsStatusChanged: jest.fn().mockResolvedValue(undefined),

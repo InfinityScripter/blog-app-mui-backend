@@ -5,7 +5,6 @@ import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 
-jest.mock('@/src/utils/cors', () => jest.fn(() => Promise.resolve()));
 jest.mock('@/src/services/bot-control', () => ({
   botControlService: { getModelsHealth: jest.fn() },
 }));

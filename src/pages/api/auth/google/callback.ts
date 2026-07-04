@@ -2,11 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dotenv from 'dotenv';
+import dbConnect from '@/src/lib/db';
 import nextConnect from 'next-connect';
 import { signToken } from '@/src/lib/jwt';
-
-import dbConnect from '../../../../lib/db';
-import passport from '../../../../lib/passport';
+import passport from '@/src/lib/passport';
 
 dotenv.config();
 

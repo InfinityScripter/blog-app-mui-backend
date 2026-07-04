@@ -1,13 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { requireAuth } from '@/src/utils/auth';
-import { requireAdmin } from '@/src/utils/admin';
-import { validateBody } from '@/src/utils/validate';
 import { ok, sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { validateBody } from '@/src/middlewares/validate';
+import { requireAuth } from '@/src/middlewares/require-auth';
 import { withMethods } from '@/src/middlewares/with-methods';
+import { requireAdmin } from '@/src/middlewares/require-admin';
 import { modelReleaseService } from '@/src/services/model-release';
 import { createModelReleaseSchema } from '@/src/schemas/model-release';
 

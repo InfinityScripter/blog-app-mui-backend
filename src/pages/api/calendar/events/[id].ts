@@ -1,15 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import cors from '@/src/utils/cors';
-import { requireAuth } from '@/src/utils/auth';
+import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { calendarService } from '@/src/services/calendar';
+import { requireAuth } from '@/src/middlewares/require-auth';
 
 // Thin route: requireAuth → calendarService → respond. Keeps { success }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   const userId = req.user!._id;
   const isAdmin = req.user!.role === 'admin';
   const { id } = req.query as { id: string };
@@ -37,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.OK).json({ success: true });
     }
 
-    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   } catch (error) {
     return sendError(res, error);
   }

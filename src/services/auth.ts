@@ -8,13 +8,10 @@ import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
 import { toPublicUser } from '@/src/utils/public-user';
+import { MAX_FAILED_ATTEMPTS } from '@/src/constants/auth';
 
 // Business logic for authentication. No HTTP here — throws AppError on
 // failure; the route maps it via sendError().
-
-// Lock an account after this many consecutive failed sign-ins (brute-force
-// guard). The counter resets on any successful sign-in.
-const MAX_FAILED_ATTEMPTS = 5;
 
 async function signIn({ email, password }: SignInBody) {
   // email is already trimmed + lowercased by signInSchema; findOne also

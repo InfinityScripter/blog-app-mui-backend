@@ -1,19 +1,16 @@
-// src/pages/api/auth/sign-up.ts
+import type { IUser } from '@/src/models/User';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// @ts-ignore
 import bcrypt from 'bcrypt';
-import { HTTP_METHOD } from '@/src/constants/http';
-
-import cors from '../../../utils/cors';
-import dbConnect from '../../../lib/db';
-import User from '../../../models/User';
-import { signUpSchema } from '../../../schemas/auth';
-import { emitAudit } from '../../../utils/audit-context';
-import { withRateLimit } from '../../../utils/rate-limit';
-import { sendVerificationEmail } from '../../../utils/email';
-
-import type { IUser } from '../../../models/User';
+import dbConnect from '@/src/lib/db';
+import User from '@/src/models/User';
+import { MSG } from '@/src/constants/messages';
+import { signUpSchema } from '@/src/schemas/auth';
+import { SALT_ROUNDS } from '@/src/constants/auth';
+import { emitAudit } from '@/src/utils/audit-context';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { sendVerificationEmail } from '@/src/utils/email';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 
 const hasEmailCredentials = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
 
@@ -21,23 +18,20 @@ const hasEmailCredentials = Boolean(process.env.EMAIL_USER && process.env.EMAIL_
 const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await cors(req, res);
   if (req.method !== HTTP_METHOD.POST) {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
   try {
     await dbConnect();
     if (!hasEmailCredentials) {
-      return res.status(503).json({
-        message: 'Email service is not configured. Registration is temporarily unavailable.',
-      });
+      return res.status(HTTP.SERVICE_UNAVAILABLE).json({ message: MSG.EMAIL_SERVICE_UNAVAILABLE });
     }
 
     const parsed = signUpSchema.safeParse(req.body);
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       const path = first?.path.join('.');
-      return res.status(400).json({
+      return res.status(HTTP.BAD_REQUEST).json({
         success: false,
         message: first ? `${path ? `${path}: ` : ''}${first.message}` : 'Missing required fields',
       });
@@ -47,13 +41,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       // Neutral message — do not confirm whether an account exists (anti-enumeration).
-      return res.status(201).json({
-        message: 'User created successfully. Please check your email for verification code.',
-      });
+      return res.status(HTTP.CREATED).json({ message: MSG.SIGN_UP_SUCCESS });
     }
 
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     const verificationCode = generateVerificationCode();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -80,8 +71,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       metadata: { method: 'password' },
     });
 
-    return res.status(201).json({
-      message: 'User created successfully. Please check your email for verification code.',
+    return res.status(HTTP.CREATED).json({
+      message: MSG.SIGN_UP_SUCCESS,
       user: {
         id: createdUser._id,
         email: createdUser.email,
@@ -91,10 +82,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   } catch (error: any) {
     console.error('[Sign Up API]', error);
-    return res.status(500).json({
-      message: 'Internal server error',
-      error: error.message,
-    });
+    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
   }
 }
 
