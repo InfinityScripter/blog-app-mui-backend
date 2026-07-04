@@ -1,4 +1,4 @@
-import type { QueryResultRow, Pool as NodePool } from 'pg';
+import type { QueryResult, QueryResultRow, Pool as NodePool } from 'pg';
 
 import { newDb } from 'pg-mem';
 import uuidv4 from '@/src/utils/uuidv4';
@@ -179,6 +179,45 @@ export async function dogsDbQuery<T extends QueryResultRow = QueryResultRow>(
 ) {
   const pool = await dogsDbConnect();
   return pool.query<T>(text, params);
+}
+
+export type DogsDbTransactionQuery = <T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params?: unknown[]
+) => Promise<QueryResult<T>>;
+
+// Runs `fn` on one dedicated connection inside BEGIN/COMMIT, issuing ROLLBACK
+// on any error before rethrowing it. NOTE: pg-mem (NODE_ENV=test) parses
+// transaction statements but executes them as no-ops, so atomicity is only
+// enforced on real Postgres — tests can pin the command protocol, not the
+// rollback effect.
+export async function dogsDbTransaction<T>(
+  fn: (query: DogsDbTransactionQuery) => Promise<T>
+): Promise<T> {
+  const pool = await dogsDbConnect();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn((text, params = []) => client.query(text, params));
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      // Rollback fails only on an already-broken connection; the original
+      // error rethrown below is the meaningful one. Log so telemetry can
+      // distinguish "clean rollback" from "cleanup also failed".
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[dogs-db] ROLLBACK after a failed transaction also failed.',
+        rollbackError instanceof Error ? rollbackError.message : rollbackError
+      );
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function resetDogsDatabase() {

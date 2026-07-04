@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import uuidv4 from '@/src/utils/uuidv4';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
-import { dogsDbQuery } from '@/src/lib/dogs-db';
+import { dogsDbQuery, dogsDbTransaction } from '@/src/lib/dogs-db';
 
 type DogsBookingSource = CreateDogsBookingRequestInput['source'];
 
@@ -487,25 +487,32 @@ async function linkTelegramClient(accessToken: string, telegramUserId: string) {
     return mapClient(target.rows[0]);
   }
 
-  // Release the telegram id from any other client row first (latest link
-  // wins). Runs only after the token is validated, so a stale link can never
-  // unlink the current holder as a side effect.
-  await dogsDbQuery(
-    `UPDATE dogs_clients
-     SET telegram_user_id = NULL, updated_at = NOW()
-     WHERE telegram_user_id = $1 AND id <> $2`,
-    [telegramUserId, target.rows[0].id]
-  );
-
   try {
-    const result = await dogsDbQuery<DogsClientRow>(
-      `UPDATE dogs_clients
-       SET telegram_user_id = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [telegramUserId, target.rows[0].id]
-    );
-    return mapClient(result.rows[0]);
+    // Release the telegram id from any other client row, then claim it for
+    // the target (latest link wins) — in ONE transaction. The release runs
+    // only after the token is validated, so a stale link can never unlink the
+    // current holder as a side effect. Atomicity closes the 3-way race: with
+    // two separate auto-committed UPDATEs, two concurrent claims could both
+    // release the previous holder while only one claim won — the loser's
+    // release stayed committed and stranded the holder unlinked. Now the
+    // losing claim rolls back its release together with it.
+    const linked = await dogsDbTransaction(async (query) => {
+      await query(
+        `UPDATE dogs_clients
+         SET telegram_user_id = NULL, updated_at = NOW()
+         WHERE telegram_user_id = $1 AND id <> $2`,
+        [telegramUserId, target.rows[0].id]
+      );
+      const result = await query<DogsClientRow>(
+        `UPDATE dogs_clients
+         SET telegram_user_id = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [telegramUserId, target.rows[0].id]
+      );
+      return result.rows[0];
+    });
+    return mapClient(linked);
   } catch (error) {
     if (isUniqueViolation(error)) {
       // Concurrent claim between the release and this write — a business
