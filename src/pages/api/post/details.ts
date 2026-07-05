@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import User from '@/src/models/User';
+import dbConnect from '@/src/lib/db';
+import { Post } from '@/src/models/Post';
 import { MSG } from '@/src/constants/messages';
+import { parseLang } from '@/src/constants/i18n';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
-
-import dbConnect from 'src/lib/db';
-import { Post } from 'src/models/Post';
+import { getTranslatedPostFields } from '@/src/services/post-translation';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
@@ -49,6 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     await populateUserData();
+
+    // i18n: for a non-original locale, replace only the translatable fields
+    // (title/description/content). Everything else — id, comments, author,
+    // counts, meta_* — stays exactly as-is. `ru`/absent is a no-op (original).
+    const lang = parseLang(req.query.lang);
+    const translated = await getTranslatedPostFields(post, lang);
+    post.title = translated.title;
+    post.description = translated.description;
+    post.content = translated.content;
 
     return res.status(HTTP.OK).json({ post });
   } catch (error) {

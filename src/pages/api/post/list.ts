@@ -4,9 +4,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
+import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { translatePosts } from '@/src/services/post-translation';
 import { MAX_LIMIT, DEFAULT_LIMIT } from '@/src/constants/pagination';
 
 // Optional auth: a valid token scopes the list (admin → all, user → own);
@@ -57,10 +59,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       limit,
     });
 
+    // i18n: translate the translatable fields of each post for a non-original
+    // locale. `ru`/absent returns the posts untouched (byte-identical).
+    const localized = await translatePosts(posts, parseLang(req.query.lang));
+
     if (wantsPagination) {
-      return res.status(HTTP.OK).json({ posts, total, hasMore });
+      return res.status(HTTP.OK).json({ posts: localized, total, hasMore });
     }
-    return res.status(HTTP.OK).json({ posts });
+    return res.status(HTTP.OK).json({ posts: localized });
   } catch (error) {
     return sendError(res, error);
   }

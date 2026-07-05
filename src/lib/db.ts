@@ -245,6 +245,28 @@ const schemaSql = `
   CREATE UNIQUE INDEX IF NOT EXISTS refresh_tokens_token_hash_unique ON refresh_tokens (token_hash);
   CREATE INDEX IF NOT EXISTS refresh_tokens_user_id_idx ON refresh_tokens (user_id);
   CREATE INDEX IF NOT EXISTS refresh_tokens_family_id_idx ON refresh_tokens (family_id);
+
+  -- Machine-translated post fields (DeepL), cached per (post, language). The
+  -- original 'ru' content is never stored here — only translated locales.
+  -- post_id has NO FK: translations are a best-effort cache, kept even if the
+  -- source post is later deleted (a stale row is harmless and re-derived).
+  -- source_hash = sha256 of the original title+description+content; a mismatch
+  -- means the source changed, so the cached translation is stale and re-fetched.
+  -- status is 'ok' for a real translation, or 'error' when the provider failed
+  -- and the read degraded to the original fields. All indexes are plain btree
+  -- (pg-mem + boot safe).
+  CREATE TABLE IF NOT EXISTS post_translations (
+    post_id TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    source_hash TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'ok',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (post_id, lang)
+  );
 `;
 
 type PoolLike = NodePool;
@@ -357,6 +379,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM model_releases');
   await pool.query('DELETE FROM subscribers');
   await pool.query('DELETE FROM refresh_tokens');
+  await pool.query('DELETE FROM post_translations');
   await pool.query('DELETE FROM users');
 }
 
