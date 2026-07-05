@@ -50,7 +50,14 @@ function buildCookie(
   secure: boolean,
   { maxAgeMs, path = '/', httpOnly = true }: CookieAttrs
 ): string {
-  const parts = [`${name}=${value}`, `Path=${path}`, `SameSite=${  secure ? 'None' : 'Lax'}`];
+  const sameSite = secure ? 'None' : 'Lax';
+  const parts = [`${name}=${value}`, `Path=${path}`, `SameSite=${sameSite}`];
+  // When FE and API are on sibling subdomains (e.g. aifirst.us.com and
+  // api.aifirst.us.com), COOKIE_DOMAIN='.aifirst.us.com' shares the auth cookies
+  // across both so same-origin FE routes (e.g. /api/revalidate) can forward them
+  // to the backend. Unset in dev → host-only cookie on localhost.
+  const domain = process.env.COOKIE_DOMAIN;
+  if (domain) parts.push(`Domain=${domain}`);
   if (httpOnly) parts.push('HttpOnly');
   if (secure) parts.push('Secure');
   if (typeof maxAgeMs === 'number') parts.push(`Max-Age=${Math.floor(maxAgeMs / 1000)}`);
