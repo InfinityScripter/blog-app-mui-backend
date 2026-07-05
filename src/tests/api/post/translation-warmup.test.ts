@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '@/src/models/User';
 import { dbQuery } from '@/src/lib/db';
+import { createHash } from 'node:crypto';
 import { Post } from '@/src/models/Post';
 import { JWT_SECRET } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
@@ -239,6 +240,72 @@ describe('warmFeedTranslations service', () => {
     expect(rows[0].content).toBe('[EN] <p>Содержимое тела</p>');
     // Re-translated the 3 fields to fill the body (summary row was stale for full).
     expect(mockedTranslateHtml).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('error rows are retried, never served as a cache hit', () => {
+  // A row written with status='error' holds the ORIGINAL (untranslated) fields
+  // after a provider outage. Its source_hash is fresh, so a naive
+  // "fresh + scope" check would serve it forever. Every read/warm path must
+  // instead re-translate it (status must be 'ok' to be a hit).
+
+  async function seedErrorRow(postId: string, scope: 'summary' | 'full') {
+    // Simulate a prior failed translation: original fields, fresh hash, error.
+    // The hash is computed in JS (pg-mem has no pgcrypto digest()) exactly as the
+    // service does: sha256 of `title + ' ' + description + ' ' + content`.
+    const hash = createHash('sha256')
+      .update([ORIGINAL.title, ORIGINAL.description, ORIGINAL.content].join(' '))
+      .digest('hex');
+    await dbQuery(
+      `INSERT INTO post_translations (post_id, lang, title, description, content, source_hash, status, scope, updated_at)
+       VALUES ($1, 'en', $2, $3, $4, $5, 'error', $6, NOW())`,
+      [postId, ORIGINAL.title, ORIGINAL.description, ORIGINAL.content, hash, scope]
+    );
+  }
+
+  it('details re-translates a full ERROR row (does not serve the original)', async () => {
+    const postId = await seedPost();
+    await seedErrorRow(postId, 'full');
+    expect((await readRows(postId))[0].status).toBe('error');
+    mockedTranslateHtml.mockClear();
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.GET,
+      query: { id: postId, lang: 'en' },
+    });
+    await detailsHandler(req, res);
+
+    const { post } = JSON.parse(res._getData());
+    // Translated now, not the original error-row fallback.
+    expect(post.title).toBe('[EN] Заголовок');
+    expect(mockedTranslateHtml).toHaveBeenCalledTimes(3);
+    const rows = await readRows(postId);
+    expect(rows[0].status).toBe('ok');
+  });
+
+  it('a full warm re-translates an ERROR row (counts it translated, not cached)', async () => {
+    const postId = await seedPost();
+    await seedErrorRow(postId, 'summary');
+    mockedTranslateHtml.mockClear();
+
+    const result = await warmFeedTranslations(undefined, 'full');
+    expect(result.translated).toBe(1);
+    expect(result.cached).toBe(0);
+    expect((await readRows(postId))[0].status).toBe('ok');
+  });
+
+  it('the list re-translates an ERROR row (serves the translation, not original)', async () => {
+    const postId = await seedPost();
+    await seedErrorRow(postId, 'summary');
+    mockedTranslateHtml.mockClear();
+
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET, query: { lang: 'en' } });
+    await listHandler(req, res);
+
+    const { posts } = JSON.parse(res._getData());
+    expect(posts.find((p: { id: string }) => p.id === postId).title).toBe('[EN] Заголовок');
+    const rows = await readRows(postId);
+    expect(rows[0].status).toBe('ok');
   });
 });
 
