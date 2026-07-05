@@ -23,7 +23,19 @@ function resolveSecret(): string {
 
 export const JWT_SECRET: string = resolveSecret();
 
-export const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '30d') as SignOptions['expiresIn'];
+// Access token is now SHORT-LIVED (default 15m) and rides in an httpOnly cookie;
+// the axios refresh interceptor renews it transparently. A dedicated env var is
+// used on purpose so the legacy `JWT_EXPIRES_IN=30d` in prod .env does NOT keep
+// access tokens alive for 30 days — the short-access guarantee holds without a
+// prod env edit. Long-lived sessions are carried by the rotating refresh token.
+export const JWT_ACCESS_EXPIRES_IN = (process.env.JWT_ACCESS_EXPIRES_IN ||
+  '15m') as SignOptions['expiresIn'];
+
+// Refresh token lifetime (the DB row's expiry is derived from this). Falls back
+// to the legacy JWT_EXPIRES_IN if set, else 30d.
+export const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN ||
+  process.env.JWT_EXPIRES_IN ||
+  '30d') as SignOptions['expiresIn'];
 
 export interface JwtPayload {
   userId: string;
@@ -31,10 +43,35 @@ export interface JwtPayload {
   [key: string]: unknown;
 }
 
+/** Sign a short-lived ACCESS token. */
 export function signToken(payload: JwtPayload, options?: SignOptions): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN, ...options });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_ACCESS_EXPIRES_IN, ...options });
 }
 
 export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, JWT_SECRET) as JwtPayload;
+}
+
+/**
+ * Refresh lifetime as milliseconds, for computing a cookie Max-Age and the DB
+ * `expires_at`. Supports the `'30d' | '12h' | '900s' | number(seconds)` forms
+ * we actually use; falls back to 30 days on anything unrecognised.
+ */
+export function refreshExpiresInMs(): number {
+  const raw = JWT_REFRESH_EXPIRES_IN;
+  const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+  if (typeof raw === 'number') return raw * 1000;
+  if (typeof raw !== 'string') return THIRTY_DAYS;
+
+  const match = raw.match(/^(\d+)\s*([smhd])?$/);
+  if (!match) return THIRTY_DAYS;
+  const value = Number(match[1]);
+  const unit = match[2] ?? 's';
+  const unitMs: Record<string, number> = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  };
+  return value * (unitMs[unit] ?? 1000);
 }

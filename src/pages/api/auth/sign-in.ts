@@ -6,6 +6,7 @@ import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { signInSchema } from '@/src/schemas/auth';
 import { authService } from '@/src/services/auth';
+import { setAuthCookies } from '@/src/lib/cookies';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { validateBody } from '@/src/middlewares/validate';
@@ -13,10 +14,17 @@ import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 
 // Thin route: validate → service → respond. Logic lives in authService.
-// Keeps the { accessToken, user } top-level keys the frontend reads.
+// Sets httpOnly access/refresh cookies + a CSRF cookie. `accessToken` is also
+// kept in the body during the cookie-migration rollout so an older frontend
+// (still reading it) keeps working via the Authorization-header fallback; the
+// new cookie-based frontend ignores the body token.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { accessToken, user } = await authService.signIn(req.body);
+    const { accessToken, refreshToken, csrfToken, user } = await authService.signIn(
+      req.body,
+      req.headers['user-agent'] ?? null
+    );
+    setAuthCookies(req, res, { accessToken, refreshToken, csrfToken });
     emitAudit(req, {
       action: 'auth.login.succeeded',
       actorId: user._id,

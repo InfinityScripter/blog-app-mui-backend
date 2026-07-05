@@ -3,9 +3,19 @@ import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
 import User from '@/src/models/User';
 import uuidv4 from '@/src/utils/uuidv4';
+import { csrfValid } from '@/src/lib/csrf';
 import { verifyToken } from '@/src/lib/jwt';
-import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
+
+// Mutating methods carry CSRF risk when authenticated via an ambient cookie.
+const CSRF_PROTECTED_METHODS: readonly string[] = [
+  HTTP_METHOD.POST,
+  HTTP_METHOD.PUT,
+  HTTP_METHOD.PATCH,
+  HTTP_METHOD.DELETE,
+];
 
 /**
  * Constant-time equality for the bot service token. Length is compared first so
@@ -86,28 +96,48 @@ declare module 'next' {
 export const requireAuth =
   (handler: NextApiHandler) => async (req: NextApiRequest, res: NextApiResponse) => {
     try {
-      // Получаем токен из заголовка Authorization
+      // Token source, in priority order:
+      //   1. Authorization: Bearer <token> — the news bot (service token) and a
+      //      legacy fallback for any client still sending a JWT this way.
+      //   2. access_token httpOnly cookie — the browser SPA after the cookie
+      //      migration (JS can't read it; sent automatically, cross-site safe).
       const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const bearerToken =
+        authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+
+      // Service-token path (news bot) only applies to a bearer token.
+      if (bearerToken) {
+        const botUser = await resolveBotUser(bearerToken, res);
+        if (botUser === 'handled') {
+          return undefined; // resolveBotUser already wrote the error response
+        }
+        if (botUser) {
+          req.user = botUser;
+          if (!req.requestId) {
+            req.requestId = uuidv4();
+          }
+          return handler(req, res);
+        }
+      }
+
+      const cookieToken = bearerToken ? undefined : readCookie(req, ACCESS_COOKIE);
+      const token = bearerToken ?? cookieToken;
+      if (!token) {
         return res.status(HTTP.UNAUTHORIZED).json({ success: false, message: MSG.UNAUTHORIZED });
       }
 
-      const token = authHeader.split(' ')[1];
-
-      // Service-token path (news bot): authenticate as the owner's admin user.
-      const botUser = await resolveBotUser(token, res);
-      if (botUser === 'handled') {
-        return undefined; // resolveBotUser already wrote the error response
-      }
-      if (botUser) {
-        req.user = botUser;
-        if (!req.requestId) {
-          req.requestId = uuidv4();
+      // CSRF: only the cookie path is ambient (browser auto-sends it), so only
+      // it needs double-submit CSRF on mutations. The bearer path (bot / legacy)
+      // is not cookie-driven and is exempt. Fails closed.
+      if (cookieToken && CSRF_PROTECTED_METHODS.includes(req.method ?? HTTP_METHOD.GET)) {
+        if (!csrfValid(req)) {
+          return res
+            .status(HTTP.FORBIDDEN)
+            .json({ success: false, message: 'CSRF validation failed' });
         }
-        return handler(req, res);
       }
 
-      // Проверяем токен
+      // Проверяем токен (JWT — access-cookie or bearer fallback)
       const decoded = verifyToken(token) as { userId: string; role: string };
 
       // Добавляем информацию о пользователе в объект запроса

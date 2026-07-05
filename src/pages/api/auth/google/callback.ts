@@ -4,8 +4,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dotenv from 'dotenv';
 import dbConnect from '@/src/lib/db';
 import nextConnect from 'next-connect';
-import { signToken } from '@/src/lib/jwt';
 import passport from '@/src/lib/passport';
+import { setAuthCookies } from '@/src/lib/cookies';
+import { issueSession } from '@/src/services/session';
 
 dotenv.config();
 
@@ -16,12 +17,20 @@ handler.use(async (req, res, next) => {
   next();
 });
 
-handler.get(passport.authenticate('google', { session: false }), (req: any, res) => {
-  // При успешной аутентификации создаём JWT и перенаправляем на фронтенд
+handler.get(passport.authenticate('google', { session: false }), async (req: any, res) => {
+  // On success: mint access+refresh, set httpOnly cookies, and redirect to the
+  // frontend WITHOUT the token in the URL (no leak into history/referrer/logs).
+  // The cookies are scoped to THIS API origin — exactly where the frontend's
+  // XHRs (withCredentials) are sent.
   const { user } = req;
-  const token = signToken({ userId: user.id, role: user.role ?? 'user' });
+  const session = await issueSession({
+    userId: user.id,
+    role: user.role ?? 'user',
+    userAgent: req.headers['user-agent'] ?? null,
+  });
+  setAuthCookies(req, res, session);
   const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
-  res.redirect(`${frontendURL}/auth/success?token=${token}`);
+  res.redirect(`${frontendURL}/auth/success`);
 });
 
 export default handler;

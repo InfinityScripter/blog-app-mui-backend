@@ -225,6 +225,26 @@ const schemaSql = `
   CREATE INDEX IF NOT EXISTS subscribers_status_idx ON subscribers (status);
   CREATE UNIQUE INDEX IF NOT EXISTS subscribers_confirm_token_idx ON subscribers (confirm_token);
   CREATE UNIQUE INDEX IF NOT EXISTS subscribers_unsub_token_idx ON subscribers (unsubscribe_token);
+
+  -- Refresh tokens for the rotating-refresh auth flow. The raw refresh token
+  -- lives only in the httpOnly cookie; only its SHA-256 hash is stored here, so
+  -- a DB leak yields no usable tokens. family_id groups a rotation lineage: on
+  -- reuse of an already-rotated (revoked) token we revoke the whole family
+  -- (theft response). TEXT pk + app-side uuidv4 (matches users/posts).
+  CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    family_id TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    replaced_by TEXT,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS refresh_tokens_token_hash_unique ON refresh_tokens (token_hash);
+  CREATE INDEX IF NOT EXISTS refresh_tokens_user_id_idx ON refresh_tokens (user_id);
+  CREATE INDEX IF NOT EXISTS refresh_tokens_family_id_idx ON refresh_tokens (family_id);
 `;
 
 type PoolLike = NodePool;
@@ -336,6 +356,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM llm_stats_snapshots');
   await pool.query('DELETE FROM model_releases');
   await pool.query('DELETE FROM subscribers');
+  await pool.query('DELETE FROM refresh_tokens');
   await pool.query('DELETE FROM users');
 }
 
