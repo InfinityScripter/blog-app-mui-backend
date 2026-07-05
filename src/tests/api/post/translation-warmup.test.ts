@@ -71,7 +71,12 @@ function makeToken(userId: string, role: string) {
 }
 
 beforeEach(async () => {
-  mockedTranslateHtml.mockClear();
+  // Reset to the default echo impl (a test may override it via
+  // mockImplementation; mockClear alone wouldn't restore the default).
+  mockedTranslateHtml.mockReset();
+  mockedTranslateHtml.mockImplementation((text: string) =>
+    Promise.resolve(text === '' ? '' : `[EN] ${text}`)
+  );
   await Post.deleteMany({});
   await User.deleteMany({});
   await dbQuery('DELETE FROM post_translations');
@@ -306,6 +311,49 @@ describe('error rows are retried, never served as a cache hit', () => {
     expect(posts.find((p: { id: string }) => p.id === postId).title).toBe('[EN] Заголовок');
     const rows = await readRows(postId);
     expect(rows[0].status).toBe('ok');
+  });
+});
+
+describe('HTML entities in translated title/description are decoded', () => {
+  it('decodes &quot; / &#x27; in a list title (rendered as text)', async () => {
+    const postId = await seedPost({ title: 'Заголовок с кавычками' });
+    // DeepL (HTML mode) returns entities for punctuation in plain-text fields.
+    mockedTranslateHtml.mockImplementation((text: string) =>
+      Promise.resolve(
+        text === '' ? '' : `&quot;Title&quot; it&#x27;s &amp; more`
+      )
+    );
+
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET, query: { lang: 'en' } });
+    await listHandler(req, res);
+
+    const { posts } = JSON.parse(res._getData());
+    const {title} = posts.find((p: { id: string }) => p.id === postId);
+    // Entities decoded to real characters — no literal &quot; leaks to the UI.
+    expect(title).toBe('"Title" it\'s & more');
+    expect(title).not.toContain('&quot;');
+    expect(title).not.toContain('&#x27;');
+  });
+
+  it("decodes entities in a details title but leaves the HTML body intact", async () => {
+    const postId = await seedPost();
+    mockedTranslateHtml.mockImplementation((text: string) => {
+      if (text === '') return Promise.resolve('');
+      // Body carries real tags that must survive; short fields carry entities.
+      return Promise.resolve(
+        text.includes('<p>') ? '<p>Body &amp; tags</p>' : `A &quot;quoted&quot; title`
+      );
+    });
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.GET,
+      query: { id: postId, lang: 'en' },
+    });
+    await detailsHandler(req, res);
+
+    const { post } = JSON.parse(res._getData());
+    expect(post.title).toBe('A "quoted" title'); // decoded
+    expect(post.content).toBe('<p>Body &amp; tags</p>'); // HTML left as-is
   });
 });
 

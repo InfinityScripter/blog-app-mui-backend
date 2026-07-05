@@ -2,7 +2,7 @@ import type { Lang } from '@/src/constants/i18n';
 
 import { dbQuery } from '@/src/lib/db';
 import { createHash } from 'node:crypto';
-import { translationProvider } from '@/src/utils/translate';
+import { translationProvider, type TranslateOptions } from '@/src/utils/translate';
 import { LANG, DEEPL_SOURCE_LANG, DEEPL_TARGET_BY_LANG } from '@/src/constants/i18n';
 
 // Post-content translation with a DB cache (post_translations). See the FE↔BE
@@ -66,7 +66,19 @@ async function readCache(postId: string, lang: Lang): Promise<TranslationRow | n
     'SELECT title, description, content, source_hash, scope, status FROM post_translations WHERE post_id = $1 AND lang = $2 LIMIT 1',
     [postId, lang]
   );
-  return result.rows[0] ?? null;
+  const row = result.rows[0] ?? null;
+  if (row === null) {
+    return null;
+  }
+  // Decode HTML entities in the plain-text short fields on the way out, so rows
+  // cached BEFORE the decode-on-write fix (which still hold `&quot;` etc.) are
+  // served clean without a re-translate. Content is real HTML — left as-is.
+  // Idempotent: decoding already-clean text is a no-op.
+  return {
+    ...row,
+    title: decodeTextEntities(row.title),
+    description: decodeTextEntities(row.description),
+  };
 }
 
 async function upsertCache(
@@ -94,6 +106,38 @@ async function upsertCache(
   );
 }
 
+// The named HTML entities DeepL's `tag_handling=html` emits for punctuation in
+// PLAIN-TEXT fields (title / description are rendered as text, not HTML), plus
+// numeric forms for the apostrophe. Decoded so a title like «"Foo"» doesn't
+// render as `&quot;Foo&quot;`. Content is real HTML and is left untouched.
+const HTML_ENTITY_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/&quot;/g, '"'],
+  [/&#0*39;/g, "'"],
+  [/&#x0*27;/gi, "'"],
+  [/&apos;/g, "'"],
+  [/&lt;/g, '<'],
+  [/&gt;/g, '>'],
+  [/&nbsp;/g, ' '],
+  // Ampersand LAST so an already-decoded entity isn't re-formed.
+  [/&amp;/g, '&'],
+];
+
+function decodeTextEntities(text: string): string {
+  return HTML_ENTITY_REPLACEMENTS.reduce(
+    (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
+    text
+  );
+}
+
+/**
+ * Translates a PLAIN-TEXT field (title / description) and decodes the HTML
+ * entities DeepL introduces (it runs in HTML mode). These fields are rendered as
+ * text, so leftover `&quot;`/`&#x27;` would show literally.
+ */
+async function translateShort(text: string, opts: TranslateOptions): Promise<string> {
+  return decodeTextEntities(await translationProvider.translateHtml(text, opts));
+}
+
 async function translateFields(
   fields: TranslatableFields,
   target: string
@@ -102,8 +146,9 @@ async function translateFields(
   // Translate the three fields SEQUENTIALLY (not Promise.all): three concurrent
   // requests per post, multiplied across a list, overwhelm DeepL's free-tier
   // rate limit (429). Serial keeps the concurrency low; the result is cached.
-  const title = await translationProvider.translateHtml(fields.title, opts);
-  const description = await translationProvider.translateHtml(fields.description, opts);
+  // Title/description are plain text (entities decoded); content is real HTML.
+  const title = await translateShort(fields.title, opts);
+  const description = await translateShort(fields.description, opts);
   const content = await translationProvider.translateHtml(fields.content, opts);
   return { title, description, content };
 }
@@ -216,8 +261,8 @@ async function translateSummaryFields<T extends TranslatableFields>(
 
   const opts = { source: DEEPL_SOURCE_LANG, target: DEEPL_TARGET_BY_LANG[lang] };
   try {
-    const title = await translationProvider.translateHtml(original.title, opts);
-    const description = await translationProvider.translateHtml(original.description, opts);
+    const title = await translateShort(original.title, opts);
+    const description = await translateShort(original.description, opts);
     const summary: TranslatableFields = { title, description, content: original.content };
     // Self-warm: cache the summary so the next list render is a DB hit. Body is
     // the original — scope='summary' bars getTranslatedPostFields from serving
@@ -295,8 +340,8 @@ export async function warmPostSummary<T extends TranslatableFields>(
 
   const opts = { source: DEEPL_SOURCE_LANG, target: DEEPL_TARGET_BY_LANG[lang] };
   try {
-    const title = await translationProvider.translateHtml(original.title, opts);
-    const description = await translationProvider.translateHtml(original.description, opts);
+    const title = await translateShort(original.title, opts);
+    const description = await translateShort(original.description, opts);
     await upsertCache(
       postId,
       lang,
