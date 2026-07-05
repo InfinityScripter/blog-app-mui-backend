@@ -35,6 +35,19 @@ interface TranslationRow {
   content: string;
   source_hash: string;
   scope: string;
+  status: string;
+}
+
+/**
+ * Whether a cached row is a usable HIT for reuse: fresh (source unchanged) AND a
+ * real translation (status='ok'). An `error` row records a past provider failure
+ * and holds the ORIGINAL fields — it must NOT be served or counted as cached, or
+ * a transient outage would pin a post to its untranslated text forever (the
+ * source_hash stays fresh, so it would never retry). Callers additionally check
+ * `scope` when they need a full body.
+ */
+function isFreshOk(row: TranslationRow | null, hash: string): row is TranslationRow {
+  return row !== null && row.source_hash === hash && row.status === 'ok';
 }
 
 /**
@@ -50,7 +63,7 @@ function sourceHash(fields: TranslatableFields): string {
 
 async function readCache(postId: string, lang: Lang): Promise<TranslationRow | null> {
   const result = await dbQuery<TranslationRow>(
-    'SELECT title, description, content, source_hash, scope FROM post_translations WHERE post_id = $1 AND lang = $2 LIMIT 1',
+    'SELECT title, description, content, source_hash, scope, status FROM post_translations WHERE post_id = $1 AND lang = $2 LIMIT 1',
     [postId, lang]
   );
   return result.rows[0] ?? null;
@@ -125,9 +138,9 @@ export async function getTranslatedPostFields<T extends TranslatableFields>(
   const postId = getPostId(post);
 
   const cached = await readCache(postId, lang);
-  // Only a FRESH, FULL row satisfies the details read — a summary row has an
-  // untranslated body, so it must be upgraded here.
-  if (cached && cached.source_hash === hash && cached.scope === 'full') {
+  // Only a fresh, OK, FULL row satisfies the details read — a summary row has an
+  // untranslated body (upgrade), and an error row holds the original (retry).
+  if (isFreshOk(cached, hash) && cached.scope === 'full') {
     return {
       title: cached.title,
       description: cached.description,
@@ -189,10 +202,11 @@ async function translateSummaryFields<T extends TranslatableFields>(
   const postId = getPostId(post);
   const hash = sourceHash(original);
   const cached = await readCache(postId, lang);
-  if (cached && cached.source_hash === hash) {
-    // Fresh row of either scope — reuse its short fields (and body: for a full
+  if (isFreshOk(cached, hash)) {
+    // Fresh OK row of either scope — reuse its short fields (and body: for a full
     // row it's the real translation, for a summary row it's the original, which
-    // is fine since the caller renders only title/description).
+    // is fine since the caller renders only title/description). An error row is
+    // NOT reused (isFreshOk excludes it) — it re-translates below.
     return {
       title: cached.title,
       description: cached.description,
@@ -273,7 +287,9 @@ export async function warmPostSummary<T extends TranslatableFields>(
   const hash = sourceHash(original);
 
   const cached = await readCache(postId, lang);
-  if (cached && cached.source_hash === hash) {
+  // Any fresh OK row (summary or full) means the short fields are already done;
+  // an error row is re-translated (isFreshOk excludes it).
+  if (isFreshOk(cached, hash)) {
     return 'cached';
   }
 
@@ -325,9 +341,9 @@ export async function warmPostFull<T extends TranslatableFields>(
   const hash = sourceHash(original);
 
   const cached = await readCache(postId, lang);
-  // Only a fresh FULL row means the body is already done; a summary row must be
-  // upgraded (its body is still the original).
-  if (cached && cached.source_hash === hash && cached.scope === 'full') {
+  // Only a fresh, OK, FULL row means the body is already done; a summary row is
+  // upgraded, and an error row is retried (isFreshOk excludes it).
+  if (isFreshOk(cached, hash) && cached.scope === 'full') {
     return 'cached';
   }
 
