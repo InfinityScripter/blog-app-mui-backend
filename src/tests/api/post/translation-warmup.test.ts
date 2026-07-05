@@ -11,7 +11,7 @@ import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import detailsHandler from '@/src/pages/api/post/details';
 import { translationProvider } from '@/src/utils/translate';
 import warmHandler from '@/src/pages/api/admin/translate/warm';
-import { warmFeedTranslations } from '@/src/services/translation-warmup';
+import { isWarmupRunning, warmFeedTranslations } from '@/src/services/translation-warmup';
 
 // Mock DeepL: echo each field with an [EN] prefix so a translation is easy to
 // assert and no network call is made.
@@ -206,6 +206,40 @@ describe('warmFeedTranslations service', () => {
     expect(result.errors).toBe(1);
     expect(result.translated).toBe(0);
   });
+
+  it("mode='full' warms the BODY too and writes scope=full rows", async () => {
+    const postId = await seedPost();
+
+    const result = await warmFeedTranslations(undefined, 'full');
+    expect(result.mode).toBe('full');
+    expect(result.translated).toBe(1);
+    // 3 fields translated (title + description + body), not 2.
+    expect(mockedTranslateHtml).toHaveBeenCalledTimes(3);
+
+    const rows = await readRows(postId);
+    expect(rows[0].scope).toBe('full');
+    expect(rows[0].content).toBe('[EN] <p>Содержимое тела</p>');
+
+    // A second full run is a cache hit (fresh full row) — no provider calls.
+    mockedTranslateHtml.mockClear();
+    const second = await warmFeedTranslations(undefined, 'full');
+    expect(second.cached).toBe(1);
+    expect(mockedTranslateHtml).not.toHaveBeenCalled();
+  });
+
+  it("full warm UPGRADES an existing summary row to full", async () => {
+    const postId = await seedPost();
+    await warmFeedTranslations(undefined, 'summary');
+    expect((await readRows(postId))[0].scope).toBe('summary');
+    mockedTranslateHtml.mockClear();
+
+    await warmFeedTranslations(undefined, 'full');
+    const rows = await readRows(postId);
+    expect(rows[0].scope).toBe('full');
+    expect(rows[0].content).toBe('[EN] <p>Содержимое тела</p>');
+    // Re-translated the 3 fields to fill the body (summary row was stale for full).
+    expect(mockedTranslateHtml).toHaveBeenCalledTimes(3);
+  });
 });
 
 describe('POST /api/admin/translate/warm', () => {
@@ -267,7 +301,22 @@ describe('POST /api/admin/translate/warm', () => {
     expect(res._getStatusCode()).toBe(HTTP.BAD_REQUEST);
   });
 
-  it('an admin warms the feed and gets translation counts', async () => {
+  // Waits for the detached background warm to finish (the endpoint runs it
+  // fire-and-forget, so the row isn't written by the time the handler returns).
+  async function flushBackgroundWarm() {
+    // Poll the module flag; the mocked provider resolves on microtasks so this
+    // clears within a couple of ticks. Bounded so a bug can't hang the suite.
+    return Array.from({ length: 50 }).reduce<Promise<void>>(async (acc) => {
+      await acc;
+      if (!isWarmupRunning()) return undefined;
+      await new Promise((resolve) => {
+        setTimeout(resolve, 10);
+      });
+      return undefined;
+    }, Promise.resolve());
+  }
+
+  it('an admin starts a detached warm (202) that warms the cache', async () => {
     await seedAdmin();
     const postId = await seedPost();
     const admin = await User.findOne({ email: 'admin@test.com' });
@@ -278,11 +327,35 @@ describe('POST /api/admin/translate/warm', () => {
     });
     await warmHandler(req, res);
 
-    expect(res._getStatusCode()).toBe(HTTP.OK);
+    // 202 Accepted — the warm runs in the background, not inline.
+    expect(res._getStatusCode()).toBe(HTTP.ACCEPTED);
     const body = JSON.parse(res._getData());
     expect(body.success).toBe(true);
-    expect(body.data.posts).toBe(1);
-    expect(body.data.translated).toBe(1);
+    expect(body.data.started).toBe(true);
+    expect(body.data.mode).toBe('summary');
+
+    // Let the detached run complete, then assert it warmed the cache.
+    await flushBackgroundWarm();
     expect((await readRows(postId))[0].scope).toBe('summary');
+  });
+
+  it('mode=full over the endpoint warms a full (body) row', async () => {
+    await seedAdmin();
+    const postId = await seedPost();
+    const admin = await User.findOne({ email: 'admin@test.com' });
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      query: { mode: 'full' },
+      headers: { authorization: makeToken(admin!._id, 'admin') },
+    });
+    await warmHandler(req, res);
+    expect(res._getStatusCode()).toBe(HTTP.ACCEPTED);
+    expect(JSON.parse(res._getData()).data.mode).toBe('full');
+
+    await flushBackgroundWarm();
+    const rows = await readRows(postId);
+    expect(rows[0].scope).toBe('full');
+    expect(rows[0].content).toBe('[EN] <p>Содержимое тела</p>');
   });
 });

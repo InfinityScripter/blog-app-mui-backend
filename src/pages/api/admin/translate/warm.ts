@@ -1,33 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import type { WarmMode } from '@/src/services/translation-warmup';
 
 import { MSG } from '@/src/constants/messages';
+import { ok, fail } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
-import { ok, fail, sendError } from '@/src/utils/response';
 import { requireAuth } from '@/src/middlewares/require-auth';
 import { requireAdmin } from '@/src/middlewares/require-admin';
-import { warmFeedTranslations } from '@/src/services/translation-warmup';
 import { LANG, TRANSLATABLE_LANGS, type TranslatableLang } from '@/src/constants/i18n';
+import { isWarmupRunning, runWarmupInBackground } from '@/src/services/translation-warmup';
 
-// Admin-only: warm the feed-title translation cache (title + description of
-// every published post) into every non-original locale. After a run, feeds can
-// render translated titles as a DB hit instead of per-request DeepL calls.
-// POST /api/admin/translate/warm            → warm all translatable locales
-// POST /api/admin/translate/warm?lang=en    → warm only that locale
+// Admin-only: warm the post-translation cache so feeds/details read a warm DB
+// hit instead of translating on the request path (which, on the free tier, 504s
+// — a whole feed, or even a single cold body). The run is DETACHED: this route
+// returns 202 immediately and the warm grinds in the background of the VDS
+// process (no serverless timeout), because a full-corpus warm takes minutes.
 //
-// This runs on the VDS backend (`next start`, no serverless timeout), so a
-// synchronous ~N-post × short-field DeepL pass is fine here — the timeout that
-// forced feeds to stay original applies to the Vercel FRONTEND, not this route.
-
-// In-memory single-flight guard: a warmup issues many sequential DeepL calls
-// tuned to the free-tier rate limit; two concurrent runs would double the
-// fan-out and trip 429s. A second call while one is running is rejected (409)
-// rather than piling on. Per-process — good enough for a single backend node.
-let running = false;
+// POST /api/admin/translate/warm                    → summary warm, all locales
+// POST /api/admin/translate/warm?mode=full          → full (body) warm too
+// POST /api/admin/translate/warm?lang=en&mode=full  → only that locale
+//
+// Query:
+//   lang  = a translatable locale (not `ru`); omit = all. ru/unknown → 400.
+//   mode  = 'summary' (default, feed titles) | 'full' (also post bodies).
 
 /** Narrows an optional ?lang= to a translatable locale (not `ru`); undefined = all. */
 function parseOnlyLang(raw: string | string[] | undefined): TranslatableLang | undefined {
   if (typeof raw !== 'string') return undefined;
   return TRANSLATABLE_LANGS.find((lang) => lang === raw);
+}
+
+/** Narrows ?mode= to a WarmMode; anything else defaults to 'summary'. */
+function parseMode(raw: string | string[] | undefined): WarmMode {
+  return raw === 'full' ? 'full' : 'summary';
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -45,19 +49,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     );
   }
 
-  if (running) {
-    return fail(res, HTTP.CONFLICT, 'A translation warmup is already running.');
+  const mode = parseMode(req.query.mode);
+  const started = runWarmupInBackground(parseOnlyLang(req.query.lang), mode);
+
+  if (!started) {
+    // Already running — not an error; report it so a caller can poll/retry.
+    return ok(res, { started: false, running: true, mode }, {
+      status: HTTP.OK,
+      message: 'A translation warmup is already running.',
+    });
   }
 
-  running = true;
-  try {
-    const result = await warmFeedTranslations(parseOnlyLang(req.query.lang));
-    return ok(res, result, { message: 'Feed translation cache warmed.' });
-  } catch (error) {
-    return sendError(res, error);
-  } finally {
-    running = false;
-  }
+  // 202 Accepted: the warm runs detached; watch the server logs ([warmup] …) for
+  // progress and the final counts.
+  return ok(res, { started: true, running: isWarmupRunning(), mode }, {
+    status: HTTP.ACCEPTED,
+    message: `Translation warmup started (mode=${mode}). Runs in the background.`,
+  });
 }
 
 export default requireAuth(requireAdmin(handler));
