@@ -23,9 +23,20 @@ export function parseLang(raw: string | string[] | undefined): Lang {
   return SUPPORTED_LANGS.find((lang) => lang === raw) ?? DEFAULT_LANG;
 }
 
+/** A locale that gets translated + cached (every supported locale except `ru`). */
+export type TranslatableLang = Exclude<Lang, typeof LANG.RU>;
+
+/**
+ * The locales the warmup translates into: all supported locales except the
+ * original `ru`. Listed explicitly (not derived from Object.keys, which is typed
+ * `string[]`) so it's a typed `TranslatableLang[]`. Add a locale = one more
+ * entry here, in LANG, and in DEEPL_TARGET_BY_LANG.
+ */
+export const TRANSLATABLE_LANGS: readonly TranslatableLang[] = [LANG.EN];
+
 /** DeepL language codes keyed by our locale. `ru` is source-only. */
 export const DEEPL_SOURCE_LANG = 'RU';
 
-export const DEEPL_TARGET_BY_LANG: Record<Exclude<Lang, typeof LANG.RU>, string> = {
+export const DEEPL_TARGET_BY_LANG: Record<TranslatableLang, string> = {
   [LANG.EN]: 'EN-US',
 };

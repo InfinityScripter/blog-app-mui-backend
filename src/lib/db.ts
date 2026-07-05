@@ -253,7 +253,13 @@ const schemaSql = `
   -- source_hash = sha256 of the original title+description+content; a mismatch
   -- means the source changed, so the cached translation is stale and re-fetched.
   -- status is 'ok' for a real translation, or 'error' when the provider failed
-  -- and the read degraded to the original fields. All indexes are plain btree
+  -- and the read degraded to the original fields. scope records how complete a
+  -- row is: 'full' = title+description+content translated (what the details
+  -- route writes and the ONLY scope it will serve); 'summary' = title+
+  -- description translated, content left as the original (written by the feed
+  -- warmup + the list route, which never render a body). A summary row lets a
+  -- list show a translated title cheaply without paying to translate the body;
+  -- opening the post upgrades it to a full row. All indexes are plain btree
   -- (pg-mem + boot safe).
   CREATE TABLE IF NOT EXISTS post_translations (
     post_id TEXT NOT NULL,
@@ -263,6 +269,7 @@ const schemaSql = `
     content TEXT NOT NULL DEFAULT '',
     source_hash TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'ok',
+    scope TEXT NOT NULL DEFAULT 'full',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (post_id, lang)
@@ -289,6 +296,23 @@ async function applySafeMigrations(pool: PoolLike) {
     console.warn(
       '[db] Skipping users_email_lower_unique index (likely duplicate emails differing by case). ' +
         'Merge duplicates, then restart to enforce case-insensitive email uniqueness.',
+      error instanceof Error ? error.message : error
+    );
+  }
+
+  // Add post_translations.scope to pre-existing prod tables (the CREATE TABLE
+  // above only adds it to fresh DBs). Idempotent — IF NOT EXISTS. Existing rows
+  // were all written by the details route (full-body translations), so the
+  // 'full' default correctly classifies the backlog. Wrapped: a legacy Postgres
+  // without IF NOT EXISTS support must not abort startup.
+  try {
+    await pool.query(
+      "ALTER TABLE post_translations ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'full'"
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[db] Could not ensure post_translations.scope column (older Postgres?).',
       error instanceof Error ? error.message : error
     );
   }
