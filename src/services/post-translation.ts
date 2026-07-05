@@ -296,3 +296,48 @@ export async function warmPostSummary<T extends TranslatableFields>(
     return 'error';
   }
 }
+
+/**
+ * Warms the FULL translation (title + description + BODY) of one post in one
+ * language into the cache (scope='full'), so a later details read is a DB hit
+ * rather than a cold body translation — which, on the free tier, can exceed even
+ * a single serverless request's timeout (the details page 504s on a cold body).
+ * Reuses an existing fresh FULL row (a summary row is upgraded). Never throws.
+ *  - `ru`                        → 'skipped'.
+ *  - fresh FULL row cached       → 'cached' (no network).
+ *  - translated + full upserted  → 'translated'.
+ *  - provider/config error       → 'error' (original left; no cache write).
+ */
+export async function warmPostFull<T extends TranslatableFields>(
+  post: T,
+  lang: Lang
+): Promise<WarmOutcome> {
+  if (lang === LANG.RU) {
+    return 'skipped';
+  }
+
+  const original: TranslatableFields = {
+    title: post.title,
+    description: post.description,
+    content: post.content,
+  };
+  const postId = getPostId(post);
+  const hash = sourceHash(original);
+
+  const cached = await readCache(postId, lang);
+  // Only a fresh FULL row means the body is already done; a summary row must be
+  // upgraded (its body is still the original).
+  if (cached && cached.source_hash === hash && cached.scope === 'full') {
+    return 'cached';
+  }
+
+  try {
+    const translated = await translateFields(original, DEEPL_TARGET_BY_LANG[lang]);
+    await upsertCache(postId, lang, translated, hash, 'ok', 'full');
+    return 'translated';
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[post-translation] full warm failed for', postId, lang, error);
+    return 'error';
+  }
+}
