@@ -90,6 +90,26 @@ const RefreshToken = {
     return result.rows[0] ? mapRow(result.rows[0]) : null;
   },
 
+  /**
+   * Atomically consume a refresh token: revoke it and return the row, but ONLY
+   * if it was still live (not already revoked) at the moment of the update. The
+   * `WHERE ... AND revoked_at IS NULL` predicate makes check-and-revoke a single
+   * statement, so two concurrent presentations of the same token can't both
+   * succeed — exactly one UPDATE affects the row; the loser gets `null`. This is
+   * the race-safe gate for rotation (a `null` return on a token that DOES exist
+   * means reuse → theft; the caller re-reads via findByRawToken to distinguish
+   * reuse from a genuinely-absent token).
+   */
+  async consume(rawToken: string): Promise<IRefreshToken | null> {
+    const result = await dbQuery<RefreshTokenRow>(
+      `UPDATE refresh_tokens SET revoked_at = NOW()
+       WHERE token_hash = $1 AND revoked_at IS NULL
+       RETURNING *`,
+      [hashRefreshToken(rawToken)]
+    );
+    return result.rows[0] ? mapRow(result.rows[0]) : null;
+  },
+
   /** Revoke a single row and record its successor (rotation audit trail). */
   async revoke(id: string, replacedBy?: string | null) {
     await dbQuery(

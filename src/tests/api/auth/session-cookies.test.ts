@@ -5,6 +5,7 @@ import { dbQuery } from '@/src/lib/db';
 import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import RefreshToken from '@/src/models/RefreshToken';
+import { rotateRefresh } from '@/src/services/refresh';
 import signInHandler from '@/src/pages/api/auth/sign-in';
 import refreshHandler from '@/src/pages/api/auth/refresh';
 import signOutHandler from '@/src/pages/api/auth/sign-out';
@@ -194,5 +195,32 @@ describe('auth session cookies + refresh rotation', () => {
     expect(live.rows[0].n).toBe(0);
     const cleared = setCookies(res);
     expect(cleared.some((c) => c.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('concurrent reuse of the same token: exactly one rotation wins, no duplicate live session', async () => {
+    const s = await signIn();
+    const {familyId} = ((await RefreshToken.findByRawToken(s.refresh!))!);
+
+    // Fire two rotations with the SAME raw token at once (network retry / attacker
+    // replay racing the legit client). The atomic consume() must let only one win.
+    const results = await Promise.allSettled([
+      rotateRefresh(s.refresh!, 'agent-a'),
+      rotateRefresh(s.refresh!, 'agent-b'),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+    // Exactly one succeeds; the loser is rejected (treated as reuse → 401).
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+
+    // The original token is revoked, and there is at most ONE live successor in
+    // the family — never two parallel live sessions from a single token.
+    const live = await dbQuery(
+      'SELECT COUNT(*)::int AS n FROM refresh_tokens WHERE family_id = $1 AND revoked_at IS NULL',
+      [familyId]
+    );
+    expect(live.rows[0].n).toBeLessThanOrEqual(1);
+    expect((await RefreshToken.findByRawToken(s.refresh!))!.revokedAt).not.toBeNull();
   });
 });
