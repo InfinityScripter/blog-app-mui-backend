@@ -3,17 +3,17 @@ import type { SignInBody } from '@/src/schemas/auth';
 
 import bcrypt from 'bcrypt';
 import User from '@/src/models/User';
-import { signToken } from '@/src/lib/jwt';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
+import { issueSession } from '@/src/services/session';
 import { toPublicUser } from '@/src/utils/public-user';
 import { MAX_FAILED_ATTEMPTS } from '@/src/constants/auth';
 
 // Business logic for authentication. No HTTP here — throws AppError on
 // failure; the route maps it via sendError().
 
-async function signIn({ email, password }: SignInBody) {
+async function signIn({ email, password }: SignInBody, userAgent?: string | null) {
   // email is already trimmed + lowercased by signInSchema; findOne also
   // compares case-insensitively.
   const user = await User.findOne({ email });
@@ -45,8 +45,12 @@ async function signIn({ email, password }: SignInBody) {
     await user.save();
   }
 
-  const accessToken = signToken({ userId: user._id, role: user.role ?? 'user' });
-  return { accessToken, user: toPublicUser(user) };
+  const session = await issueSession({
+    userId: user._id,
+    role: user.role ?? 'user',
+    userAgent,
+  });
+  return { ...session, user: toPublicUser(user) };
 }
 
 export const authService = { signIn };

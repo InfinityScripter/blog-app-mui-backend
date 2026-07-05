@@ -14,7 +14,8 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 // Thin route: requireAuth(requireAdmin) → botControlService.setModel → respond.
-// Admin auth is bearer-JWT (not cookie) so these POSTs are not CSRF-exposed.
+// Cookie-authenticated admin POSTs are CSRF-guarded inside requireAuth (the
+// double-submit token check on the cookie path); the bot bearer path is exempt.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });

@@ -19,7 +19,7 @@ const cors = (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
     res.setHeader('Access-Control-Allow-Origin', origin as string);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
   return Promise.resolve();

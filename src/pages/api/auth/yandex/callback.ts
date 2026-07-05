@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
-import { signToken } from '@/src/lib/jwt';
 import { MSG } from '@/src/constants/messages';
+import { setAuthCookies } from '@/src/lib/cookies';
+import { issueSession } from '@/src/services/session';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { normalizeEmail } from '@/src/utils/normalize-email';
 
@@ -148,9 +149,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const token = signToken({ userId: user.id, role: user.role ?? 'user' });
+    // Mint access+refresh, set httpOnly cookies, redirect WITHOUT a token in the
+    // URL. Cookies are scoped to this API origin (where the SPA's XHRs go). The
+    // earlier oauth_state clear Set-Cookie is preserved (setAuthCookies appends).
+    const session = await issueSession({
+      userId: user.id,
+      role: user.role ?? 'user',
+      userAgent: req.headers['user-agent'] ?? null,
+    });
+    setAuthCookies(req, res, session);
 
-    return res.redirect(`${frontendURL}/auth/success?token=${encodeURIComponent(token)}`);
+    return res.redirect(`${frontendURL}/auth/success`);
   } catch (e) {
     return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_unknown`);
   }

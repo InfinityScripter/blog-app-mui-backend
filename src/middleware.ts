@@ -6,7 +6,8 @@ import { isAllowedOrigin } from '@/src/utils/allowed-origin';
 
 const baseCorsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  // X-CSRF-Token: the SPA echoes the double-submit CSRF token on mutations.
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CSRF-Token',
 };
 
 export function middleware(request: NextRequest) {
