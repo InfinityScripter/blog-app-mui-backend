@@ -65,19 +65,31 @@ interface DeepLResponse {
   translations?: { text: string }[];
 }
 
-/** Translates a single (already size-bounded) chunk via one DeepL request. */
-async function translateChunk(
+// DeepL's free tier rate-limits bursts with HTTP 429; it can also return
+// transient 5xx. Retry those a few times with growing backoff so a busy read
+// (e.g. translating a whole list on a cold cache) rides out the limit instead
+// of degrading to the original and poisoning the cache with an error row.
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 529]);
+const RETRY_BACKOFF_MS: readonly number[] = [600, 1500, 4000, 9000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function postToDeepL(
   chunk: string,
   opts: TranslateOptions,
   authKey: string
-): Promise<string> {
+): Promise<Response> {
   const params = new URLSearchParams();
   params.append('text', chunk);
   params.append('source_lang', opts.source);
   params.append('target_lang', opts.target);
   params.append('tag_handling', 'html');
 
-  const response = await fetch(DEEPL_ENDPOINT, {
+  return fetch(DEEPL_ENDPOINT, {
     method: HTTP_METHOD.POST,
     headers: {
       Authorization: `DeepL-Auth-Key ${authKey}`,
@@ -85,8 +97,26 @@ async function translateChunk(
     },
     body: params.toString(),
   });
+}
+
+/**
+ * Translates a single (already size-bounded) chunk via one DeepL request,
+ * retrying on rate-limit / transient errors with backoff. `attempt` recurses
+ * (es5 target forbids loops) up to the length of RETRY_BACKOFF_MS.
+ */
+async function translateChunk(
+  chunk: string,
+  opts: TranslateOptions,
+  authKey: string,
+  attempt = 0
+): Promise<string> {
+  const response = await postToDeepL(chunk, opts, authKey);
 
   if (!response.ok) {
+    if (RETRY_STATUSES.has(response.status) && attempt < RETRY_BACKOFF_MS.length) {
+      await sleep(RETRY_BACKOFF_MS[attempt]);
+      return translateChunk(chunk, opts, authKey, attempt + 1);
+    }
     throw new Error(`DeepL request failed with status ${response.status}`);
   }
 
@@ -110,10 +140,16 @@ class DeepLProvider implements TranslationProvider {
       throw new Error('DEEPL_AUTH_KEY is not configured');
     }
 
+    // Translate chunks SEQUENTIALLY, not in parallel: DeepL's free tier
+    // rate-limits concurrent requests, so a parallel fan-out here (multiplied
+    // across a whole list of posts) is exactly what trips 429s. Serial is
+    // slower but the result is cached, so only the first view pays for it.
     const chunks = chunkHtml(text);
-    const translated = await Promise.all(
-      chunks.map((chunk) => translateChunk(chunk, opts, authKey))
-    );
+    const translated = await chunks.reduce<Promise<string[]>>(async (accPromise, chunk) => {
+      const acc = await accPromise;
+      const piece = await translateChunk(chunk, opts, authKey);
+      return [...acc, piece];
+    }, Promise.resolve([]));
     return translated.join('');
   }
 }
