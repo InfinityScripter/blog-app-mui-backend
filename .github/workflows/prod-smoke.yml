@@ -5,6 +5,14 @@ name: Prod Smoke
 # deploy pipelines look green (2026-07-03: every post page shipped as a
 # cached 404). Runs from the default branch on a schedule; on failure it
 # opens (or comments on) a `prod-smoke` issue so it can't fail silently.
+#
+# The frontend is i18n'd with next-intl `localePrefix: "always"` — a bare
+# path (`/`, `/news/`, `/post/<id>/`) 307-redirects to a locale-prefixed one
+# (`/ru/…`, `/en/…`) that renders the actual page. So a healthy site page is
+# NOT a plain 200 on the bare path; it's "redirect to a locale prefix, then
+# the prefixed page is 200". `probe_page` asserts exactly that contract, so
+# the check breaks if EITHER the bare→locale redirect breaks (500/404/wrong
+# target) OR the resolved page breaks.
 
 on:
   schedule:
@@ -22,6 +30,10 @@ concurrency:
 env:
   API_URL: https://api.aifirst.us.com:8444
   SITE_URL: https://aifirst.us.com
+  # Locale prefixes the bare-path redirect is allowed to land on. Mirror of
+  # the frontend's LOCALES (src/i18n/locales.ts). Add a language there → add
+  # it to this alternation.
+  LOCALE_RE: '/(ru|en)/'
 
 jobs:
   smoke:
@@ -36,7 +48,8 @@ jobs:
           # Every check retries once after 15s before counting as a failure:
           # a single request can land mid-ISR-regeneration and flake, and a
           # false positive here means a noisy GitHub issue.
-          probe() { # probe <name> <url> — expect HTTP 200
+
+          probe_api() { # probe_api <name> <url> — backend endpoint, expect plain 200
             local name="$1" url="$2" code
             for _try in 1 2; do
               code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo "000")
@@ -51,6 +64,38 @@ jobs:
             fi
           }
 
+          probe_page() { # probe_page <name> <bare-url> — frontend page.
+            # Healthy = bare path 307/308-redirects to a locale prefix AND the
+            # followed page is 200. A plain 200 on the bare path (no i18n redirect)
+            # is also accepted so the check doesn't wedge if localePrefix changes.
+            local name="$1" url="$2" code loc followed detail
+            for _try in 1 2; do
+              detail=""
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo "000")
+              loc=$(curl -s -o /dev/null -w '%{redirect_url}' --max-time 20 "$url" || echo "")
+              followed=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 25 "$url" || echo "000")
+
+              if [ "$code" = "200" ]; then
+                detail="ok-bare"
+              elif { [ "$code" = "307" ] || [ "$code" = "308" ]; } \
+                   && printf '%s' "$loc" | grep -Eq "$LOCALE_RE"; then
+                detail="redirect $code -> $loc"
+              else
+                detail="bad-redirect $code loc=${loc:-none}"
+              fi
+
+              # Pass only when the redirect contract holds AND the resolved page is 200.
+              if { [ "$code" = "200" ] || [ "$detail" != "${detail#redirect}" ]; } \
+                 && [ "$followed" = "200" ]; then
+                echo "ok   $name: $detail, followed=200"
+                return
+              fi
+              sleep 15
+            done
+            echo "FAIL $name: $url -> ${detail:-$code} (followed=$followed)"
+            fails="$fails\n- $name: $url -> ${detail:-$code} (followed=$followed, expected redirect to $LOCALE_RE then 200)"
+          }
+
           # 1. Backend API: list answers and actually contains posts.
           list_json=$(curl -s --max-time 20 "$API_URL/api/post/list" || true)
           post_id=$(echo "$list_json" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
@@ -60,27 +105,29 @@ jobs:
           else
             echo "ok   api-list: got posts (sample id $post_id)"
             # 2. Cold-loaded details route — 500s here while list is fine is
-            #    the deploy-window signature.
-            probe "api-details" "$API_URL/api/post/details?id=$post_id"
-            # 3. The prerendered post page must not be a cached 404.
-            probe "site-post-page" "$SITE_URL/post/$post_id/"
+            #    the deploy-window signature. Backend host, no i18n redirect.
+            probe_api "api-details" "$API_URL/api/post/details?id=$post_id"
+            # 3. The prerendered post page must not be a cached 404. Bare path
+            #    redirects to the locale prefix, then that page must be 200.
+            probe_page "site-post-page" "$SITE_URL/post/$post_id/"
           fi
 
-          # 4. Public pages render (200 = not an error page; Next 404/500
-          #    pages return their own status codes).
-          probe "site-home" "$SITE_URL/"
-          probe "site-news" "$SITE_URL/news/"
-          probe "site-blog" "$SITE_URL/post/"
+          # 4. Public pages render (bare path → locale redirect → 200; a Next
+          #    404/500 would surface as a non-200 followed status).
+          probe_page "site-home" "$SITE_URL/"
+          probe_page "site-news" "$SITE_URL/news/"
+          probe_page "site-blog" "$SITE_URL/post/"
 
-          # 5. The news feed page actually SHOWS news: the /news HTML must
-          #    reference at least one /post/ link — an empty ISR-cached feed
-          #    renders 200 but links to nothing.
+          # 5. The news feed page actually SHOWS news: its HTML must reference
+          #    at least one /post/ link — an empty ISR-cached feed renders 200
+          #    but links to nothing. Follow redirects (-L): the bare /news/ is a
+          #    307 to /<locale>/news/, and only the resolved page has the HTML.
           # NB: no `echo "$html" | grep -q` here — grep exits on first match,
           # echo takes SIGPIPE (141) and pipefail fails the whole check. Pure
           # shell substring match instead.
           news_ok=0
           for _try in 1 2; do
-            news_html=$(curl -s --max-time 20 "$SITE_URL/news/" || true)
+            news_html=$(curl -sL --max-time 25 "$SITE_URL/news/" || true)
             case "$news_html" in
               */post/*) news_ok=1 ;;
             esac
