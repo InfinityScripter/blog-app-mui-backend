@@ -8,15 +8,22 @@ import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
 import { translatePosts } from '@/src/services/post-translation';
 
 // Optional auth: dashboard=true searches the caller's own posts (token
 // required), otherwise published only. Logic lives in postService.searchPosts.
+// Token from the Bearer header (legacy/service) or the access_token httpOnly
+// cookie the browser SPA sends (cookie-auth migration) — header-only would make
+// dashboard search silently return published-only for a logged-in user.
 function readUserId(req: NextApiRequest): string | undefined {
-  const { authorization } = req.headers;
-  if (!authorization) return undefined;
+  const authHeader = req.headers.authorization;
+  const bearerToken =
+    authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+  const token = bearerToken ?? readCookie(req, ACCESS_COOKIE);
+  if (!token) return undefined;
   try {
-    return verifyToken(authorization.split(' ')[1]).userId;
+    return verifyToken(token).userId;
   } catch {
     return undefined;
   }

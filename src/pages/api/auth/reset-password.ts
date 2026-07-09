@@ -4,14 +4,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import nodemailer from 'nodemailer';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
+import { randomInt } from 'node:crypto';
 import { MSG } from '@/src/constants/messages';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { normalizeEmail } from '@/src/utils/normalize-email';
 
 const NEUTRAL_RESET_MESSAGE =
   'If an account exists for that email, a password reset code has been sent.';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
@@ -30,8 +32,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(HTTP.OK).json({ message: NEUTRAL_RESET_MESSAGE });
     }
 
-    // Генерируем 6-значный код
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // 6-значный код из CSPRNG — Math.random() предсказуем и при переборе
+    // (код + email) даёт примитив захвата аккаунта.
+    const resetCode = randomInt(100000, 1000000).toString();
     const resetExpires = new Date(Date.now() + 3600000); // 1 час
 
     // Сохраняем код и время истечения
@@ -87,7 +90,14 @@ If you did not request this code, please ignore this email.`,
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    // Fire-and-forget: awaiting sendMail makes the account-exists path
+    // measurably slower than the neutral not-found path (a timing oracle that
+    // defeats the anti-enumeration message), and lets an attacker hold the
+    // connection open to amplify an email bomb. Respond immediately; log a
+    // send failure server-side.
+    transporter.sendMail(mailOptions).catch((error: unknown) => {
+      console.error('[Reset Password API] sendMail failed:', error);
+    });
 
     res.status(HTTP.OK).json({ message: NEUTRAL_RESET_MESSAGE });
   } catch (error) {
@@ -97,3 +107,11 @@ If you did not request this code, please ignore this email.`,
     });
   }
 }
+
+// Rate-limited: the reset endpoint triggers a DB write + email for any address,
+// so an unlimited caller can email-bomb a victim and probe the timing oracle.
+export default withRateLimit({
+  routeName: 'auth.reset-password',
+  windowMs: 60_000,
+  max: 5,
+})(handler);

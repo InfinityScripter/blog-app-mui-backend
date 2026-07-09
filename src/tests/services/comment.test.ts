@@ -1,6 +1,7 @@
 import '@jest/globals';
 import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
+import { postService } from '@/src/services/post';
 import { commentService } from '@/src/services/comment';
 
 describe('commentService', () => {
@@ -188,6 +189,26 @@ describe('commentService', () => {
         parentCommentId: commentId,
       });
       expect(post.comments[0].replyComment).toHaveLength(0);
+    });
+  });
+
+  describe('comment writes preserve the atomic view counter', () => {
+    it('does not revert total_views bumped concurrently while a comment is added', async () => {
+      // A comment add loads the post, then persists. `incrementViews` bumps
+      // total_views via an atomic UPDATE in between. The comment write must not
+      // write back the stale total_views it loaded (the full-row upsert bug).
+      const first = await commentService.addComment({ userId: 'author', postId, message: 'A' });
+      expect(first.totalViews).toBe(0);
+
+      await postService.incrementViews(postId);
+      await postService.incrementViews(postId);
+      await postService.incrementViews(postId);
+
+      await commentService.addComment({ userId: 'author', postId, message: 'B' });
+
+      const reloaded = await Post.findById(postId);
+      expect(reloaded?.totalViews).toBe(3);
+      expect(reloaded?.comments).toHaveLength(2);
     });
   });
 });

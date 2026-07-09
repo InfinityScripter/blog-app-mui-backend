@@ -395,6 +395,35 @@ export class Post implements IPost {
     return options.new ? post : null;
   }
 
+  /**
+   * Persists ONLY the comments column (and the derived total_comments) with a
+   * single targeted UPDATE. Comment add/edit/delete is a read-modify-write on
+   * the embedded array; routing it through the full-row `save()` upsert would
+   * write back every column this instance was loaded with — including
+   * `total_views`, which is bumped concurrently by an atomic UPDATE in
+   * `incrementViews` — silently reverting views gained since load. This narrow
+   * write touches neither the counters nor any other post field.
+   */
+  async saveComments() {
+    this.comments = normalizeComments(this.comments);
+    this.totalComments = this.comments.reduce(
+      (total, comment) => total + 1 + (comment.replyComment ? comment.replyComment.length : 0),
+      0
+    );
+
+    const result = await dbQuery<PostRow>(
+      `UPDATE posts SET comments = $2::jsonb, total_comments = $3, updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [this._id, JSON.stringify(this.comments), this.totalComments]
+    );
+
+    if (result.rows[0]) {
+      Object.assign(this, mapPostRow(result.rows[0]));
+    }
+    return this;
+  }
+
   async save() {
     this.comments = normalizeComments(this.comments);
     // Derive totalComments from the embedded comments — top-level plus replies.

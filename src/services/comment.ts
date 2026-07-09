@@ -72,7 +72,7 @@ async function addComment({ userId, postId, message, parentCommentId, tagUser }:
     parent.replyComment.push({ ...base, tagUser: tagUser || undefined });
   }
 
-  await post.save();
+  await post.saveComments();
   return post;
 }
 
@@ -115,7 +115,7 @@ async function editComment({
     comment.message = message;
   }
 
-  await post.save();
+  await post.saveComments();
   return post;
 }
 
@@ -157,7 +157,7 @@ async function deleteComment({
     post.comments.splice(index, 1);
   }
 
-  await post.save();
+  await post.saveComments();
   return post;
 }
 

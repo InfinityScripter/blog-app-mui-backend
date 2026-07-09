@@ -8,16 +8,27 @@ import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
 import { translatePosts } from '@/src/services/post-translation';
 import { MAX_LIMIT, DEFAULT_LIMIT } from '@/src/constants/pagination';
 
 // Optional auth: a valid token scopes the list (admin → all, user → own);
 // no/invalid token → published only. Logic lives in postService.listPosts.
+//
+// The token can arrive two ways (mirror require-auth's priority): a
+// `Authorization: Bearer` header (legacy / service clients) OR the
+// `access_token` httpOnly cookie the browser SPA sends after the cookie-auth
+// migration. Reading only the header (as this did originally) meant a
+// logged-in admin's cookie request fell through to the anonymous
+// published-only branch — so the dashboard "Все посты" table never showed
+// drafts or other users' posts.
 function readAuth(req: NextApiRequest): { role?: string; userId?: string } {
-  const { authorization } = req.headers;
-  if (!authorization) return {};
+  const authHeader = req.headers.authorization;
+  const bearerToken =
+    authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+  const token = bearerToken ?? readCookie(req, ACCESS_COOKIE);
+  if (!token) return {};
   try {
-    const token = authorization.split(' ')[1];
     const decoded = verifyToken(token);
     return { role: decoded.role, userId: decoded.userId };
   } catch {

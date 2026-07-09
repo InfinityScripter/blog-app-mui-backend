@@ -7,11 +7,12 @@ import { MSG } from '@/src/constants/messages';
 import { SALT_ROUNDS } from '@/src/constants/auth';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 
 // Completes the reset-by-code flow: reset-password.ts emails the code, this
 // route exchanges a valid code for a new password. Codes/emails are never
 // logged — a reset code in the logs is a account-takeover primitive.
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
@@ -64,3 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+// Rate-limited: without a cap, the 6-digit code (900k space, 1h window) is
+// brute-forceable against a known victim email → account takeover.
+export default withRateLimit({
+  routeName: 'auth.update-password',
+  windowMs: 60_000,
+  max: 10,
+})(handler);

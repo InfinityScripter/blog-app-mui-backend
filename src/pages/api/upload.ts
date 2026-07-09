@@ -16,6 +16,19 @@ export const config = {
   },
 };
 
+// Uploads are post cover images only. Cap the size (an unbounded upload is read
+// fully into RAM → memory-exhaustion DoS) and allow-list image mimetypes (an
+// HTML/SVG-with-script blob served back inline would be stored XSS — see the
+// nosniff + attachment hardening in api/file/[id].ts).
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+]);
+
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
@@ -31,19 +44,33 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const form = formidable({
       keepExtensions: true,
       multiples: false,
+      maxFileSize: MAX_UPLOAD_BYTES,
+      filter: ({ mimetype }) => Boolean(mimetype && ALLOWED_MIME_TYPES.has(mimetype)),
     });
 
     return await new Promise<void>((resolve) => {
       form.parse(req, async (err, fields, files) => {
         if (err) {
+          // formidable throws a size-limit error (httpCode 413) when the upload
+          // exceeds maxFileSize — surface that to the client instead of a 500.
+          const tooLarge =
+            typeof err === 'object' && err !== null && 'httpCode' in err && err.httpCode === 413;
           console.error('[Upload API] Form parse error:', err);
-          res.status(HTTP.INTERNAL).json({ message: 'Error parsing form data' });
+          if (tooLarge) {
+            res.status(HTTP.PAYLOAD_TOO_LARGE).json({ message: 'File too large (max 5 MB)' });
+          } else {
+            res.status(HTTP.BAD_REQUEST).json({ message: 'Error parsing form data' });
+          }
           return resolve();
         }
 
         const file = files.file?.[0];
         if (!file) {
-          res.status(HTTP.BAD_REQUEST).json({ message: 'No file uploaded' });
+          // The mimetype filter drops disallowed files, so an empty result here
+          // is either "no file" or "a rejected non-image".
+          res
+            .status(HTTP.BAD_REQUEST)
+            .json({ message: 'No valid image uploaded (allowed: JPEG, PNG, WebP, GIF, AVIF)' });
           return resolve();
         }
 

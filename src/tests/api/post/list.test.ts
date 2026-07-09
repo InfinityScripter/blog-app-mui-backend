@@ -2,8 +2,10 @@ import '@jest/globals';
 import bcrypt from 'bcrypt';
 import User from '@/src/models/User';
 import { Post } from '@/src/models/Post';
+import { signToken } from '@/src/lib/jwt';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/post/list';
+import { ACCESS_COOKIE } from '@/src/lib/cookies';
 import { HTTP_METHOD } from '@/src/constants/http';
 
 const OWNER_ID = '7060694b2c21843bf8307f99';
@@ -37,6 +39,19 @@ async function seed() {
 
 function listRequest(query: Record<string, string> = {}) {
   return createMocks({ method: HTTP_METHOD.GET, query });
+}
+
+/** Builds a list request carrying an access_token cookie for the given user. */
+function authedListRequest(
+  payload: { userId: string; role: string },
+  query: Record<string, string> = {}
+) {
+  const token = signToken({ userId: payload.userId, role: payload.role });
+  return createMocks({
+    method: HTTP_METHOD.GET,
+    query,
+    headers: { cookie: `${ACCESS_COOKIE}=${token}` },
+  });
 }
 
 describe('GET /api/post/list — tag filter', () => {
@@ -77,6 +92,37 @@ describe('GET /api/post/list — tag filter', () => {
     const titles = posts.map((p: { title: string }) => p.title);
     // Published, non-news posts only — the news post is excluded.
     expect(titles).toEqual(['AI статья']);
+  });
+});
+
+describe('GET /api/post/list — auth scoping via access_token cookie', () => {
+  beforeEach(seed);
+
+  it('admin cookie sees ALL posts including drafts (was published-only when auth read only the Bearer header)', async () => {
+    const { req, res } = authedListRequest({ userId: OWNER_ID, role: 'admin' });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const { posts } = JSON.parse(res._getData());
+    const titles = posts.map((p: { title: string }) => p.title).sort();
+    // The draft "Черновик" is now visible to the admin dashboard list.
+    expect(titles).toEqual(['AI статья', 'Новость дня', 'Черновик']);
+  });
+
+  it('a logged-in non-admin cookie sees their own posts (drafts included)', async () => {
+    const { req, res } = authedListRequest({ userId: OWNER_ID, role: 'user' });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const { posts } = JSON.parse(res._getData());
+    // Owner authored all three (2 published + 1 draft) → all returned.
+    expect(posts).toHaveLength(3);
+  });
+
+  it('anonymous (no cookie) still sees published only', async () => {
+    const { req, res } = listRequest();
+    await handler(req, res);
+    const { posts } = JSON.parse(res._getData());
+    expect(posts).toHaveLength(2);
+    expect(posts.every((p: { publish: string }) => p.publish === 'published')).toBe(true);
   });
 });
 
