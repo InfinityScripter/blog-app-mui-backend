@@ -281,6 +281,28 @@ export default class User implements IUser {
     });
   }
 
+  /**
+   * Batch lookup by id — one `id = ANY($1)` query for a whole set, so callers
+   * resolving many users (e.g. comment/reply authors) avoid an N+1 loop of
+   * findOne calls. Returns the found users in arbitrary order; callers key by
+   * `_id`. An empty id list short-circuits without a query.
+   */
+  static async findByIds(ids: string[]): Promise<User[]> {
+    const unique = Array.from(new Set(ids));
+    if (unique.length === 0) {
+      return [];
+    }
+    // Expanded IN ($1,$2,…) rather than = ANY($1): portable across the real
+    // Postgres driver and the pg-mem test double (pg-mem doesn't bind a
+    // parameterized array cast), and it needs no column-type cast.
+    const placeholders = unique.map((_id, index) => `$${index + 1}`).join(', ');
+    const result = await dbQuery<UserRow>(
+      `SELECT * FROM users WHERE id IN (${placeholders})`,
+      unique
+    );
+    return result.rows.map((row) => new User(mapUserRow(row)));
+  }
+
   async save() {
     const result = await dbQuery<UserRow>(
       `

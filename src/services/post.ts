@@ -6,6 +6,7 @@ import { Post } from '@/src/models/Post';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
+import { paramCase } from '@/src/utils/change-case';
 import { buildNewPostPayload, buildPostPatchPayload } from '@/src/utils/post-payload';
 
 // Business logic for the post domain. No HTTP — routes call these and map
@@ -203,6 +204,22 @@ async function incrementViews(postId: string): Promise<number | null> {
   return result.rows[0]?.total_views ?? null;
 }
 
+/**
+ * Newest PUBLISHED posts for the "latest posts" rail, excluding the one whose
+ * title-slug matches `excludeSlug` (the post currently being viewed). The slug
+ * is derived (not a column), so we take a small newest-first published window
+ * in SQL — `LIMIT limit + 1` leaves room to drop the current post — and filter
+ * the slug out of that bounded set. This replaces the old full-table scan that
+ * loaded every post (drafts included) into memory on each request.
+ */
+async function findLatestPublished(excludeSlug: string, limit = 4): Promise<IPost[]> {
+  const rows = await Post.find({ publish: 'published' })
+    .sort({ createdAt: -1 })
+    .limit(limit + 1)
+    .lean();
+  return rows.filter((post) => paramCase(post.title) !== excludeSlug).slice(0, limit);
+}
+
 export const postService = {
   listPosts,
   createPost,
@@ -211,4 +228,5 @@ export const postService = {
   setPublish,
   searchPosts,
   incrementViews,
+  findLatestPublished,
 };

@@ -4,6 +4,7 @@ import User from '@/src/models/User';
 import dbConnect from '@/src/lib/db';
 import { Post } from '@/src/models/Post';
 import { MSG } from '@/src/constants/messages';
+import { sendError } from '@/src/utils/response';
 import { parseLang } from '@/src/constants/i18n';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { getTranslatedPostFields } from '@/src/services/post-translation';
@@ -29,27 +30,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     post.totalComments = post.comments.length;
-    // Populate user data for reply comments
-    const populateUserData = async () => {
-      const userPromises: Promise<void>[] = [];
 
-      post.comments.forEach((comment) => {
-        comment.replyComment.forEach((reply) => {
-          userPromises.push(
-            User.findOne({ _id: reply.userId }).then((user) => {
-              if (user) {
-                reply.userName = user.name;
-                reply.userAvatar = user.avatarURL ?? undefined;
-              }
-            })
-          );
-        });
+    // Populate author name/avatar on every reply. Batch the user lookups into a
+    // single query (was an N+1 loop of findOne per reply) and key by id.
+    const replies = post.comments.flatMap((comment) => comment.replyComment);
+    if (replies.length > 0) {
+      const authors = await User.findByIds(replies.map((reply) => reply.userId));
+      const authorById = new Map(authors.map((author) => [String(author._id), author]));
+      replies.forEach((reply) => {
+        const author = authorById.get(String(reply.userId));
+        if (author) {
+          reply.userName = author.name;
+          reply.userAvatar = author.avatarURL ?? undefined;
+        }
       });
-
-      await Promise.all(userPromises);
-    };
-
-    await populateUserData();
+    }
 
     // i18n: for a non-original locale, replace only the translatable fields
     // (title/description/content). Everything else — id, comments, author,
@@ -62,7 +57,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(HTTP.OK).json({ post });
   } catch (error) {
-    console.error('[Post Details API]:', error);
-    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
+    // Consistent with the other post routes: map AppError status/message and
+    // hide internals, instead of flattening everything to a generic 500.
+    return sendError(res, error);
   }
 }
