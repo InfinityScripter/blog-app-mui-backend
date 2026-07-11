@@ -38,14 +38,28 @@ describe('GET /api/llm-stats/public', () => {
 
     expect(res._getStatusCode()).toBe(200);
     const body = JSON.parse(res._getData());
-    const bundle = body.data.bundle;
+    const {bundle} = body.data;
     // Aggregate data preserved…
     expect(bundle.kpis.totalTokens).toBe(100);
     expect(bundle.byModelFamily[0].family).toBe('opus');
     // …private fields stripped: project names, internal skill/MCP names, path warnings.
     expect(bundle.byProject).toEqual([]);
-    expect(bundle.claudeExtras).toBeNull();
+    expect(bundle.claudeExtras).toBeUndefined(); // allowlist: not carried at all
     expect(bundle.meta.warnings).toEqual([]);
+  });
+
+  it('is fail-closed: an unknown/future bundle field never reaches the public', async () => {
+    const bundle = sensitiveBundle() as Record<string, unknown>;
+    // A hypothetical field a future scanner might add — must be dropped.
+    bundle.secretNewField = { rawPath: '/Users/talalaev-m/private' };
+    await saveSnapshot(bundle);
+
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET });
+    await publicHandler(req, res);
+    const out = JSON.parse(res._getData()).data.bundle;
+    expect(out.secretNewField).toBeUndefined();
+    // Known-safe aggregate still present.
+    expect(out.kpis.totalTokens).toBe(100);
   });
 
   it('returns a null bundle when no snapshot exists (not an error)', async () => {

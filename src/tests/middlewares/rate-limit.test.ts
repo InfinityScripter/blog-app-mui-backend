@@ -76,6 +76,29 @@ describe('withRateLimit middleware', () => {
     expect(b1.res._getStatusCode()).toBe(200);
   });
 
+  it('does NOT give a fresh bucket when only the spoofable leftmost XFF entry rotates', async () => {
+    // With 1 trusted proxy (nginx appends the real peer at the right), the real
+    // client IP is the last entry. An attacker rotating the LEFTMOST (spoofed)
+    // entry must still land in the same bucket — the rate-limit-bypass fix.
+    const handler = jest.fn((req, res) => res.status(200).json({ ok: true }));
+    const wrapped = withRateLimit(OPTS)(handler as any);
+
+    const spoof = (leftmost: string) =>
+      createMocks({
+        method: HTTP_METHOD.GET,
+        headers: { 'x-forwarded-for': `${leftmost}, 9.9.9.9` }, // 9.9.9.9 = real peer
+      });
+
+    const r1 = spoof('1.1.1.1');
+    await wrapped(r1.req as any, r1.res as any);
+    const r2 = spoof('2.2.2.2');
+    await wrapped(r2.req as any, r2.res as any);
+    const r3 = spoof('3.3.3.3');
+    await wrapped(r3.req as any, r3.res as any);
+    // Same real peer (9.9.9.9) → same bucket → 3rd request is capped.
+    expect(r3.res._getStatusCode()).toBe(429);
+  });
+
   it('resets after the window elapses (fake timers)', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(0);

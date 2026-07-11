@@ -55,23 +55,43 @@ export async function getLatestSnapshot(): Promise<SnapshotResult> {
   return { bundle: rows.rows[0].bundle, pushedAt: rows.rows[0].pushed_at };
 }
 
+// Aggregate bundle fields that are safe to expose publicly. ALLOWLIST (not a
+// denylist) so a future field the local scanner adds can't silently leak to
+// anonymous readers — anything not named here is dropped. Deliberately EXCLUDES
+// byProject (work-repo names), claudeExtras (raw internal skill/MCP-tool names),
+// and meta.warnings (scan errors can embed an absolute home path).
+const PUBLIC_BUNDLE_FIELDS = [
+  'kpis',
+  'byModelFamily',
+  'byModel',
+  'byHarness',
+  'trend',
+  'heatmap',
+] as const;
+
+// meta subfields safe to expose (NOT warnings).
+const PUBLIC_META_FIELDS = ['generatedAt', 'scannedFiles', 'harnessesAvailable'] as const;
+
 /**
- * Strips every field that could leak private/internal detail from a stats
- * bundle before it goes to anonymous readers. Shared by the public endpoint so
- * the rules can't drift. Removed:
- *  - byProject:   work-repo names (push already clears it; belt-and-suspenders).
- *  - claudeExtras: topSkills / topMcpTools carry RAW internal skill + MCP-tool
- *                  names (e.g. stefania-*, mcp__*-devtools) — employer/infra leak.
- *  - meta.warnings: scan errors can embed an absolute home path.
- * Everything else (tokens, models, harnesses, cost estimate, trend, heatmap) is
- * aggregate and safe — that's the citable primary-source value.
+ * Projects a stats bundle down to the public allowlist before it goes to
+ * anonymous readers. Fail-closed: only PUBLIC_BUNDLE_FIELDS + a sanitized meta
+ * survive; byProject is forced empty, claudeExtras and meta.warnings never
+ * appear. Shared by the public endpoint so the rules can't drift.
  */
 export function toPublicBundle(bundle: Record<string, unknown>): Record<string, unknown> {
-  const meta =
-    bundle.meta && typeof bundle.meta === 'object'
-      ? { ...(bundle.meta as Record<string, unknown>), warnings: [] }
-      : bundle.meta;
-  return { ...bundle, byProject: [], claudeExtras: null, meta };
+  const out: Record<string, unknown> = { byProject: [] };
+  PUBLIC_BUNDLE_FIELDS.forEach((key) => {
+    if (key in bundle) out[key] = bundle[key];
+  });
+  const meta = bundle.meta as Record<string, unknown> | undefined;
+  if (meta && typeof meta === 'object') {
+    const safeMeta: Record<string, unknown> = { warnings: [] };
+    PUBLIC_META_FIELDS.forEach((key) => {
+      if (key in meta) safeMeta[key] = meta[key];
+    });
+    out.meta = safeMeta;
+  }
+  return out;
 }
 
 /**

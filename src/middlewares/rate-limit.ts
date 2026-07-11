@@ -2,7 +2,7 @@ import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
-import { getClientIp } from '@/src/utils/client-ip';
+import { getTrustedClientIp } from '@/src/utils/client-ip';
 
 // ----------------------------------------------------------------------
 // In-memory, per-IP fixed-window rate limiter. Composes like the other route
@@ -77,7 +77,9 @@ export function withRateLimit(opts: RateLimitOptions) {
       return handler(req, res);
     }
 
-    const key = `${routeName}:${getClientIp(req) ?? 'unknown'}`;
+    // Trusted-proxy IP (reads the proxy-appended entry, not the spoofable
+    // leftmost one) so a client can't mint fresh buckets by rotating XFF.
+    const key = `${routeName}:${getTrustedClientIp(req) ?? 'unknown'}`;
     const now = Date.now();
 
     requestsSinceSweep += 1;
