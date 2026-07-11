@@ -54,3 +54,37 @@ export async function getLatestSnapshot(): Promise<SnapshotResult> {
   }
   return { bundle: rows.rows[0].bundle, pushedAt: rows.rows[0].pushed_at };
 }
+
+/**
+ * Strips every field that could leak private/internal detail from a stats
+ * bundle before it goes to anonymous readers. Shared by the public endpoint so
+ * the rules can't drift. Removed:
+ *  - byProject:   work-repo names (push already clears it; belt-and-suspenders).
+ *  - claudeExtras: topSkills / topMcpTools carry RAW internal skill + MCP-tool
+ *                  names (e.g. stefania-*, mcp__*-devtools) — employer/infra leak.
+ *  - meta.warnings: scan errors can embed an absolute home path.
+ * Everything else (tokens, models, harnesses, cost estimate, trend, heatmap) is
+ * aggregate and safe — that's the citable primary-source value.
+ */
+export function toPublicBundle(bundle: Record<string, unknown>): Record<string, unknown> {
+  const meta =
+    bundle.meta && typeof bundle.meta === 'object'
+      ? { ...(bundle.meta as Record<string, unknown>), warnings: [] }
+      : bundle.meta;
+  return { ...bundle, byProject: [], claudeExtras: null, meta };
+}
+
+/**
+ * Latest snapshot for the PUBLIC dashboard — aggregate token/model/harness/cost
+ * data only, with private fields stripped (toPublicBundle).
+ */
+export async function getPublicSnapshot(): Promise<SnapshotResult> {
+  const snapshot = await getLatestSnapshot();
+  if (!snapshot.bundle || typeof snapshot.bundle !== 'object') {
+    return snapshot;
+  }
+  return {
+    bundle: toPublicBundle(snapshot.bundle as Record<string, unknown>),
+    pushedAt: snapshot.pushedAt,
+  };
+}
