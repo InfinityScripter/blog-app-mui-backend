@@ -1,10 +1,11 @@
-/* eslint-disable */
-// ----------------------------------------------------------------------
+import { randomUUID } from 'node:crypto';
 
-export default function uuidv4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0,
-      v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+// ----------------------------------------------------------------------
+// RFC 4122 v4 UUID from a CSPRNG. Was a Math.random() implementation, which is
+// predictable — a problem for the security-bearing IDs built on this (refresh
+// familyId, newsletter confirm/unsubscribe tokens). node:crypto.randomUUID is
+// the native, cryptographically-strong equivalent.
+
+export default function uuidv4(): string {
+  return randomUUID();
 }

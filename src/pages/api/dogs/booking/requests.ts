@@ -4,6 +4,7 @@ import { ok, sendError } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { validateBody } from '@/src/middlewares/validate';
 import { withMethods } from '@/src/middlewares/with-methods';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { sendDogsRequestReceived } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 import { createDogsBookingRequestSchema } from '@/src/schemas/dogs-booking';
@@ -36,6 +37,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods([HTTP_METHOD.POST])(
-  validateBody(createDogsBookingRequestSchema)(handler)
+// 10/min per IP — an anonymous public write that fans out to 2 Telegram sends +
+// 1 email per request; without a cap it's a spam / notification-DoS amplifier.
+export default withRateLimit({ routeName: 'dogs.booking.requests', windowMs: 60_000, max: 10 })(
+  withMethods([HTTP_METHOD.POST])(validateBody(createDogsBookingRequestSchema)(handler))
 );

@@ -5,6 +5,7 @@ import { MSG } from '@/src/constants/messages';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireAuth } from '@/src/middlewares/require-auth';
 import { requireAdmin } from '@/src/middlewares/require-admin';
+import { buildPostPatchPayload } from '@/src/utils/post-payload';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query as { id: string };
@@ -15,8 +16,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === HTTP_METHOD.PUT) {
-    const post = await Post.findByIdAndUpdate(id, req.body, { new: true });
-    if (!post) return res.status(HTTP.NOT_FOUND).json({ message: 'Post not found' });
+    const existing = await Post.findById(id);
+    if (!existing) return res.status(HTTP.NOT_FOUND).json({ message: 'Post not found' });
+
+    // Whitelist the editable fields — never spread raw req.body, which would let
+    // an update rewrite userId / _id / createdAt (mass-assignment). author +
+    // cover fall back to the existing post; ownership isn't reassignable here.
+    const patch = buildPostPatchPayload(req.body ?? {}, {
+      author: existing.author,
+      coverUrlFallback: existing.coverUrl,
+      totalComments: existing.comments.length,
+    });
+    const post = await Post.findByIdAndUpdate(id, patch, { new: true });
     return res.status(HTTP.OK).json({ post });
   }
 

@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcrypt';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
+import { randomInt } from 'node:crypto';
 import { MSG } from '@/src/constants/messages';
 import { signUpSchema } from '@/src/schemas/auth';
 import { SALT_ROUNDS } from '@/src/constants/auth';
@@ -14,8 +15,8 @@ import { withRateLimit } from '@/src/middlewares/rate-limit';
 
 const hasEmailCredentials = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
 
-// Генерация 6-значного кода
-const generateVerificationCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+// 6-значный код из CSPRNG (не Math.random — предсказуем, брутфорсится по email).
+const generateVerificationCode = () => randomInt(100000, 1000000).toString();
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {

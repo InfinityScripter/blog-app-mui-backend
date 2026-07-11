@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { isAppError } from '@/src/types/api';
 import { MSG } from '@/src/constants/messages';
+import { safeEqual } from '@/src/utils/safe-equal';
 import { ok, sendError } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
@@ -12,7 +13,10 @@ function hasValidSecret(req: NextApiRequest) {
   if (!expected) {
     return true;
   }
-  return req.headers['x-telegram-bot-api-secret-token'] === expected;
+  const provided = req.headers['x-telegram-bot-api-secret-token'];
+  // Constant-time compare — a plain === leaks the secret one byte at a time to
+  // an attacker who can time repeated webhook probes.
+  return typeof provided === 'string' && safeEqual(provided, expected);
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {

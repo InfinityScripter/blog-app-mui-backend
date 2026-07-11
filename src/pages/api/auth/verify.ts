@@ -5,9 +5,10 @@ import User from '@/src/models/User';
 import { MSG } from '@/src/constants/messages';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { normalizeEmail } from '@/src/utils/normalize-email';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
@@ -55,8 +56,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     return res.status(HTTP.OK).json({ message: 'Email successfully verified', success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Verify Email API]', error);
     return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL });
   }
 }
+
+// Rate-limit the verification attempt: without it a 6-digit code (900k space)
+// valid for 24h is brute-forceable to take over an unverified account. 10/min
+// per IP caps the guess rate to a negligible fraction of the space.
+export default withRateLimit({
+  routeName: 'auth.verify',
+  windowMs: 60_000,
+  max: 10,
+})(handler);
