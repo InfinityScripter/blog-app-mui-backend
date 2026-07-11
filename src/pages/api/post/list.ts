@@ -6,10 +6,10 @@ import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
-import { postService } from '@/src/services/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
 import { translatePosts } from '@/src/services/post-translation';
+import { postService, stripListContent } from '@/src/services/post';
 import { MAX_LIMIT, DEFAULT_LIMIT } from '@/src/constants/pagination';
 
 // Optional auth: a valid token scopes the list (admin → all, user → own);
@@ -74,10 +74,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // locale. `ru`/absent returns the posts untouched (byte-identical).
     const localized = await translatePosts(posts, parseLang(req.query.lang));
 
+    // Strip the full content body from the wire payload (C7). Translation above
+    // still needs it (source_hash + summary cache), so we drop it only now, at
+    // the HTTP boundary; cards render from readingTime + description instead.
+    const lean = stripListContent(localized);
+
     if (wantsPagination) {
-      return res.status(HTTP.OK).json({ posts: localized, total, hasMore });
+      return res.status(HTTP.OK).json({ posts: lean, total, hasMore });
     }
-    return res.status(HTTP.OK).json({ posts: localized });
+    return res.status(HTTP.OK).json({ posts: lean });
   } catch (error) {
     return sendError(res, error);
   }

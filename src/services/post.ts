@@ -7,6 +7,7 @@ import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
 import { paramCase } from '@/src/utils/change-case';
+import { getReadingTime } from '@/src/utils/reading-time';
 import { buildNewPostPayload, buildPostPatchPayload } from '@/src/utils/post-payload';
 
 // Business logic for the post domain. No HTTP — routes call these and map
@@ -33,12 +34,28 @@ interface ListResult {
   hasMore?: boolean;
 }
 
-/** Attaches the derived totalComments field to a lean post row. */
+/**
+ * Shapes a lean post row for a LIST response. Precomputes `readingTime` (the one
+ * thing cards derive from the body) so the client never needs the full content.
+ * `content` is kept here because the i18n translate step still hashes/stores it;
+ * the list route strips it at the HTTP boundary (stripListContent) so the wire
+ * payload stays lean (C7).
+ */
 function mapListPost(post: IPost) {
   return {
     ...post,
     totalComments: post.comments ? post.comments.length : 0,
+    readingTime: getReadingTime(post.content),
   };
+}
+
+/**
+ * Removes the full content body from list rows for the HTTP response. Called
+ * AFTER translation (which needs content for the source_hash + summary cache),
+ * so the client gets titles/description/readingTime without the heavy body.
+ */
+export function stripListContent<T extends { content?: string }>(posts: T[]): Omit<T, 'content'>[] {
+  return posts.map(({ content, ...rest }) => rest);
 }
 
 /**

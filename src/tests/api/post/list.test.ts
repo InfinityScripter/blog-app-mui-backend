@@ -66,6 +66,17 @@ describe('GET /api/post/list — tag filter', () => {
     expect(titles).toEqual(['AI статья', 'Новость дня']); // draft excluded for anon
   });
 
+  it('omits the full content body but ships readingTime (lean wire payload, C7)', async () => {
+    const { req, res } = listRequest();
+    await handler(req, res);
+    const { posts } = JSON.parse(res._getData());
+    expect(posts.length).toBeGreaterThan(0);
+    expect(posts.every((p: Record<string, unknown>) => !('content' in p))).toBe(true);
+    expect(posts.every((p: Record<string, unknown>) => typeof p.readingTime === 'number')).toBe(
+      true
+    );
+  });
+
   it('returns only posts carrying the requested tag', async () => {
     const { req, res } = listRequest({ tag: 'новости' });
     await handler(req, res);

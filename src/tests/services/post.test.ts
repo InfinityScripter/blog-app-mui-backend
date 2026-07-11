@@ -55,6 +55,22 @@ describe('postService.listPosts', () => {
     expect(posts[0]).toHaveProperty('totalComments');
   });
 
+  it('ships a precomputed numeric readingTime alongside content', async () => {
+    // ~600 words / 200 wpm ≈ 3 min.
+    const words = Array.from({ length: 600 }, (_, i) => `word${i}`).join(' ');
+    await Post.create({
+      title: 'Long read',
+      userId: 'user-a',
+      publish: 'published',
+      author: { name: 'A' },
+      content: `<p>${words}</p>`,
+    });
+    const { posts } = await postService.listPosts({});
+    const longRead = posts.find((p: any) => p.title === 'Long read');
+    expect(typeof (longRead as any).readingTime).toBe('number');
+    expect((longRead as any).readingTime).toBe(3);
+  });
+
   it('page 1 limit 2 → 2 items, total 3, hasMore true (admin)', async () => {
     const { posts, total, hasMore } = await postService.listPosts({
       role: 'admin',
