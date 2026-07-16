@@ -37,3 +37,26 @@ DATABASE_URL=postgres://… npm run news:offtopic -- --apply
 delete the row — re-add the tag to undo. Hand-written blog posts (no `новости`
 tag) are never touched, and any post that also matches an on-topic AI/tech marker
 is protected from the cleanup.
+
+## `seed-changelog.mjs` — seed `/changelog` with real model releases
+
+Loads the curated set of real AI model releases from
+`scripts/changelog-seed-data.json` into the `model_releases` table, so
+`/changelog` is populated on a fresh/empty deploy.
+
+```bash
+# 1) DRY RUN — validates the data file and prints what would be inserted:
+DATABASE_URL=postgres://… npm run seed:changelog
+
+# 2) Insert the missing releases:
+DATABASE_URL=postgres://… npm run seed:changelog -- --apply
+```
+
+Idempotent: inserts with `ON CONFLICT (slug) DO NOTHING`, so re-running never
+duplicates and never overwrites a release that already exists (e.g. one the bot
+published). Slugs are computed exactly like the backend
+(`vendor-model-version`), so a seeded row and a bot/API row for the same
+release collide on slug and only one wins. The prod deploy
+(`.github/workflows/backend-cicd.yml`) already runs it with `--apply` after
+every successful healthcheck — run it manually only for ad-hoc seeding or to
+dry-run new entries in the data file.
