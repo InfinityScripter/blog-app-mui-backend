@@ -145,7 +145,10 @@ async function main() {
   const empties = rows.filter((r) => r.cover_url === '');
   const legacyDefaults = rows.filter((r) => r.cover_url === LEGACY_DEFAULT_COVER);
 
-  // Seed on title (matches the backend), fall back to id for the rare untitled row.
+  // Seed on title (matches the backend). Posts always have a title (the API
+  // requires it), so this is title-parity in practice; the id fallback only
+  // guards a pathological empty-title row (which the backend would leave on
+  // cover-1 — here we still spread it off the duplicate).
   const planned = rows.map((r) => ({
     id: r.id,
     title: r.title,
