@@ -20,8 +20,11 @@
 //   • the legacy default '/assets/images/cover/cover-1.webp'.
 // Anything else is left untouched: uploaded covers ('/api/file/…'), external
 // URLs, and any other deliberately-chosen '/assets/images/cover/cover-N.webp'
-// (N ≠ 1). Reversible — it only rewrites cover_url; re-run or restore from the
-// backup to undo.
+// (N ≠ 1). Reversible — it only rewrites cover_url (and bumps updated_at, as any
+// edit does); re-run or restore from the backup to undo. The dry run also prints
+// the current cover_url distribution across ALL posts, so any OTHER collapsed
+// default (should the historic default ever have differed) is visible, not
+// silently left duplicated.
 //
 // SAFE BY DEFAULT — dry run. Prints what WOULD change and touches nothing.
 //
@@ -45,9 +48,10 @@ const COVER_ASSET_COUNT = 24;
 const LEGACY_DEFAULT_COVER = `${COVER_ASSET_BASE}/cover-1.webp`;
 
 /**
- * Deterministic cover picker — a byte-for-byte port of pickDefaultCover in
- * src/utils/post-payload.ts (polynomial rolling hash → 1…24). A backfilled post
- * gets the exact cover the backend would now assign a fresh post with the same
+ * Deterministic cover picker — a hand-port of pickDefaultCover in
+ * src/utils/post-payload.ts (polynomial rolling hash → 1…24), kept identical to
+ * it (the pinned tests there guard against drift). A backfilled post gets the
+ * same cover the backend would now assign a fresh post with the same
  * title.
  */
 function pickDefaultCover(seed) {
@@ -163,6 +167,24 @@ async function main() {
     );
   }
 
+  // Current distribution across ALL posts — makes any OTHER collapsed default
+  // (a cover shared by many posts that ISN'T '' or cover-1) visible, so nothing
+  // duplicated is silently left behind.
+  const dist = (
+    await pool.query(
+      `SELECT cover_url, count(*)::int AS n FROM posts GROUP BY cover_url ORDER BY n DESC, cover_url`
+    )
+  ).rows;
+  console.log(`\ncurrent cover_url distribution (${dist.length} distinct across ${total} posts):`);
+  for (const d of dist.slice(0, 12)) {
+    const label = d.cover_url === '' ? '(empty)' : d.cover_url;
+    const bar = d.n > 1 ? `  ${'▇'.repeat(Math.min(24, d.n))}` : '';
+    console.log(`  ${String(d.n).padStart(5)}  ${label}${bar}`);
+  }
+  if (dist.length > 12) {
+    console.log(`  … and ${dist.length - 12} more distinct cover(s)`);
+  }
+
   if (REPORT_FILES) {
     await reportDuplicateFileBlobs();
   }
@@ -193,7 +215,10 @@ async function main() {
 
   // --apply: one bulk UPDATE, in a transaction. Two array params via unnest —
   // no per-row placeholders (dodges the 65535-param cap and any VALUES type
-  // inference quirks), explicit ::text[] casts pin the column types.
+  // inference quirks), explicit ::text[] casts pin the column types. The WHERE
+  // RE-ASSERTS the empty/legacy-cover precondition, so a post whose cover was
+  // changed (e.g. an admin edit) between the scan and this write is skipped, not
+  // silently overwritten.
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -203,11 +228,18 @@ async function main() {
       `UPDATE posts AS p
           SET cover_url = v.cover, updated_at = NOW()
          FROM unnest($1::text[], $2::text[]) AS v(id, cover)
-        WHERE p.id = v.id`,
-      [ids, covers]
+        WHERE p.id = v.id
+          AND (p.cover_url = '' OR p.cover_url = $3)`,
+      [ids, covers, LEGACY_DEFAULT_COVER]
     );
     await client.query('COMMIT');
     console.log(`\nUpdated ${res.rowCount} post cover(s).`);
+    if (res.rowCount < changes.length) {
+      console.log(
+        `Note: ${changes.length - res.rowCount} candidate(s) had their cover changed between the ` +
+          `scan and the write and were skipped (guard held). Re-run to reconsider them.`
+      );
+    }
     console.log('Reversible: re-run assigns the same covers, or restore from the backup.');
   } catch (err) {
     await client.query('ROLLBACK');

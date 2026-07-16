@@ -30,6 +30,22 @@ describe('pickDefaultCover', () => {
     expect(pickDefaultCover('Заголовок новости')).toBe(pickDefaultCover('Заголовок новости'));
   });
 
+  it('is pinned to a fixed mapping (guards the algorithm from silent drift)', () => {
+    // scripts/backfill-post-covers.mjs hand-ports this exact hash; if either the
+    // TS or the ported copy changes, these pins fail and force a deliberate
+    // re-sync + a fresh backfill decision. Values are the polynomial-hash output.
+    const pinned: Record<string, string> = {
+      a: 'cover-2',
+      hello: 'cover-11',
+      'Заголовок новости': 'cover-21',
+      'GPT-5 released': 'cover-10',
+      'Пост 1': 'cover-17',
+    };
+    Object.entries(pinned).forEach(([seed, expected]) => {
+      expect(pickDefaultCover(seed)).toBe(`${COVER_ASSET_BASE}/${expected}.webp`);
+    });
+  });
+
   it('falls back to the legacy default for an empty/whitespace seed', () => {
     expect(pickDefaultCover('')).toBe(DEFAULT_POST_COVER_URL);
     expect(pickDefaultCover('   ')).toBe(DEFAULT_POST_COVER_URL);
@@ -71,6 +87,12 @@ describe('buildNewPostPayload cover handling', () => {
     expect(payload.coverUrl).toBe('/api/file/abc-123');
   });
 
+  it('never stores a blank cover — an empty-string cover becomes the varied default', () => {
+    const payload = buildNewPostPayload({ title: 'Заголовок', coverUrl: '' }, author, 'user-1');
+    expect(payload.coverUrl).toBe(pickDefaultCover('Заголовок'));
+    expect(payload.coverUrl).not.toBe('');
+  });
+
   it('uses an upload object path, else the varied default', () => {
     const withPath = buildNewPostPayload(
       { title: 'T', coverUrl: { path: '/api/file/xyz' } },
@@ -97,5 +119,10 @@ describe('buildPostPatchPayload cover handling', () => {
       { coverUrlFallback: '/assets/images/cover/cover-7.webp' }
     );
     expect(patch.coverUrl).toBe('/assets/images/cover/cover-7.webp');
+  });
+
+  it('does not strip a cover when the patch sends an empty string', () => {
+    const patch = buildPostPatchPayload({ coverUrl: '' }, { coverUrlFallback: '/api/file/keep' });
+    expect(patch.coverUrl).toBe('/api/file/keep');
   });
 });

@@ -21,6 +21,10 @@ const DEFAULT_POST_COVER_URL = `${COVER_ASSET_BASE}/cover-1.webp`;
  *  - two different posts almost always get different covers (no visible dupes), and
  *  - re-saving the same post never reshuffles its cover (stable, idempotent).
  * An empty/whitespace seed falls back to the legacy default.
+ *
+ * NOTE: scripts/backfill-post-covers.mjs hand-ports this exact algorithm to fix
+ * the existing backlog. Keep the two in sync — the regression-pinned cases in
+ * src/tests/utils/post-payload.test.ts lock the mapping so a silent drift fails.
  */
 function pickDefaultCover(seed?: string): string {
   const key = (seed ?? '').trim();
@@ -83,7 +87,11 @@ function resolveCoverUrl(coverUrl?: CoverInput, fallback = DEFAULT_POST_COVER_UR
   }
 
   if (typeof coverUrl === 'string') {
-    return coverUrl;
+    // An empty/whitespace string means "no cover" — fall back instead of
+    // persisting a blank cover_url (the source of the coverless posts). On
+    // create the fallback is the varied default; on update it's the existing
+    // cover, so an empty-string patch never strips a post's cover.
+    return coverUrl.trim() === '' ? fallback : coverUrl;
   }
 
   return coverUrl?.path ?? fallback;
