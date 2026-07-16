@@ -11,7 +11,7 @@ import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { subscriberService } from '@/src/services/subscriber';
 
-// Public POST — double-opt-in subscribe. cors() first. Body is validated by
+// Public POST — double-opt-in subscribe. Body is validated by
 // validateBody(subscribeSchema). On success returns 201 ok() envelope; the bot
 // / frontend read data.data.subscriber. The confirm email is fire-and-forget:
 // a mail failure must NOT lose the subscriber (the DB write already succeeded),

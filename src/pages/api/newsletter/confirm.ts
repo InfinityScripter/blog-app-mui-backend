@@ -11,7 +11,7 @@ import { withMethods } from '@/src/middlewares/with-methods';
 import { subscriberService } from '@/src/services/subscriber';
 
 // Public GET — confirm a pending subscription via the single-use confirm token.
-// cors() first. 404 unknown token / 410 expired (mapped from AppError). Success
+// 404 unknown token / 410 expired (mapped from AppError). Success
 // returns ok() envelope: { success, data: { subscriber } } with status confirmed.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

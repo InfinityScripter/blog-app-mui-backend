@@ -10,7 +10,7 @@ import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { subscriberService } from '@/src/services/subscriber';
 
-// Public GET — unsubscribe via the permanent unsubscribe token. cors() first.
+// Public GET — unsubscribe via the permanent unsubscribe token.
 // 404 unknown token; idempotent (already-unsubscribed token still returns 200).
 // Success returns ok() envelope: { success, data: { email, status } }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
