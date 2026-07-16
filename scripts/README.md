@@ -38,6 +38,35 @@ delete the row — re-add the tag to undo. Hand-written blog posts (no `ново
 tag) are never touched, and any post that also matches an on-topic AI/tech marker
 is protected from the cleanup.
 
+## `backfill-post-covers.mjs` — diversify duplicated covers + fill missing ones
+
+Every post created without an explicit cover used to collapse onto the single
+default `cover-1.webp`, so past posts (chiefly the once-daily news-bot batch,
+whose publisher omits `coverUrl`) all looked identical; a few legacy rows have no
+cover at all (`cover_url = ''`). The backend now spreads new posts across the 24
+bundled covers deterministically (`pickDefaultCover` in
+`src/utils/post-payload.ts`); this script applies the same fix to the existing
+backlog.
+
+```bash
+# 1) DRY RUN — prints the counts + a sample of planned changes, touches nothing:
+DATABASE_URL=postgres://… npm run posts:covers
+
+# 2) Only after the counts look right — write the diversified covers:
+DATABASE_URL=postgres://… npm run posts:covers -- --apply
+
+# Optional: also print a read-only report of byte-identical duplicate uploads:
+DATABASE_URL=postgres://… npm run posts:covers -- --report-files
+```
+
+Scope: only posts whose cover is empty **or** the legacy `cover-1.webp` default
+are touched — uploaded covers (`/api/file/…`), external URLs, and any other
+deliberately-chosen `cover-N.webp` are left alone. Deterministic and idempotent
+(same title → same cover), so re-running is safe and only ever touches rows still
+empty or still on the old default. It rewrites `cover_url` only — reversible via
+the `pg_dump` backup (take one first). `--report-files` is informational only:
+files-table blob dedup is a separate, larger change and is **not** performed here.
+
 ## `seed-changelog.mjs` — seed `/changelog` with real model releases
 
 Loads the curated set of real AI model releases from

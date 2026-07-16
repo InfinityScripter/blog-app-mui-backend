@@ -1,6 +1,44 @@
 import type { IPost } from '@/src/models/Post';
 
-const DEFAULT_POST_COVER_URL = '/assets/images/cover/cover-1.webp';
+const COVER_ASSET_BASE = '/assets/images/cover';
+
+// The blog ships 24 bundled cover images (cover-1.webp … cover-24.webp under
+// public/assets/images/cover). Keep this in sync with the bundled asset set.
+const COVER_ASSET_COUNT = 24;
+
+// The legacy single default. Every post created without an explicit cover used
+// to collapse onto THIS one image, which is why past posts (especially the
+// once-daily news-bot batch, whose publisher omits coverUrl) all looked
+// identical. Kept as the ultimate fallback and as the value the cover-backfill
+// script (scripts/backfill-post-covers.mjs) treats as "an auto-default to
+// diversify".
+const DEFAULT_POST_COVER_URL = `${COVER_ASSET_BASE}/cover-1.webp`;
+
+/**
+ * Deterministically spreads a post across the 24 bundled cover images so posts
+ * created WITHOUT an explicit cover no longer all land on cover-1. The mapping
+ * is a pure function of `seed` (the post title), so:
+ *  - two different posts almost always get different covers (no visible dupes), and
+ *  - re-saving the same post never reshuffles its cover (stable, idempotent).
+ * An empty/whitespace seed falls back to the legacy default.
+ */
+function pickDefaultCover(seed?: string): string {
+  const key = (seed ?? '').trim();
+  if (!key) {
+    return DEFAULT_POST_COVER_URL;
+  }
+
+  // Polynomial rolling hash (arithmetic only — no bitwise, matching the codebase
+  // style). 31 is the classic multiplier; the large prime modulus keeps every
+  // intermediate well under Number.MAX_SAFE_INTEGER so the math stays exact.
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) % 1_000_000_007;
+  }
+
+  const index = (hash % COVER_ASSET_COUNT) + 1; // 1 … 24
+  return `${COVER_ASSET_BASE}/cover-${index}.webp`;
+}
 
 type CoverInput =
   | string
@@ -62,6 +100,9 @@ export function buildNewPostPayload(
   author: IPost['author'],
   userId: string
 ): Partial<IPost> {
+  // Seed the varied default on the title so a caller that omits coverUrl (e.g.
+  // the news bot) gets a spread-out cover instead of everyone sharing cover-1.
+  const defaultCover = pickDefaultCover(input.title);
   return {
     title: input.title,
     publish: input.publish,
@@ -69,7 +110,7 @@ export function buildNewPostPayload(
     content: input.content,
     tags: parseStringArray(input.tags) || [],
     metaTitle: input.metaTitle,
-    coverUrl: resolveCoverUrl(input.coverUrl, DEFAULT_POST_COVER_URL) || DEFAULT_POST_COVER_URL,
+    coverUrl: resolveCoverUrl(input.coverUrl, defaultCover) || defaultCover,
     totalViews: input.totalViews || 0,
     totalShares: input.totalShares || 0,
     totalComments: input.totalComments || 0,
@@ -113,4 +154,4 @@ export function buildPostPatchPayload(
   });
 }
 
-export { DEFAULT_POST_COVER_URL };
+export { pickDefaultCover, COVER_ASSET_BASE, COVER_ASSET_COUNT, DEFAULT_POST_COVER_URL };

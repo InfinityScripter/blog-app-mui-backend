@@ -23,6 +23,7 @@
     "test:coverage": "jest --coverage",
     "relevance:summary": "node scripts/relevance-shadow-summary.mjs",
     "news:offtopic": "node scripts/find-offtopic-news.mjs",
+    "posts:covers": "node scripts/backfill-post-covers.mjs",
     "seed:changelog": "node scripts/seed-changelog.mjs"
   },
   "dependencies": {
