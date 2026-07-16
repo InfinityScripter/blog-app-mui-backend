@@ -25,7 +25,6 @@ transporter.verify((error, success) => {
 
 export const sendVerificationEmail = async (email: string, code: string) => {
   console.log('Attempting to send verification email to:', email);
-  console.log('Using verification code:', code);
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const verificationUrl = `${frontendUrl}/auth/verify?email=${encodeURIComponent(email)}&code=${code}`;
