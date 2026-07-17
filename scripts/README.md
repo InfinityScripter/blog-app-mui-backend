@@ -67,6 +67,34 @@ empty or still on the old default. It rewrites `cover_url` only — reversible v
 the `pg_dump` backup (take one first). `--report-files` is informational only:
 files-table blob dedup is a separate, larger change and is **not** performed here.
 
+## `dedup-stock-covers.mjs` — de-duplicate the news bot's stock covers
+
+The bigger cover-duplication source is not `cover-1` but the news bot reusing a
+handful of Unsplash stock photos: on the live DB one image sat on 11 posts,
+another on 9, a third on 7. The bot picks from topical pools
+(`ai-bot-tg/src/blog/defaultCovers.ts`), but bare `новости` posts (the majority)
+fell to a tiny universal pool, so they cycled the same few images. The **bot** is
+fixed separately (its universal pool now spans every topical pool); this script
+re-spreads the **existing** posts.
+
+```bash
+# 1) DRY RUN — prints most-duplicated BEFORE/AFTER + a sample, touches nothing:
+DATABASE_URL=postgres://… npm run posts:dedup-covers
+
+# 2) Only after the AFTER count looks right — write the spread-out covers:
+DATABASE_URL=postgres://… npm run posts:dedup-covers -- --apply
+```
+
+The pools live in `scripts/cover-pools.json` (99 Unsplash URLs ported verbatim
+from the bot). A post is a candidate **only** if its cover is one of those URLs
+(an auto-assigned bot cover); feed/og images (e.g. `3dnews.ru`), uploads
+(`/api/file/…`), and the bundled `/assets` covers are left untouched. Each
+candidate's tags choose a topical pool (same mapping as the bot) and posts are
+assigned `pool[i % poolSize]` in `created_at` order, so a topic's posts cycle its
+whole pool before repeating. Deterministic + idempotent (re-running is a no-op);
+`--apply` guards each write on the scanned cover, so a post re-covered in the app
+meanwhile is skipped. Reversible via the `pg_dump` backup.
+
 ## `seed-changelog.mjs` — seed `/changelog` with real model releases
 
 Loads the curated set of real AI model releases from
