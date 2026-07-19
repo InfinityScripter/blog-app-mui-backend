@@ -7,9 +7,10 @@ import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { parseLang } from '@/src/constants/i18n';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { getTranslatedPostFields } from '@/src/services/post-translation';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
@@ -62,3 +63,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return sendError(res, error);
   }
 }
+
+// 60/min per IP, как post.list: единственный публичный пост-роут без капа —
+// холодный ?lang= тянет DeepL синхронно, без лимита это дешёвый способ жечь
+// квоту и воркеры.
+export default withRateLimit({ routeName: 'post.details', windowMs: 60_000, max: 60 })(handler);

@@ -177,8 +177,15 @@ interface SearchParams {
 }
 
 /**
+ * Кап поисковой выдачи. Без него пустой query возвращал ВСЕ посты — с ростом
+ * корпуса это неограниченный ответ на публичном анонимном эндпоинте.
+ */
+export const SEARCH_RESULTS_LIMIT = 50;
+
+/**
  * Searches posts by title (case-insensitive). In dashboard mode results are
  * scoped to the user's own posts (userId required); otherwise only published.
+ * Newest first, capped at SEARCH_RESULTS_LIMIT.
  */
 async function searchPosts({ query, dashboard, userId }: SearchParams) {
   const filter: Record<string, unknown> = {};
@@ -194,7 +201,7 @@ async function searchPosts({ query, dashboard, userId }: SearchParams) {
   if (clean !== '') {
     filter.title = { $regex: clean, $options: 'i' };
   }
-  return Post.find(filter).lean();
+  return Post.find(filter).sort({ createdAt: -1 }).limit(SEARCH_RESULTS_LIMIT).lean();
 }
 
 /** Sets publish status ('draft' | 'published') on a post the user owns. */

@@ -6,10 +6,10 @@ import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
-import { postService } from '@/src/services/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
 import { translatePosts } from '@/src/services/post-translation';
+import { postService, stripListContent } from '@/src/services/post';
 
 // Optional auth: dashboard=true searches the caller's own posts (token
 // required), otherwise published only. Logic lives in postService.searchPosts.
@@ -39,9 +39,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userId: readUserId(req),
     });
     // Search matches on the original title; results are translated for a
-    // non-original locale. `ru`/absent returns them untouched.
+    // non-original locale. `ru`/absent returns them untouched. Полные тела
+    // постов в поисковой выдаче не нужны — стрипаем на границе HTTP, как list.
     const localized = await translatePosts(results, parseLang(req.query.lang));
-    return res.status(HTTP.OK).json({ results: localized });
+    return res.status(HTTP.OK).json({ results: stripListContent(localized) });
   } catch (error) {
     return sendError(res, error);
   }

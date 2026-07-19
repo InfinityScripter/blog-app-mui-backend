@@ -42,3 +42,6 @@ tsconfig.jest.tsbuildinfo
 # Claude Code (local/machine-specific)
 .claude/settings.local.json
 .claude/launch.json
+
+# Override this machine's global `/*` rule for project-owned source additions.
+!/src/

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { AppError } from '@/src/types/api';
+import { safeEqual } from '@/src/utils/safe-equal';
 import { ok, sendError } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withMethods } from '@/src/middlewares/with-methods';
@@ -17,7 +18,7 @@ armDogsReminderScheduler();
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const secret = process.env.DOGS_REMINDERS_SECRET;
-    if (secret && req.headers.authorization !== `Bearer ${secret}`) {
+    if (secret && !safeEqual(req.headers.authorization ?? '', `Bearer ${secret}`)) {
       throw new AppError(HTTP.UNAUTHORIZED, 'Unauthorized');
     }
 
