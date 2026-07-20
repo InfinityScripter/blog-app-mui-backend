@@ -1,8 +1,8 @@
-# blog-app-mui-backend
-
 <p align="center">
   <img src="docs/news-bot-pipeline.gif" alt="Конвейер новостного бота: RSS → карточка в Telegram → рерайт LLM → аппрув → публикация" width="720">
 </p>
+
+# blog-app-mui-backend
 
 API-бэкенд блога **[aifirst.us.com](https://aifirst.us.com)** и сопутствующих сервисов.
 Next.js 14 (pages router, используется только как API-сервер), PostgreSQL, JWT-авторизация.https://github.com/InfinityScripter/blog-app-mui-backend/blob/main/README.md
