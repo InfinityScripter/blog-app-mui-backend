@@ -1,7 +1,11 @@
 # blog-app-mui-backend
 
+<p align="center">
+  <img src="docs/news-bot-pipeline.gif" alt="Конвейер новостного бота: RSS → карточка в Telegram → рерайт LLM → аппрув → публикация" width="720">
+</p>
+
 API-бэкенд блога **[aifirst.us.com](https://aifirst.us.com)** и сопутствующих сервисов.
-Next.js 14 (pages router, используется только как API-сервер), PostgreSQL, JWT-авторизация.
+Next.js 14 (pages router, используется только как API-сервер), PostgreSQL, JWT-авторизация.https://github.com/InfinityScripter/blog-app-mui-backend/blob/main/README.md
 Порт — **7272**, прод — `https://api.aifirst.us.com:8444`.
 
 Что живёт в этом бэкенде:
@@ -241,8 +245,4 @@ npm test -- --testPathPattern=<имя-файла>   # один файл
 
 - **blog-app-mui-frontend** — Next.js 15 фронт блога (Vercel, aifirst.us.com).
 - **ai-bot-tg** — новостной бот: RSS → Claude → Telegram-аппрув → публикация через `POST /api/post/new` (сервис-токен `BOT_API_TOKEN`) и `POST /api/changelog/new`.
-
-<p align="center">
-  <img src="docs/news-bot-pipeline.gif" alt="Конвейер новостного бота: RSS → карточка в Telegram → рерайт LLM → аппрув → публикация" width="720">
-</p>
 - **dogs-teacher** — фронт записи к кинологу (teacher.dog), ходит в `/api/dogs/*`.
