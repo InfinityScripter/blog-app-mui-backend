@@ -241,4 +241,8 @@ npm test -- --testPathPattern=<имя-файла>   # один файл
 
 - **blog-app-mui-frontend** — Next.js 15 фронт блога (Vercel, aifirst.us.com).
 - **ai-bot-tg** — новостной бот: RSS → Claude → Telegram-аппрув → публикация через `POST /api/post/new` (сервис-токен `BOT_API_TOKEN`) и `POST /api/changelog/new`.
+
+<p align="center">
+  <img src="docs/news-bot-pipeline.gif" alt="Конвейер новостного бота: RSS → карточка в Telegram → рерайт LLM → аппрув → публикация" width="720">
+</p>
 - **dogs-teacher** — фронт записи к кинологу (teacher.dog), ходит в `/api/dogs/*`.

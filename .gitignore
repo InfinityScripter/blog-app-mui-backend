@@ -45,3 +45,4 @@ tsconfig.jest.tsbuildinfo
 
 # Override this machine's global `/*` rule for project-owned source additions.
 !/src/
+!/docs/
