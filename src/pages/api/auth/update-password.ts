@@ -8,6 +8,7 @@ import { SALT_ROUNDS } from '@/src/constants/auth';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { normalizeEmail } from '@/src/utils/normalize-email';
 
 // Completes the reset-by-code flow: reset-password.ts emails the code, this
 // route exchanges a valid code for a new password. Codes/emails are never
@@ -28,7 +29,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const user = await User.findOne({
-      email: email.trim(),
+      // Normalize like the other email entry points (reset-password.ts,
+      // verify.ts). The lookup is already case-insensitive at the model layer
+      // (LOWER(email)=LOWER($n)); this just keeps every route consistent.
+      email: normalizeEmail(email),
       passwordResetCode: code,
       passwordResetExpires: { $gt: new Date() },
     });
@@ -45,6 +49,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     user.passwordResetCode = null;
     // @ts-ignore
     user.passwordResetExpires = null;
+    // Сброс пароля — единственный путь разблокировки: MSG.ACCOUNT_LOCKED велит
+    // пользователю сбросить пароль, а lock-гейт в signIn отрабатывает раньше
+    // успешного входа (который единственный обнуляет счётчик). Не снимая флаг
+    // здесь, аккаунт остаётся заблокирован навсегда.
+    user.failedLoginAttempts = 0;
+    user.isLocked = false;
     await user.save();
 
     // Emitted here (not in reset-password.ts, which only sends the code) because
