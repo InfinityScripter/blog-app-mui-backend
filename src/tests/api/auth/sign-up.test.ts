@@ -1,5 +1,6 @@
 import '@jest/globals';
 import User from '@/src/models/User';
+import { dbQuery } from '@/src/lib/db';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-up';
 import { HTTP_METHOD } from '@/src/constants/http';
@@ -22,6 +23,8 @@ describe('POST /api/auth/sign-up', () => {
         password: 'password123',
         firstName: 'Test',
         lastName: 'User',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
       },
     });
 
@@ -48,6 +51,35 @@ describe('POST /api/auth/sign-up', () => {
     expect(savedUser?.isEmailVerified).toBe(false);
     expect(savedUser?.emailVerificationCode).toBeDefined();
     expect(savedUser?.emailVerificationCode?.length).toBe(6); // Should be a 6-digit code
+
+    const consent = await dbQuery<{
+      personal_data_consent_at: Date;
+      personal_data_consent_version: string;
+    }>(
+      `SELECT personal_data_consent_at, personal_data_consent_version
+       FROM users WHERE LOWER(email) = LOWER($1)`,
+      ['test@example.com']
+    );
+    expect(consent.rows[0].personal_data_consent_at).toBeInstanceOf(Date);
+    expect(consent.rows[0].personal_data_consent_version).toBe('2026-07-22');
+  });
+
+  it('returns 400 without explicit personal data consent', async () => {
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      body: {
+        email: 'test@example.com',
+        password: 'password123',
+        firstName: 'Test',
+        lastName: 'User',
+      },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(JSON.parse(res._getData()).message).toMatch(/personalDataConsent/);
+    expect(await User.findOne({ email: 'test@example.com' })).toBeNull();
   });
 
   it('returns a neutral 201 for an existing email and does not create a duplicate (anti-enumeration)', async () => {
@@ -66,6 +98,8 @@ describe('POST /api/auth/sign-up', () => {
         password: 'password123',
         firstName: 'Another',
         lastName: 'User',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
       },
     });
 

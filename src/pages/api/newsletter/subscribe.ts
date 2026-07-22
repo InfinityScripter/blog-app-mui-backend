@@ -13,19 +13,16 @@ import { subscriberService } from '@/src/services/subscriber';
 
 // Public POST — double-opt-in subscribe. Body is validated by
 // validateBody(subscribeSchema). On success returns 201 ok() envelope; the bot
-// / frontend read data.data.subscriber. The confirm email is fire-and-forget:
-// a mail failure must NOT lose the subscriber (the DB write already succeeded),
-// only a DB write failure surfaces as an error.
+// / frontend read data.data.subscriber. Success is returned only after the mail
+// provider accepts the confirmation message. A failed delivery leaves the row
+// pending; the user can retry and receive a fresh token.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
     const { email } = req.body;
     const { subscriber, confirmToken } = await subscriberService.subscribe(email);
 
-    sendConfirmEmail(email, confirmToken).catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error('[newsletter.subscribe] confirm email failed', error);
-    });
+    await sendConfirmEmail(email, confirmToken);
 
     emitAudit(req, {
       action: 'newsletter.subscribed',

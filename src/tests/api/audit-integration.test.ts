@@ -7,6 +7,7 @@ import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import newPostHandler from '@/src/pages/api/post/new';
 import signInHandler from '@/src/pages/api/auth/sign-in';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 interface AuditRow {
   action: string;
@@ -62,6 +63,8 @@ describe('audit integration — routes emit events', () => {
       email: 'signer@e.com',
       passwordHash,
       isEmailVerified: true,
+      personalDataConsentAt: new Date(),
+      personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
     });
     const { req, res } = createMocks({
       method: HTTP_METHOD.POST,

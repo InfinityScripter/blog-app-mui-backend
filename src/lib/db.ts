@@ -23,6 +23,8 @@ const schemaSql = `
     failed_login_attempts INTEGER NOT NULL DEFAULT 0,
     is_locked BOOLEAN NOT NULL DEFAULT FALSE,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    personal_data_consent_at TIMESTAMPTZ,
+    personal_data_consent_version TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
@@ -76,6 +78,31 @@ const schemaSql = `
 
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+
+  ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS personal_data_consent_at TIMESTAMPTZ;
+
+  ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS personal_data_consent_version TEXT;
+
+  CREATE TABLE IF NOT EXISTS oauth_consent_challenges (
+    token_hash TEXT PRIMARY KEY,
+    claim_id TEXT,
+    claim_expires_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS oauth_consent_challenges_expires_at_idx
+    ON oauth_consent_challenges (expires_at);
+
+  ALTER TABLE oauth_consent_challenges DROP COLUMN IF EXISTS provider;
+  ALTER TABLE oauth_consent_challenges DROP COLUMN IF EXISTS provider_user_id;
+  ALTER TABLE oauth_consent_challenges DROP COLUMN IF EXISTS email;
+  ALTER TABLE oauth_consent_challenges DROP COLUMN IF EXISTS name;
+  ALTER TABLE oauth_consent_challenges DROP COLUMN IF EXISTS avatar_url;
+  ALTER TABLE oauth_consent_challenges ADD COLUMN IF NOT EXISTS claim_id TEXT;
+  ALTER TABLE oauth_consent_challenges ADD COLUMN IF NOT EXISTS claim_expires_at TIMESTAMPTZ;
 
   CREATE TABLE IF NOT EXISTS chat_channels (
     id TEXT PRIMARY KEY,
@@ -218,6 +245,8 @@ const schemaSql = `
     confirm_token TEXT,
     confirm_expires_at TIMESTAMPTZ,
     unsubscribe_token TEXT,
+    personal_data_consent_at TIMESTAMPTZ,
+    personal_data_consent_version TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     confirmed_at TIMESTAMPTZ
   );
@@ -225,6 +254,12 @@ const schemaSql = `
   CREATE INDEX IF NOT EXISTS subscribers_status_idx ON subscribers (status);
   CREATE UNIQUE INDEX IF NOT EXISTS subscribers_confirm_token_idx ON subscribers (confirm_token);
   CREATE UNIQUE INDEX IF NOT EXISTS subscribers_unsub_token_idx ON subscribers (unsubscribe_token);
+
+  ALTER TABLE subscribers
+    ADD COLUMN IF NOT EXISTS personal_data_consent_at TIMESTAMPTZ;
+
+  ALTER TABLE subscribers
+    ADD COLUMN IF NOT EXISTS personal_data_consent_version TEXT;
 
   -- Refresh tokens for the rotating-refresh auth flow. The raw refresh token
   -- lives only in the httpOnly cookie; only its SHA-256 hash is stored here, so

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 // Newsletter (double-opt-in) request schemas. subscribe accepts an email;
 // confirm/unsubscribe read an opaque uuid token from the query; send carries
@@ -6,6 +7,8 @@ import { z } from 'zod';
 
 export const subscribeSchema = z.object({
   email: z.string().trim().email().max(255),
+  personalDataConsent: z.literal(true),
+  personalDataConsentVersion: z.literal(PERSONAL_DATA_CONSENT_VERSION),
 });
 
 // Query params arrive as string | string[] — collapse an array to its first

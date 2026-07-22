@@ -4,6 +4,7 @@ import { dbQuery } from '@/src/lib/db';
 import uuidv4 from '@/src/utils/uuidv4';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 // Newsletter subscribers (double-opt-in). Raw dbQuery service mapping snake_case
 // rows to the frozen Subscriber contract (camelCase, ISO timestamps — see
@@ -62,6 +63,8 @@ interface SubscribeResult {
 }
 
 async function subscribe(email: string): Promise<SubscribeResult> {
+  await dbQuery("DELETE FROM subscribers WHERE status = 'pending' AND confirm_expires_at < NOW()");
+
   const existing = await dbQuery<SubscriberRow>(
     'SELECT * FROM subscribers WHERE LOWER(email) = LOWER($1)',
     [email]
@@ -73,15 +76,22 @@ async function subscribe(email: string): Promise<SubscribeResult> {
   if (existing.rows.length) {
     const current = existing.rows[0];
     if (toStatus(current.status) === 'confirmed') {
+      await dbQuery(
+        `UPDATE subscribers
+            SET personal_data_consent_at = NOW(), personal_data_consent_version = $2
+          WHERE id = $1`,
+        [current.id, PERSONAL_DATA_CONSENT_VERSION]
+      );
       throw new AppError(HTTP.CONFLICT, 'Вы уже подписаны');
     }
     // pending | unsubscribed → re-issue a fresh confirm token + window, reset to pending.
     const updated = await dbQuery<SubscriberRow>(
       `UPDATE subscribers
-         SET status = 'pending', confirm_token = $2, confirm_expires_at = $3, confirmed_at = NULL
+         SET status = 'pending', confirm_token = $2, confirm_expires_at = $3, confirmed_at = NULL,
+             personal_data_consent_at = NOW(), personal_data_consent_version = $4
        WHERE id = $1
        RETURNING *`,
-      [current.id, confirmToken, confirmExpiresAt]
+      [current.id, confirmToken, confirmExpiresAt, PERSONAL_DATA_CONSENT_VERSION]
     );
     return { subscriber: mapRow(updated.rows[0]), confirmToken };
   }
@@ -89,10 +99,11 @@ async function subscribe(email: string): Promise<SubscribeResult> {
   try {
     const inserted = await dbQuery<SubscriberRow>(
       `INSERT INTO subscribers
-         (id, email, status, confirm_token, confirm_expires_at, unsubscribe_token)
-       VALUES ($1, $2, 'pending', $3, $4, $5)
+         (id, email, status, confirm_token, confirm_expires_at, unsubscribe_token,
+          personal_data_consent_at, personal_data_consent_version)
+       VALUES ($1, $2, 'pending', $3, $4, $5, NOW(), $6)
        RETURNING *`,
-      [uuidv4(), email, confirmToken, confirmExpiresAt, uuidv4()]
+      [uuidv4(), email, confirmToken, confirmExpiresAt, uuidv4(), PERSONAL_DATA_CONSENT_VERSION]
     );
     return { subscriber: mapRow(inserted.rows[0]), confirmToken };
   } catch (error) {
@@ -115,6 +126,7 @@ async function confirm(token: string): Promise<Subscriber> {
   const row = found.rows[0];
   const expiresAt = row.confirm_expires_at;
   if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+    await dbQuery("DELETE FROM subscribers WHERE id = $1 AND status = 'pending'", [row.id]);
     throw new AppError(HTTP.GONE, 'Ссылка устарела, подпишитесь заново');
   }
 

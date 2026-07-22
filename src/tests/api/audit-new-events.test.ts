@@ -146,6 +146,8 @@ describe('audit — newly covered admin/auth actions', () => {
         password: 'SuperSecret123',
         firstName: 'New',
         lastName: 'Bie',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
       },
     });
 

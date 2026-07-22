@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import User from '@/src/models/User';
 import { AppError } from '@/src/types/api';
 import { authService } from '@/src/services/auth';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 describe('authService.signIn', () => {
   beforeEach(async () => {
@@ -13,6 +14,8 @@ describe('authService.signIn', () => {
       email: 'svc@example.com',
       passwordHash,
       isEmailVerified: true,
+      personalDataConsentAt: new Date(),
+      personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
     });
   });
 

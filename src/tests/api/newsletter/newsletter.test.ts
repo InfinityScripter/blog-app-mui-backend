@@ -26,9 +26,14 @@ async function readTokens(email: string) {
   const result = await dbQuery<{
     confirm_token: string | null;
     unsubscribe_token: string | null;
-  }>('SELECT confirm_token, unsubscribe_token FROM subscribers WHERE LOWER(email) = LOWER($1)', [
-    email,
-  ]);
+    personal_data_consent_at: Date | null;
+    personal_data_consent_version: string | null;
+  }>(
+    `SELECT confirm_token, unsubscribe_token,
+            personal_data_consent_at, personal_data_consent_version
+       FROM subscribers WHERE LOWER(email) = LOWER($1)`,
+    [email]
+  );
   return result.rows[0];
 }
 
@@ -43,7 +48,11 @@ describe('POST /api/newsletter/subscribe', () => {
     const { req, res } = createMocks({
       method: HTTP_METHOD.POST,
       headers: { 'Content-Type': 'application/json' },
-      body: { email: 'reader@example.com' },
+      body: {
+        email: 'reader@example.com',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
+      },
     });
 
     await subscribeHandler(req, res);
@@ -55,6 +64,40 @@ describe('POST /api/newsletter/subscribe', () => {
     expect(data.data.subscriber.email).toBe('reader@example.com');
     expect(data.data.subscriber.confirmToken).toBeUndefined();
     expect(data.data.subscriber.unsubscribeToken).toBeUndefined();
+    expect(mockedSendConfirmEmail).toHaveBeenCalledTimes(1);
+    const stored = await readTokens('reader@example.com');
+    expect(stored?.personal_data_consent_at).toBeInstanceOf(Date);
+    expect(stored?.personal_data_consent_version).toBe('2026-07-22');
+  });
+
+  it('rejects subscription without explicit personal data consent', async () => {
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      headers: { 'Content-Type': 'application/json' },
+      body: { email: 'reader@example.com' },
+    });
+
+    await subscribeHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(mockedSendConfirmEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not report success when the confirmation email is not accepted', async () => {
+    mockedSendConfirmEmail.mockRejectedValueOnce(new Error('smtp unavailable'));
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        email: 'mail-failure@example.com',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
+      },
+    });
+
+    await subscribeHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(500);
     expect(mockedSendConfirmEmail).toHaveBeenCalledTimes(1);
   });
 
@@ -77,7 +120,11 @@ describe('POST /api/newsletter/subscribe', () => {
     const { req, res } = createMocks({
       method: HTTP_METHOD.POST,
       headers: { 'Content-Type': 'application/json' },
-      body: { email: 'taken@example.com' },
+      body: {
+        email: 'taken@example.com',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
+      },
     });
 
     await subscribeHandler(req, res);
@@ -85,6 +132,9 @@ describe('POST /api/newsletter/subscribe', () => {
     const data = JSON.parse(res._getData());
     expect(data.success).toBe(false);
     expect(data.message).toBe('Вы уже подписаны');
+    const stored = await readTokens('taken@example.com');
+    expect(stored?.personal_data_consent_at).toBeInstanceOf(Date);
+    expect(stored?.personal_data_consent_version).toBe('2026-07-22');
   });
 
   it('re-subscribing a pending email re-issues a fresh confirm token', async () => {
@@ -93,7 +143,11 @@ describe('POST /api/newsletter/subscribe', () => {
     const { req, res } = createMocks({
       method: HTTP_METHOD.POST,
       headers: { 'Content-Type': 'application/json' },
-      body: { email: 'again@example.com' },
+      body: {
+        email: 'again@example.com',
+        personalDataConsent: true,
+        personalDataConsentVersion: '2026-07-22',
+      },
     });
     await subscribeHandler(req, res);
 
@@ -108,7 +162,11 @@ describe('POST /api/newsletter/subscribe', () => {
       const { req, res } = createMocks({
         method: HTTP_METHOD.POST,
         headers: { 'Content-Type': 'application/json' },
-        body: { email },
+        body: {
+          email,
+          personalDataConsent: true,
+          personalDataConsentVersion: '2026-07-22',
+        },
       });
       await subscribeHandler(req, res);
       return res._getStatusCode();
@@ -176,6 +234,7 @@ describe('GET /api/newsletter/confirm', () => {
     expect(res._getStatusCode()).toBe(410);
     const data = JSON.parse(res._getData());
     expect(data.message).toBe('Ссылка устарела, подпишитесь заново');
+    expect(await readTokens('expired@example.com')).toBeUndefined();
   });
 });
 

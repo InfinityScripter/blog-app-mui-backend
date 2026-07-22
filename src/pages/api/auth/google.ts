@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import nextConnect from 'next-connect';
 import passport from '@/src/lib/passport';
+import { issueOAuthState } from '@/src/lib/oauth-state';
 
 const handler = nextConnect<NextApiRequest, NextApiResponse>();
 
@@ -11,7 +12,10 @@ handler.use(async (req, res, next) => {
   next();
 });
 
-// Инициирует аутентификацию через Google
-handler.get(passport.authenticate('google', { scope: ['profile', 'email'] }));
+// Инициирует аутентификацию через Google и привязывает callback к браузеру.
+handler.get((req, res, next) => {
+  const state = issueOAuthState(req, res, 'google');
+  passport.authenticate('google', { scope: ['profile', 'email'], state })(req, res, next);
+});
 
 export default handler;

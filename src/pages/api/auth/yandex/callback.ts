@@ -7,6 +7,10 @@ import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { normalizeEmail } from '@/src/utils/normalize-email';
+import {
+  createOAuthConsentChallenge,
+  requiresOAuthConsentChallenge,
+} from '@/src/services/oauth-consent';
 
 const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
 const yandexClientSecret = process.env.YANDEX_CLIENT_SECRET || '';
@@ -127,27 +131,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const displayName = profile.real_name || profile.display_name || email;
 
     const existingByEmail = await User.findOne({ email });
-    let user = existingByEmail;
+    const user = existingByEmail;
 
-    if (user) {
-      user.yandexId = profile.id;
-      user.isEmailVerified = true;
-      if (!user.avatarURL && avatarURL) {
-        user.avatarURL = avatarURL;
-      }
-      if (!user.name) {
-        user.name = displayName;
-      }
-      await user.save();
-    } else {
-      user = await User.create({
-        avatarURL: avatarURL ?? undefined,
+    if (requiresOAuthConsentChallenge(user)) {
+      const consentToken = await createOAuthConsentChallenge({
+        provider: 'yandex',
+        providerUserId: profile.id,
         email,
-        isEmailVerified: true,
         name: displayName,
-        yandexId: profile.id,
+        avatarURL,
       });
+      return res.redirect(
+        `${frontendURL}/auth/oauth-consent#token=${encodeURIComponent(consentToken)}`
+      );
     }
+
+    if (!user) {
+      throw new Error('OAuth consent challenge invariant violated');
+    }
+    user.yandexId = profile.id;
+    user.isEmailVerified = true;
+    if (!user.avatarURL && avatarURL) {
+      user.avatarURL = avatarURL;
+    }
+    if (!user.name) {
+      user.name = displayName;
+    }
+    await user.save();
 
     // Mint access+refresh, set httpOnly cookies, redirect WITHOUT a token in the
     // URL. Cookies are scoped to this API origin (where the SPA's XHRs go). The
@@ -161,6 +171,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.redirect(`${frontendURL}/auth/success`);
   } catch (e) {
+    // Keep codes/profile/tokens out of logs; the message is enough to find the stage.
+    // eslint-disable-next-line no-console
+    console.error(
+      '[oauth.yandex.callback] authentication failed',
+      e instanceof Error ? e.message : 'unknown error'
+    );
     return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_unknown`);
   }
 }

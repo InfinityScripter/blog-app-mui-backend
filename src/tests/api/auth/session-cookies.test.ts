@@ -9,11 +9,8 @@ import { rotateRefresh } from '@/src/services/refresh';
 import signInHandler from '@/src/pages/api/auth/sign-in';
 import refreshHandler from '@/src/pages/api/auth/refresh';
 import signOutHandler from '@/src/pages/api/auth/sign-out';
-import {
-  CSRF_COOKIE,
-  ACCESS_COOKIE,
-  REFRESH_COOKIE,
-} from '@/src/lib/cookies';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
+import { CSRF_COOKIE, ACCESS_COOKIE, REFRESH_COOKIE } from '@/src/lib/cookies';
 
 // ----------------------------------------------------------------------
 // Helpers to read cookies off a node-mocks-http response and re-present them on
@@ -66,7 +63,14 @@ describe('auth session cookies + refresh rotation', () => {
     await dbQuery('DELETE FROM refresh_tokens');
     await User.deleteMany({});
     const passwordHash = await bcrypt.hash(PASSWORD, 10);
-    await User.create({ name: 'Session User', email: EMAIL, passwordHash, isEmailVerified: true });
+    await User.create({
+      name: 'Session User',
+      email: EMAIL,
+      passwordHash,
+      isEmailVerified: true,
+      personalDataConsentAt: new Date(),
+      personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
+    });
   });
 
   it('sign-in sets access + refresh + csrf cookies and persists a hashed refresh row', async () => {
@@ -109,6 +113,29 @@ describe('auth session cookies + refresh rotation', () => {
     expect(newRow!.familyId).toBe(oldRow!.familyId);
   });
 
+  it('refresh revokes the session when the stored consent is missing or outdated', async () => {
+    const s = await signIn();
+    const user = await User.findOne({ email: EMAIL });
+    if (!user) throw new Error('test user missing');
+    user.personalDataConsentAt = null;
+    user.personalDataConsentVersion = null;
+    await user.save();
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      headers: {
+        cookie: cookieHeader({ [REFRESH_COOKIE]: s.refresh, [CSRF_COOKIE]: s.csrf }),
+        'x-csrf-token': s.csrf,
+      },
+    });
+    await refreshHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(428);
+    const row = await RefreshToken.findByRawToken(s.refresh!);
+    expect(row?.revokedAt).not.toBeNull();
+    expect(setCookies(res).some((cookie) => cookie.includes('Max-Age=0'))).toBe(true);
+  });
+
   it('refresh is rejected (403) without a CSRF header', async () => {
     const s = await signIn();
     const { req, res } = createMocks({
@@ -132,7 +159,7 @@ describe('auth session cookies + refresh rotation', () => {
     });
     await refreshHandler(first.req, first.res);
     const rotated = cookieValue(setCookies(first.res), REFRESH_COOKIE)!;
-    const {familyId} = ((await RefreshToken.findByRawToken(rotated))!);
+    const { familyId } = (await RefreshToken.findByRawToken(rotated))!;
 
     // Attacker replays the OLD (now revoked) token — theft detected.
     const replay = createMocks({
@@ -176,7 +203,7 @@ describe('auth session cookies + refresh rotation', () => {
 
   it('sign-out revokes the refresh family and clears cookies', async () => {
     const s = await signIn();
-    const {familyId} = ((await RefreshToken.findByRawToken(s.refresh!))!);
+    const { familyId } = (await RefreshToken.findByRawToken(s.refresh!))!;
 
     const { req, res } = createMocks({
       method: HTTP_METHOD.POST,
@@ -199,7 +226,7 @@ describe('auth session cookies + refresh rotation', () => {
 
   it('concurrent reuse of the same token: exactly one rotation wins, no duplicate live session', async () => {
     const s = await signIn();
-    const {familyId} = ((await RefreshToken.findByRawToken(s.refresh!))!);
+    const { familyId } = (await RefreshToken.findByRawToken(s.refresh!))!;
 
     // Fire two rotations with the SAME raw token at once (network retry / attacker
     // replay racing the legit client). The atomic consume() must let only one win.

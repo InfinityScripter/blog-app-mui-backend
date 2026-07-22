@@ -13,6 +13,8 @@ export const MSG = {
   ACCOUNT_LOCKED:
     'Account locked due to too many failed sign-in attempts. Reset your password to unlock.',
   EMAIL_NOT_VERIFIED: 'Please verify your email before signing in',
+  PERSONAL_DATA_CONSENT_REQUIRED:
+    'Подтвердите согласие на обработку персональных данных, чтобы продолжить вход.',
   EMAIL_SERVICE_UNAVAILABLE:
     'Email service is not configured. Registration is temporarily unavailable.',
   USER_EXISTS: 'User with this email already exists',

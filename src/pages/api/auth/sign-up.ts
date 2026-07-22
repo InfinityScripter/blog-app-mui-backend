@@ -12,9 +12,9 @@ import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { sendVerificationEmail } from '@/src/utils/email';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 const hasEmailCredentials = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
-
 // 6-значный код из CSPRNG (не Math.random — предсказуем, брутфорсится по email).
 const generateVerificationCode = () => randomInt(100000, 1000000).toString();
 
@@ -57,6 +57,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       isEmailVerified: false,
       emailVerificationCode: verificationCode ?? undefined,
       emailVerificationExpires: verificationExpires ?? undefined,
+      personalDataConsentAt: new Date(),
+      personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
     };
     const createdUser = await User.create(newUser);
 
@@ -69,7 +71,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       action: 'auth.signup',
       targetType: 'user',
       targetId: createdUser._id,
-      metadata: { method: 'password' },
+      metadata: {
+        method: 'password',
+        personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
+      },
     });
 
     return res.status(HTTP.CREATED).json({

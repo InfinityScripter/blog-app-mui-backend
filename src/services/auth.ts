@@ -9,11 +9,15 @@ import { MSG } from '@/src/constants/messages';
 import { issueSession } from '@/src/services/session';
 import { toPublicUser } from '@/src/utils/public-user';
 import { MAX_FAILED_ATTEMPTS } from '@/src/constants/auth';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 // Business logic for authentication. No HTTP here — throws AppError on
 // failure; the route maps it via sendError().
 
-async function signIn({ email, password }: SignInBody, userAgent?: string | null) {
+async function signIn(
+  { email, password, personalDataConsent }: SignInBody,
+  userAgent?: string | null
+) {
   // email is already trimmed + lowercased by signInSchema; findOne also
   // compares case-insensitively.
   const user = await User.findOne({ email });
@@ -39,8 +43,21 @@ async function signIn({ email, password }: SignInBody, userAgent?: string | null
     throw new AppError(HTTP.FORBIDDEN, MSG.EMAIL_NOT_VERIFIED, { requiresVerification: true });
   }
 
+  const needsCurrentConsent =
+    !user.personalDataConsentAt ||
+    user.personalDataConsentVersion !== PERSONAL_DATA_CONSENT_VERSION;
+  if (needsCurrentConsent && personalDataConsent !== true) {
+    throw new AppError(HTTP.PRECONDITION_REQUIRED, MSG.PERSONAL_DATA_CONSENT_REQUIRED, {
+      requiresPersonalDataConsent: true,
+    });
+  }
+
   // Successful sign-in resets the failed-attempt counter.
-  if ((user.failedLoginAttempts ?? 0) > 0) {
+  if (needsCurrentConsent) {
+    user.personalDataConsentAt = new Date();
+    user.personalDataConsentVersion = PERSONAL_DATA_CONSENT_VERSION;
+  }
+  if ((user.failedLoginAttempts ?? 0) > 0 || needsCurrentConsent) {
     user.failedLoginAttempts = 0;
     await user.save();
   }

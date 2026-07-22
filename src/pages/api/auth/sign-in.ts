@@ -40,10 +40,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // generic failed login (wrong creds incl. the silent lock-crossing attempt,
     // or email-not-verified).
     const locked = isAppError(error) && error.message === MSG.ACCOUNT_LOCKED;
+    const consentRequired =
+      isAppError(error) && error.message === MSG.PERSONAL_DATA_CONSENT_REQUIRED;
     emitAudit(req, {
-      action: locked ? 'auth.account.locked' : 'auth.login.failed',
+      action: locked
+        ? 'auth.account.locked'
+        : consentRequired
+          ? 'auth.consent.required'
+          : 'auth.login.failed',
       targetType: 'user',
-      metadata: { method: 'password', reason: locked ? 'account_locked' : 'invalid' },
+      metadata: {
+        method: 'password',
+        reason: locked ? 'account_locked' : consentRequired ? 'consent_required' : 'invalid',
+      },
     });
     return sendError(res, error);
   }

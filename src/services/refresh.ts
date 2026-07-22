@@ -4,6 +4,7 @@ import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
 import RefreshToken from '@/src/models/RefreshToken';
 import { toPublicUser } from '@/src/utils/public-user';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 import { issueSession, type IssuedSession } from '@/src/services/session';
 
 // ----------------------------------------------------------------------
@@ -65,6 +66,16 @@ export async function rotateRefresh(
   if (user.isLocked) {
     await RefreshToken.revokeFamily(row.familyId);
     throw new AppError(HTTP.FORBIDDEN, MSG.ACCOUNT_LOCKED);
+  }
+
+  if (
+    !user.personalDataConsentAt ||
+    user.personalDataConsentVersion !== PERSONAL_DATA_CONSENT_VERSION
+  ) {
+    await RefreshToken.revokeFamily(row.familyId);
+    throw new AppError(HTTP.PRECONDITION_REQUIRED, MSG.PERSONAL_DATA_CONSENT_REQUIRED, {
+      requiresPersonalDataConsent: true,
+    });
   }
 
   // Issue the successor in the SAME family (issueSession persists it). The

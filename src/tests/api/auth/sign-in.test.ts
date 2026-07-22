@@ -5,6 +5,7 @@ import User from '@/src/models/User';
 import { createMocks } from 'node-mocks-http';
 import handler from '@/src/pages/api/auth/sign-in';
 import { HTTP_METHOD } from '@/src/constants/http';
+import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 describe('POST /api/auth/sign-in', () => {
   beforeEach(async () => {
@@ -17,6 +18,8 @@ describe('POST /api/auth/sign-in', () => {
       email: 'test@example.com',
       passwordHash,
       isEmailVerified: true,
+      personalDataConsentAt: new Date(),
+      personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
     });
   });
 
@@ -115,5 +118,36 @@ describe('POST /api/auth/sign-in', () => {
     expect(res._getStatusCode()).toBe(405);
     const data = JSON.parse(res._getData());
     expect(data.message).toBe('Method not allowed');
+  });
+
+  it('requires and records current consent for a legacy account before issuing a session', async () => {
+    const legacyUser = await User.findOne({ email: 'test@example.com' });
+    if (!legacyUser) throw new Error('test user missing');
+    legacyUser.personalDataConsentAt = null;
+    legacyUser.personalDataConsentVersion = null;
+    await legacyUser.save();
+
+    const first = createMocks({
+      method: HTTP_METHOD.POST,
+      body: { email: 'test@example.com', password: 'password123' },
+    });
+    await handler(first.req, first.res);
+    expect(first.res._getStatusCode()).toBe(428);
+
+    const second = createMocks({
+      method: HTTP_METHOD.POST,
+      body: {
+        email: 'test@example.com',
+        password: 'password123',
+        personalDataConsent: true,
+        personalDataConsentVersion: PERSONAL_DATA_CONSENT_VERSION,
+      },
+    });
+    await handler(second.req, second.res);
+    expect(second.res._getStatusCode()).toBe(200);
+
+    const updated = await User.findOne({ email: 'test@example.com' });
+    expect(updated?.personalDataConsentAt).toBeInstanceOf(Date);
+    expect(updated?.personalDataConsentVersion).toBe(PERSONAL_DATA_CONSENT_VERSION);
   });
 });

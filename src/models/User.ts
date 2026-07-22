@@ -30,6 +30,8 @@ export interface IUser {
   failedLoginAttempts?: number;
   isLocked?: boolean;
   role?: 'user' | 'admin';
+  personalDataConsentAt?: Date | null;
+  personalDataConsentVersion?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -52,6 +54,8 @@ type UserRow = {
   password_hash: string | null;
   password_reset_code: string | null;
   password_reset_expires: Date | null;
+  personal_data_consent_at: Date | null;
+  personal_data_consent_version: string | null;
   updated_at: Date;
 };
 
@@ -75,6 +79,8 @@ function mapUserRow(row: UserRow) {
     passwordHash: row.password_hash,
     passwordResetCode: row.password_reset_code,
     passwordResetExpires: row.password_reset_expires,
+    personalDataConsentAt: row.personal_data_consent_at,
+    personalDataConsentVersion: row.personal_data_consent_version,
     updatedAt: row.updated_at,
   };
 }
@@ -224,6 +230,10 @@ export default class User implements IUser {
 
   passwordResetExpires?: Date | null;
 
+  personalDataConsentAt?: Date | null;
+
+  personalDataConsentVersion?: string | null;
+
   updatedAt?: Date;
 
   constructor(data: Partial<IUser>) {
@@ -242,6 +252,8 @@ export default class User implements IUser {
     this.emailVerificationExpires = data.emailVerificationExpires ?? null;
     this.passwordResetCode = data.passwordResetCode ?? null;
     this.passwordResetExpires = data.passwordResetExpires ?? null;
+    this.personalDataConsentAt = data.personalDataConsentAt ?? null;
+    this.personalDataConsentVersion = data.personalDataConsentVersion ?? null;
     this.lastLogin = data.lastLogin ?? null;
     this.failedLoginAttempts = data.failedLoginAttempts ?? 0;
     this.isLocked = data.isLocked ?? false;
@@ -323,9 +335,11 @@ export default class User implements IUser {
           failed_login_attempts,
           is_locked,
           role,
+          personal_data_consent_at,
+          personal_data_consent_version,
           updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
@@ -343,6 +357,8 @@ export default class User implements IUser {
           failed_login_attempts = EXCLUDED.failed_login_attempts,
           is_locked = EXCLUDED.is_locked,
           role = EXCLUDED.role,
+          personal_data_consent_at = EXCLUDED.personal_data_consent_at,
+          personal_data_consent_version = EXCLUDED.personal_data_consent_version,
           updated_at = NOW()
         RETURNING *
       `,
@@ -363,6 +379,8 @@ export default class User implements IUser {
         this.failedLoginAttempts ?? 0,
         this.isLocked ?? false,
         this.role ?? 'user',
+        this.personalDataConsentAt ?? null,
+        this.personalDataConsentVersion ?? null,
       ]
     );
 
