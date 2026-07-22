@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { randomBytes } from 'crypto';
 import { MSG } from '@/src/constants/messages';
-import { FEATURES } from '@/src/config-global';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireFeature } from '@/src/middlewares/require-feature';
 
@@ -37,4 +36,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.redirect(authorizeUrl.toString());
 }
 
-export default requireFeature(FEATURES.pdCollection)(handler);
+export default requireFeature('pdCollection')(handler);

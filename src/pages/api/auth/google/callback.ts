@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import dbConnect from '@/src/lib/db';
 import nextConnect from 'next-connect';
 import passport from '@/src/lib/passport';
-import { FEATURES } from '@/src/config-global';
 import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
 import { validateAndClearOAuthState } from '@/src/lib/oauth-state';
@@ -72,4 +71,4 @@ handler.get(
   }
 );
 
-export default requireFeature(FEATURES.pdCollection)(handler);
+export default requireFeature('pdCollection')(handler);

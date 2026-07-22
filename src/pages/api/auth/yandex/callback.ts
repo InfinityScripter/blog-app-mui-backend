@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { MSG } from '@/src/constants/messages';
-import { FEATURES } from '@/src/config-global';
 import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
@@ -183,4 +182,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireFeature(FEATURES.pdCollection)(handler);
+export default requireFeature('pdCollection')(handler);

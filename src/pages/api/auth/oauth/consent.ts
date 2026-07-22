@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { z } from 'zod';
 import dbConnect from '@/src/lib/db';
-import { FEATURES } from '@/src/config-global';
 import { sendError } from '@/src/utils/response';
 import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
@@ -49,7 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireFeature(FEATURES.pdCollection)(
+export default requireFeature('pdCollection')(
   withRateLimit({ routeName: 'auth.oauth-consent', windowMs: 60_000, max: 5 })(
     withMethods([HTTP_METHOD.POST])(validateBody(oauthConsentSchema)(handler))
   )

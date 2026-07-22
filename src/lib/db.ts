@@ -309,6 +309,12 @@ const schemaSql = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (post_id, lang)
   );
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 `;
 
 type PoolLike = NodePool;
@@ -439,6 +445,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM subscribers');
   await pool.query('DELETE FROM refresh_tokens');
   await pool.query('DELETE FROM post_translations');
+  await pool.query('DELETE FROM app_settings');
   await pool.query('DELETE FROM users');
 }
 

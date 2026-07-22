@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { FEATURES } from '@/src/config-global';
 import { sendConfirmEmail } from '@/src/utils/email';
 import { ok, sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
@@ -39,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireFeature(FEATURES.pdCollection)(
+export default requireFeature('pdCollection')(
   withRateLimit({
     routeName: 'newsletter.subscribe',
     windowMs: 60_000,
