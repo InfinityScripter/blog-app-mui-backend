@@ -3,10 +3,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { MSG } from '@/src/constants/messages';
+import { FEATURES } from '@/src/config-global';
 import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { normalizeEmail } from '@/src/utils/normalize-email';
+import { requireFeature } from '@/src/middlewares/require-feature';
 import {
   createOAuthConsentChallenge,
   requiresOAuthConsentChallenge,
@@ -46,7 +48,7 @@ const getCookieValue = (cookieHeader: string | undefined, key: string) => {
   return decodeURIComponent(cookie.split('=').slice(1).join('='));
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
@@ -180,3 +182,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_unknown`);
   }
 }
+
+export default requireFeature(FEATURES.pdCollection)(handler);

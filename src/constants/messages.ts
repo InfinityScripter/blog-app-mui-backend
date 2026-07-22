@@ -3,6 +3,7 @@
 
 export const MSG = {
   METHOD_NOT_ALLOWED: 'Method not allowed',
+  NOT_FOUND: 'Not found',
   INTERNAL: 'Internal server error',
   UNAUTHORIZED: 'Unauthorized',
   TOO_MANY_REQUESTS: 'Too many requests, please try again later.',

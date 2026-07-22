@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
+import { FEATURES } from '@/src/config-global';
 import { sendConfirmEmail } from '@/src/utils/email';
 import { ok, sendError } from '@/src/utils/response';
 import { emitAudit } from '@/src/utils/audit-context';
@@ -10,6 +11,7 @@ import { subscribeSchema } from '@/src/schemas/newsletter';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { subscriberService } from '@/src/services/subscriber';
+import { requireFeature } from '@/src/middlewares/require-feature';
 
 // Public POST — double-opt-in subscribe. Body is validated by
 // validateBody(subscribeSchema). On success returns 201 ok() envelope; the bot
@@ -37,9 +39,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withRateLimit({
-  routeName: 'newsletter.subscribe',
-  windowMs: 60_000,
-  max: 5,
-  enabledInTest: true,
-})(withMethods([HTTP_METHOD.POST])(validateBody(subscribeSchema)(handler)));
+export default requireFeature(FEATURES.pdCollection)(
+  withRateLimit({
+    routeName: 'newsletter.subscribe',
+    windowMs: 60_000,
+    max: 5,
+    enabledInTest: true,
+  })(withMethods([HTTP_METHOD.POST])(validateBody(subscribeSchema)(handler)))
+);

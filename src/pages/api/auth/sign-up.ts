@@ -6,12 +6,14 @@ import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { randomInt } from 'node:crypto';
 import { MSG } from '@/src/constants/messages';
+import { FEATURES } from '@/src/config-global';
 import { signUpSchema } from '@/src/schemas/auth';
 import { SALT_ROUNDS } from '@/src/constants/auth';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { sendVerificationEmail } from '@/src/utils/email';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { requireFeature } from '@/src/middlewares/require-feature';
 import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 const hasEmailCredentials = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
@@ -93,4 +95,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 // ~3/min per IP — registration is rare; a tight cap blocks signup-spam.
-export default withRateLimit({ routeName: 'auth.sign-up', windowMs: 60_000, max: 3 })(handler);
+export default requireFeature(FEATURES.pdCollection)(
+  withRateLimit({ routeName: 'auth.sign-up', windowMs: 60_000, max: 3 })(handler)
+);

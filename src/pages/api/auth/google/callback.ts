@@ -5,9 +5,11 @@ import dotenv from 'dotenv';
 import dbConnect from '@/src/lib/db';
 import nextConnect from 'next-connect';
 import passport from '@/src/lib/passport';
+import { FEATURES } from '@/src/config-global';
 import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
 import { validateAndClearOAuthState } from '@/src/lib/oauth-state';
+import { requireFeature } from '@/src/middlewares/require-feature';
 
 dotenv.config();
 const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -70,4 +72,4 @@ handler.get(
   }
 );
 
-export default handler;
+export default requireFeature(FEATURES.pdCollection)(handler);

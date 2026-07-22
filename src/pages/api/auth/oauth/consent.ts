@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { z } from 'zod';
 import dbConnect from '@/src/lib/db';
+import { FEATURES } from '@/src/config-global';
 import { sendError } from '@/src/utils/response';
 import { setAuthCookies } from '@/src/lib/cookies';
 import { issueSession } from '@/src/services/session';
@@ -10,6 +11,7 @@ import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { validateBody } from '@/src/middlewares/validate';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { requireFeature } from '@/src/middlewares/require-feature';
 import { PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 import {
   completeOAuthConsentChallenge,
@@ -47,6 +49,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withRateLimit({ routeName: 'auth.oauth-consent', windowMs: 60_000, max: 5 })(
-  withMethods([HTTP_METHOD.POST])(validateBody(oauthConsentSchema)(handler))
+export default requireFeature(FEATURES.pdCollection)(
+  withRateLimit({ routeName: 'auth.oauth-consent', windowMs: 60_000, max: 5 })(
+    withMethods([HTTP_METHOD.POST])(validateBody(oauthConsentSchema)(handler))
+  )
 );
