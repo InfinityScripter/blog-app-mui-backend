@@ -115,6 +115,11 @@ export const dogsPushUnsubscribeSchema = z.object({
   endpoint: z.string().trim().url().max(2000),
 });
 
+// Owner toggle for the dogsBooking flag from the dogs /admin.
+export const dogsSettingsUpdateSchema = z.object({
+  enabled: z.boolean(),
+});
+
 export type CreateDogsBookingRequestInput = z.infer<typeof createDogsBookingRequestSchema>;
 export type CreateDogsSlotInput = z.infer<typeof createDogsSlotSchema>;
 export type CreateDogsSlotsBatchInput = z.infer<typeof createDogsSlotsBatchSchema>;

@@ -51,10 +51,13 @@ describe('settingsService', () => {
     expect(await settingsService.getFlag('pdCollection')).toBe(true);
   });
 
-  it('getFlags returns the public flag snapshot', async () => {
+  it('getFlags returns every flag in the snapshot', async () => {
+    // Set both explicitly so the assertion is independent of the env-seeded
+    // defaults; getFlags must surface the full FlagKey set, not just one.
     await settingsService.setFlag('pdCollection', false);
+    await settingsService.setFlag('dogsBooking', true);
     const flags = await settingsService.getFlags();
-    expect(flags).toEqual({ pdCollection: false });
+    expect(flags).toEqual({ pdCollection: false, dogsBooking: true });
   });
 
   it('reads an existing row instead of re-seeding when one is already stored', async () => {

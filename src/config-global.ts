@@ -12,4 +12,10 @@ export const FEATURES = {
   // Off by default so a public deploy collects no personal data (152-ФЗ). Flip
   // PD_COLLECTION_ENABLED=true to re-enable; the code stays in place either way.
   pdCollection: process.env.PD_COLLECTION_ENABLED === 'true',
+
+  // Dogs-teacher booking intake (public booking request + push subscribe). Its
+  // own switch, separate from pdCollection: the dog-training site is a distinct
+  // product with its own owner and its own 152-ФЗ footing, toggled from the dogs
+  // /admin — flipping one must not affect the blog. Seed via DOGS_BOOKING_ENABLED.
+  dogsBooking: process.env.DOGS_BOOKING_ENABLED === 'true',
 } as const;

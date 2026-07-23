@@ -7,6 +7,7 @@ import { withMethods } from '@/src/middlewares/with-methods';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { sendDogsRequestReceived } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { requireFeature } from '@/src/middlewares/require-feature';
 import { createDogsBookingRequestSchema } from '@/src/schemas/dogs-booking';
 import { armDogsReminderScheduler } from '@/src/services/dogs-reminder-scheduler';
 import {
@@ -37,8 +38,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-// 10/min per IP — an anonymous public write that fans out to 2 Telegram sends +
-// 1 email per request; without a cap it's a spam / notification-DoS amplifier.
-export default withRateLimit({ routeName: 'dogs.booking.requests', windowMs: 60_000, max: 10 })(
-  withMethods([HTTP_METHOD.POST])(validateBody(createDogsBookingRequestSchema)(handler))
+// dogsBooking gate is outermost: when collection is off the route answers 404
+// (as if it didn't exist) and no personal data is taken. Rate-limit next, then
+// method/validation. 10/min per IP — an anonymous public write that fans out to
+// 2 Telegram sends + 1 email per request; without a cap it's a spam /
+// notification-DoS amplifier.
+export default requireFeature('dogsBooking')(
+  withRateLimit({ routeName: 'dogs.booking.requests', windowMs: 60_000, max: 10 })(
+    withMethods([HTTP_METHOD.POST])(validateBody(createDogsBookingRequestSchema)(handler))
+  )
 );
