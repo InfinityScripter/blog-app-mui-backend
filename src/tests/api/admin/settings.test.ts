@@ -12,6 +12,8 @@ import { settingsService } from '@/src/services/settings';
 import publicHandler from '@/src/pages/api/settings/public';
 // eslint-disable-next-line import/first, import/order
 import toggleHandler from '@/src/pages/api/admin/settings/pd-collection';
+// eslint-disable-next-line import/first, import/order
+import autoPublishHandler from '@/src/pages/api/admin/settings/auto-publish';
 
 function makeToken(userId: string, role: string) {
   return `Bearer ${jwt.sign({ userId, role }, JWT_SECRET)}`;
@@ -123,6 +125,63 @@ describe('admin + public settings routes', () => {
         body: { enabled: true },
       });
       await toggleHandler(req, res);
+      expect(res._getStatusCode()).toBe(403);
+    });
+  });
+
+  describe('POST /api/admin/settings/auto-publish', () => {
+    it('toggles autoPublishReleases, persists it, and audits the change', async () => {
+      const { req, res } = createMocks({
+        method: HTTP_METHOD.POST,
+        headers: { authorization: await adminAuth() },
+        body: { key: 'autoPublishReleases', enabled: true },
+      });
+      await autoPublishHandler(req, res);
+      await settle();
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = JSON.parse(res._getData());
+      expect(data.success).toBe(true);
+      expect(data.data.autoPublishReleases).toBe(true);
+
+      settingsService.__resetCacheForTests();
+      expect(await settingsService.getFlag('autoPublishReleases')).toBe(true);
+
+      const audit = await dbQuery<{ action: string; target_id: string | null }>(
+        'SELECT action, target_id FROM audit_logs ORDER BY created_at DESC LIMIT 1'
+      );
+      expect(audit.rows[0].action).toBe('settings.auto_publish_toggled');
+      expect(audit.rows[0].target_id).toBe('autoPublishReleases');
+    });
+
+    it('400 for an unknown key (cannot flip an unrelated flag)', async () => {
+      const { req, res } = createMocks({
+        method: HTTP_METHOD.POST,
+        headers: { authorization: await adminAuth() },
+        body: { key: 'pdCollection', enabled: false },
+      });
+      await autoPublishHandler(req, res);
+      expect(res._getStatusCode()).toBe(400);
+    });
+
+    it('400 when enabled is not a boolean', async () => {
+      const { req, res } = createMocks({
+        method: HTTP_METHOD.POST,
+        headers: { authorization: await adminAuth() },
+        body: { key: 'autoPublishNews', enabled: 'yes' },
+      });
+      await autoPublishHandler(req, res);
+      expect(res._getStatusCode()).toBe(400);
+    });
+
+    it('403 for a non-admin', async () => {
+      const user = await User.findOne({ email: 'user@test.com' });
+      const { req, res } = createMocks({
+        method: HTTP_METHOD.POST,
+        headers: { authorization: makeToken(user!._id, 'user') },
+        body: { key: 'autoPublishReleases', enabled: true },
+      });
+      await autoPublishHandler(req, res);
       expect(res._getStatusCode()).toBe(403);
     });
   });

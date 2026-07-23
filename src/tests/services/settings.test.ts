@@ -52,12 +52,20 @@ describe('settingsService', () => {
   });
 
   it('getFlags returns every flag in the snapshot', async () => {
-    // Set both explicitly so the assertion is independent of the env-seeded
-    // defaults; getFlags must surface the full FlagKey set, not just one.
+    // Set every flag explicitly so the assertion is independent of the env-seeded
+    // defaults; getFlags must surface the full FlagKey set, not just one. This
+    // toEqual is a strict full-set match — a new FlagKey must be added here too.
     await settingsService.setFlag('pdCollection', false);
     await settingsService.setFlag('dogsBooking', true);
+    await settingsService.setFlag('autoPublishReleases', true);
+    await settingsService.setFlag('autoPublishNews', false);
     const flags = await settingsService.getFlags();
-    expect(flags).toEqual({ pdCollection: false, dogsBooking: true });
+    expect(flags).toEqual({
+      pdCollection: false,
+      dogsBooking: true,
+      autoPublishReleases: true,
+      autoPublishNews: false,
+    });
   });
 
   it('reads an existing row instead of re-seeding when one is already stored', async () => {

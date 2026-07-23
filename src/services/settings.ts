@@ -9,7 +9,7 @@ import { FEATURES } from '@/src/config-global';
 // Extending: add a key to FlagKey + FLAG_DEFAULTS and it participates in
 // getFlags() and the admin surface automatically.
 
-export type FlagKey = 'pdCollection' | 'dogsBooking';
+export type FlagKey = 'pdCollection' | 'dogsBooking' | 'autoPublishReleases' | 'autoPublishNews';
 
 // Seed value used the first time a flag is read and no row exists yet. Sourced
 // from the build-time env flag so an existing deploy keeps its current behaviour
@@ -17,6 +17,8 @@ export type FlagKey = 'pdCollection' | 'dogsBooking';
 const FLAG_DEFAULTS: Record<FlagKey, boolean> = {
   pdCollection: FEATURES.pdCollection,
   dogsBooking: FEATURES.dogsBooking,
+  autoPublishReleases: FEATURES.autoPublishReleases,
+  autoPublishNews: FEATURES.autoPublishNews,
 };
 
 const ALL_FLAG_KEYS = Object.keys(FLAG_DEFAULTS) as FlagKey[];
