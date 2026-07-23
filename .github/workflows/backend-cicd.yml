@@ -67,6 +67,15 @@ jobs:
             STAGING=/opt/blog-app/backend-staging
             OLD=/opt/blog-app/backend-old
 
+            # Pin HOME + yarn's cache dir. This SSH session is non-login, so
+            # $HOME may be unset — yarn would then fall back to a GLOBAL cache
+            # under /usr/local/share/.cache/yarn, a path the VDS cleanup sweep
+            # didn't cover, which silently grew to 1.8 GB and filled the 9.6 GB
+            # disk (2026-07-23). Keeping it at /root/.cache/yarn means every
+            # deploy reuses one cache the weekly cleanup timer already prunes.
+            export HOME=/root
+            export YARN_CACHE_FOLDER=/root/.cache/yarn
+
             cd "$STAGING"
             find . -name "._*" -delete
             cp /opt/blog-backend/.env.production "$STAGING/.env"
