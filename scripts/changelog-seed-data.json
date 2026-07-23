@@ -920,5 +920,269 @@
     "verdict": "Самый production-ready релиз xAI на тот момент: удвоенный контекст и сильные бенчмарки, но цена осталась на премиальном уровне Grok 3.",
     "sourceUrl": "https://x.ai/news/grok-4",
     "sourceName": "xAI"
+  },
+  {
+    "vendor": "Alibaba",
+    "model": "Qwen2.5",
+    "version": "72B Instruct",
+    "releasedAt": "2024-09-19T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Линейка открытых моделей от 0.5B до 72B параметров плюс специализированные Qwen2.5-Coder и Qwen2.5-Math",
+      "Предобучение на датасете до 18 трлн токенов; поддержка более 29 языков",
+      "Флагман 72B: MMLU выше 85, HumanEval выше 85 и MATH выше 80",
+      "Контекст до 128K токенов и генерация до 8K; улучшены JSON, таблицы и следование system prompt"
+    ],
+    "verdict": "Qwen2.5 закрепила Alibaba среди лидеров open-weight: сильная универсальная модель, отдельные кодовые и математические варианты, широкий размерный ряд.",
+    "sourceUrl": "https://qwenlm.github.io/blog/qwen2.5/",
+    "sourceName": "Qwen Team"
+  },
+  {
+    "vendor": "Alibaba",
+    "model": "Qwen3",
+    "version": "235B-A22B",
+    "releasedAt": "2025-04-29T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Гибрид thinking/non-thinking в одном чекпойнте с управляемым бюджетом рассуждений",
+      "Флагманская MoE-модель: 235B параметров, 22B активных; младшая MoE — 30B-A3B",
+      "Открыты ещё шесть dense-моделей от 0.6B до 32B под Apache 2.0",
+      "Обучение примерно на 36 трлн токенов и 119 языках/диалектах; контекст флагмана 128K",
+      "235B-A22B конкурентен DeepSeek-R1, o1, o3-mini, Grok-3 и Gemini 2.5 Pro на математике, коде и общих тестах"
+    ],
+    "verdict": "Qwen3 объединила быстрый ответ и reasoning в одной открытой линейке, сохранив редкую широту размеров — от локальных моделей до крупного MoE-флагмана.",
+    "sourceUrl": "https://qwenlm.github.io/blog/qwen3/",
+    "sourceName": "Qwen Team"
+  },
+  {
+    "vendor": "Moonshot AI",
+    "model": "Kimi K2",
+    "version": "Instruct",
+    "releasedAt": "2025-07-11T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "MoE на 1 трлн параметров при 32B активных на токен; открыты Base и Instruct",
+      "Первая крупная Kimi-модель, специально дообученная для tool use и агентных сценариев без long thinking",
+      "SWE-bench Verified 65.8%, SWE-bench Multilingual 47.3%, Tau2-Bench 66.1% и ACEBench English 76.5%",
+      "LiveCodeBench v6 53.7%, AIME 2025 49.5% и GPQA-Diamond 75.1% без extended thinking",
+      "Версия 0905 позже расширила контекст до 256K и усилила agentic coding"
+    ],
+    "verdict": "Kimi K2 вывела Moonshot в первый ряд open-weight моделей: огромный MoE, сильный код и tool use без дорогого режима долгого размышления.",
+    "sourceUrl": "https://www.kimi.com/blog/kimi-k2",
+    "sourceName": "Moonshot AI"
+  },
+  {
+    "vendor": "Moonshot AI",
+    "model": "Kimi K2 Thinking",
+    "version": "",
+    "releasedAt": "2025-11-06T00:00:00.000Z",
+    "contextTokens": 262144,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Reasoning-модель с interleaved thinking и 200–300 последовательными вызовами инструментов",
+      "HLE с инструментами 44.9%, BrowseComp 60.2%, BrowseComp-ZH 62.3% и Seal-0 56.3%",
+      "SWE-bench Verified 71.3%, SWE-bench Multilingual 61.1%, Terminal-Bench 47.1% и LiveCodeBench v6 83.1%",
+      "AIME 2025 94.5% без Python и 99.1% с Python; GPQA-Diamond 84.5%",
+      "Нативное INT4 QAT примерно удваивает скорость генерации; все опубликованные результаты сняты в INT4"
+    ],
+    "verdict": "K2 Thinking превратила Kimi из быстрого tool-user в полноценного reasoning-агента, способного удерживать сотни шагов и конкурировать с закрытыми флагманами.",
+    "sourceUrl": "https://www.kimi.com/blog/kimi-k2-thinking",
+    "sourceName": "Moonshot AI"
+  },
+  {
+    "vendor": "xAI",
+    "model": "Grok 4.1",
+    "version": "",
+    "releasedAt": "2025-11-17T00:00:00.000Z",
+    "contextTokens": null,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Обновление Grok 4 с упором на стиль, эмоциональный интеллект, полезность и согласованность личности",
+      "В слепом продакшн-A/B тесте предпочитался предыдущей модели в 64.78% диалогов",
+      "Grok 4.1 Thinking занял первое место LMArena Text Arena с 1483 Elo; non-thinking — второе с 1465 Elo",
+      "Обучен крупномасштабным RL с frontier reasoning-моделями в роли reward models"
+    ],
+    "verdict": "Grok 4.1 был не скачком в сыром reasoning, а редким системным улучшением человеческого восприятия модели — подтверждённым слепым продакшн-трафиком.",
+    "sourceUrl": "https://x.ai/news/grok-4-1",
+    "sourceName": "xAI"
+  },
+  {
+    "vendor": "DeepSeek",
+    "model": "DeepSeek-V3.2",
+    "version": "",
+    "releasedAt": "2025-12-01T00:00:00.000Z",
+    "contextTokens": 131072,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Reasoning-first преемник V3.2-Exp, доступный в приложении, вебе и API",
+      "Первая DeepSeek-модель со thinking прямо внутри tool-use; инструменты работают и в thinking, и в non-thinking режимах",
+      "Агентное обучение охватывает более 1 800 окружений и 85 000 сложных инструкций",
+      "Вариант V3.2-Speciale достиг золотого уровня на IMO, CMO, финале ICPC и IOI 2025",
+      "Открытые веса основной и Speciale-моделей; повседневная V3.2 заявлена на уровне GPT-5"
+    ],
+    "verdict": "V3.2 закрыла главный пробел DeepSeek после R1: reasoning и вызовы инструментов стали одной агентной системой, а не разными режимами без общей траектории.",
+    "sourceUrl": "https://api-docs.deepseek.com/news/news251201",
+    "sourceName": "DeepSeek"
+  },
+  {
+    "vendor": "Alibaba",
+    "model": "Qwen3-Max-Thinking",
+    "version": "2026-01-23",
+    "releasedAt": "2026-01-25T00:00:00.000Z",
+    "contextTokens": null,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Флагманская reasoning-модель Qwen с adaptive tool use, поиском и code interpreter",
+      "Сопоставима с GPT-5.2 Thinking, Claude Opus 4.5 и Gemini 3 Pro на наборе из 19 бенчмарков",
+      "Test-time scaling с итеративной рефлексией поднял GPQA с 90.3 до 92.8, HLE с 34.1 до 36.5 и LiveCodeBench v6 с 88.0 до 91.4",
+      "HLE с инструментами вырос с 55.8 до 58.3, IMO-AnswerBench — с 89.5 до 91.5"
+    ],
+    "verdict": "Qwen3-Max-Thinking показала, что масштабирование inference — не только больше параллельных попыток: рефлексия над предыдущими траекториями дала заметный прирост при близком расходе токенов.",
+    "sourceUrl": "https://qwen.ai/blog?id=qwen3-max-thinking",
+    "sourceName": "Qwen Team"
+  },
+  {
+    "vendor": "Moonshot AI",
+    "model": "Kimi K2.5",
+    "version": "",
+    "releasedAt": "2026-01-27T00:00:00.000Z",
+    "contextTokens": 262144,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Нативная мультимодальность после continued pretraining на примерно 15 трлн смешанных text+vision токенов",
+      "Agent Swarm сам создаёт до 100 субагентов и координирует до 1 500 шагов, сокращая время выполнения до 4.5 раза",
+      "HLE Full 30.1% без инструментов и 50.2% с ними; AIME 2025 96.1%, GPQA-Diamond 87.6%",
+      "SWE-bench Verified 76.8%, SWE-bench Pro 50.7%, Terminal-Bench 2.0 50.8% и LiveCodeBench v6 85.0%",
+      "BrowseComp 60.6%, с context management 74.9%, в Agent Swarm 78.4%; контекст 256K"
+    ],
+    "verdict": "K2.5 стала первым большим поворотом Kimi к visual agents и обучаемой оркестрации: не только сильнее модель, но и новый способ масштабировать выполнение параллельно.",
+    "sourceUrl": "https://www.kimi.com/blog/kimi-k2-5",
+    "sourceName": "Moonshot AI"
+  },
+  {
+    "vendor": "Moonshot AI",
+    "model": "Kimi K2.6",
+    "version": "",
+    "releasedAt": "2026-04-20T00:00:00.000Z",
+    "contextTokens": 262144,
+    "priceIn": 0.95,
+    "priceOut": 4,
+    "changes": [
+      "Open-weight обновление для long-horizon coding, мультимодальных агентов и устойчивого выполнения",
+      "HLE Full 54.0%, GPQA-Diamond 88.4%, AIME 2026 93.3% и SWE-bench Pro 58.6%",
+      "Terminal-Bench 2.0 66.7%; официальный API использует 256K контекста",
+      "Agent Swarm расширен до 300 субагентов и 4 000 координированных шагов против 100/1 500 у K2.5",
+      "API: $0.95 за 1M cache-miss входных и $4 за 1M выходных токенов"
+    ],
+    "verdict": "K2.6 сделала ставку не на новый размер, а на надёжность длинной работы: код, tool use и параллельные агенты стали заметно стабильнее на практических траекториях.",
+    "sourceUrl": "https://www.kimi.com/blog/kimi-k2-6",
+    "sourceName": "Moonshot AI"
+  },
+  {
+    "vendor": "MiniMax",
+    "model": "MiniMax M3",
+    "version": "",
+    "releasedAt": "2026-06-01T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Open-weight мультимодальная модель с текстом, изображениями, видео и computer use",
+      "Новая MiniMax Sparse Attention даёт окно 1M токенов; на 1M контексте вычисления на токен в 20 раз ниже прошлого поколения",
+      "SWE-bench Pro 59.0%, Terminal-Bench 2.1 66.0%, SWE-fficiency 34.8%, KernelBench Hard 28.8% и MCP Atlas 74.2%",
+      "В 24-часовой оптимизации CUDA выполнила 1 959 tool calls и 147 сабмитов, подняв утилизацию пика GPU с 7.6% до 71.3%",
+      "Поддерживает thinking/non-thinking и длинные автономные агентные задачи"
+    ],
+    "verdict": "M3 вернула MiniMax в разговор о frontier-моделях: 1M контекста, нативная мультимодальность и сильный coding-agent собраны в одной открытой модели.",
+    "sourceUrl": "https://www.minimax.io/blog/minimax-m3",
+    "sourceName": "MiniMax"
+  },
+  {
+    "vendor": "Z.ai",
+    "model": "GLM-5.2",
+    "version": "",
+    "releasedAt": "2026-06-16T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": null,
+    "priceOut": null,
+    "changes": [
+      "Флагман для long-horizon задач с рабочим контекстом 1M токенов и открытыми весами под MIT",
+      "IndexShare переиспользует indexer на четыре sparse-attention слоя и снижает FLOPs indexer в 2.9 раза на 1M контексте",
+      "Terminal-Bench 2.1 81.0% против 63.5% у GLM-5.1; SWE-bench Pro 62.1% против 58.4%",
+      "На FrontierSWE отстаёт от Opus 4.8 на 1%, обходит GPT-5.5 на 1% и Opus 4.7 на 11%",
+      "Thinking effort High/Max позволяет менять баланс качества, задержки и расхода токенов"
+    ],
+    "verdict": "GLM-5.2 — один из самых сильных пропущенных open-weight релизов: миллионный контекст здесь подкреплён long-horizon кодингом, а не только цифрой в спецификации.",
+    "sourceUrl": "https://z.ai/blog/glm-5.2",
+    "sourceName": "Z.ai"
+  },
+  {
+    "vendor": "OpenAI",
+    "model": "GPT-5.6",
+    "version": "Sol / Terra / Luna",
+    "releasedAt": "2026-07-09T00:00:00.000Z",
+    "contextTokens": null,
+    "priceIn": 5,
+    "priceOut": 30,
+    "changes": [
+      "Три уровня: флагман Sol, сбалансированная Terra и дешёвая Luna; max reasoning и multi-agent режим ultra",
+      "Sol: Artificial Analysis Coding Agent Index 80, SWE-bench Pro 64.6%, DeepSWE v1.1 72.7% и Terminal-Bench 2.1 88.8%",
+      "BrowseComp 90.4% (92.2% в ultra), OSWorld 2.0 62.6%, Agents' Last Exam 52.7% и GDPval-AA v2 1747.8 Elo",
+      "Cyber: ExploitBench 73.5%, ExploitGym 33.7% за шесть часов и SEC-Bench Pro 71.2%",
+      "API Sol стоит $5/$30 за 1M токенов; Terra $2.50/$15, Luna $1/$6; добавлены Programmatic Tool Calling и multi-agent beta"
+    ],
+    "verdict": "GPT-5.6 сместила фокус с максимума любой ценой на интеллект за токен: Sol держит frontier, а Terra и Luna переносят большую часть уровня в дешёвые агентные сценарии.",
+    "sourceUrl": "https://openai.com/index/gpt-5-6/",
+    "sourceName": "OpenAI"
+  },
+  {
+    "vendor": "Moonshot AI",
+    "model": "Kimi K3",
+    "version": "",
+    "releasedAt": "2026-07-16T00:00:00.000Z",
+    "contextTokens": 1000000,
+    "priceIn": 3,
+    "priceOut": 15,
+    "changes": [
+      "Первый open 3T-class MoE: 2.8 трлн параметров, Kimi Delta Attention, Attention Residuals и 16 активных экспертов из 896",
+      "Нативное зрение и контекст до 1M токенов; full weights обещаны до 27 июля 2026",
+      "Coding: DeepSWE 67.5%, Terminal-Bench 2.1 88.3%, FrontierSWE 81.2%, Program Bench 77.8%, Kimi Code Bench 2.0 72.9%, SWE Marathon 42.0%",
+      "Agents: GDPval-AA v2 1668 Elo, AA-Briefcase 1548 Elo, AutomationBench 30.8%, JobBench 52.9%, SpreadsheetBench 2 34.8%, BrowseComp 91.2%",
+      "Vision: CharXiv с инструментами 91.3%, ZeroBench Pass@5 с инструментами 41.0%",
+      "API model kimi-k3: $3 за 1M cache-miss входных, $0.30 за cache-hit и $15 за выход; benchmark-цифры Moonshot получены на max effort в разных agent harnesses"
+    ],
+    "verdict": "Kimi K3 — крупнейший открываемый frontier-релиз поколения и реальный конкурент закрытым лидерам в коде и агентах; сравнения сильные, но пока vendor-reported и не в едином harness.",
+    "sourceUrl": "https://www.kimi.com/blog/kimi-k3",
+    "sourceName": "Moonshot AI"
+  },
+  {
+    "vendor": "xAI",
+    "model": "Grok 4.5",
+    "version": "",
+    "releasedAt": "2026-07-16T00:00:00.000Z",
+    "contextTokens": null,
+    "priceIn": 2,
+    "priceOut": 6,
+    "changes": [
+      "Флагман SpaceXAI для coding, agentic tasks и knowledge work, обученный совместно с Cursor",
+      "DeepSWE 1.0 62.0%, DeepSWE 1.1 53.0%, SWE Marathon 29.0%, Terminal-Bench 2.1 83.3% и SWE-bench Pro 64.7%",
+      "Около 80 output tokens/s и вдвое выше token efficiency против сопоставимых лидеров",
+      "На SWE-bench Pro использует в среднем 15 954 output-токена — в 4.2 раза меньше Opus 4.8 max",
+      "API стоит $2 за 1M входных и $6 за 1M выходных токенов"
+    ],
+    "verdict": "Grok 4.5 не выиграла каждый бенчмарк, зато сочетает близкий к frontier кодинг с высокой скоростью и низкой ценой — сильный production-релиз.",
+    "sourceUrl": "https://x.ai/news/grok-4-5",
+    "sourceName": "xAI"
   }
 ]
