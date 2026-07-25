@@ -7,7 +7,19 @@ import { topicFor } from '@/src/utils/cover-pool';
 // before. Without a key this module is a no-op and the static ladder takes over,
 // so the blog keeps working with no configuration at all.
 const RANDOM_URL = 'https://api.unsplash.com/photos/random';
-const TIMEOUT_MS = 8_000;
+
+// This call sits on the SYNCHRONOUS publish path: "Создать пост" (and every bot
+// publish) waits for it. api.unsplash.com is not reliably reachable — measured
+// 2026-07-25, 3 of 5 probes never answered while the ones that did came back in
+// ~0.5s — so the budget is what a stalled publish costs, not what a slow reply
+// costs. It was 8s, which froze the dashboard for 8 seconds on every unreachable
+// attempt. 3s is ~6x the observed good-path latency, and losing the race costs
+// nothing but a static-pool cover (still unique, chosen instantly).
+const TIMEOUT_MS = 3_000;
+
+// The attribution ping is fire-and-forget, so a slow one delays nobody; keep the
+// old, roomier budget there rather than dropping pings Unsplash's terms require.
+const ATTRIBUTION_TIMEOUT_MS = 8_000;
 
 // One request returns several candidates so an already-used photo (Unsplash can
 // hand back the same popular shot twice) doesn't cost a second round trip.
@@ -72,7 +84,7 @@ function triggerDownload(location: string | undefined, accessKey: string) {
   }
   fetch(location, {
     headers: { Authorization: `Client-ID ${accessKey}` },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(ATTRIBUTION_TIMEOUT_MS),
   }).catch(() => {
     // Ignored on purpose: attribution bookkeeping, not part of publishing.
   });
