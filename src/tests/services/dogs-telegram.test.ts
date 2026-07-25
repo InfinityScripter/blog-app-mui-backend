@@ -229,6 +229,64 @@ describe('dogs telegram service', () => {
     expect(contacts?.url).toContain('/#location');
   });
 
+  // The access token is a bearer capability (read the client's name/phone,
+  // cancel their lessons). In a group chat every member would read it, so the
+  // personal deep link must never leave a 1:1 chat.
+  it('never leaks the personal cabinet link into a group chat', async () => {
+    const slot = await dogsBookingService.createSlot({
+      startsAt: '2027-06-11T09:00:00.000Z',
+      endsAt: '2027-06-11T10:00:00.000Z',
+    });
+    const request = await dogsBookingService.createRequest({
+      name: 'Полина',
+      phone: '+7 900 321 45 67',
+      serviceId: 'training',
+      slotId: slot!.id,
+      source: 'site',
+    });
+    const { accessToken } = request.client;
+    await dogsBookingService.linkTelegramClient(accessToken, '727272');
+
+    const calls = mockTelegramFetch();
+    // Group chat: chat.id is the group, from.id is the (linked) sender.
+    const groupMessage = { chat: { id: -100500, type: 'group' }, from: { id: 727272 } };
+
+    await handleDogsTelegramUpdate({ message: { ...groupMessage, text: '/my' } });
+    await handleDogsTelegramUpdate({ message: { ...groupMessage, text: '/start' } });
+    await handleDogsTelegramUpdate({ message: { ...groupMessage, text: '/contacts' } });
+    await handleDogsTelegramUpdate({
+      message: { ...groupMessage, text: `/start ${accessToken}` },
+    });
+
+    expect(calls).toHaveLength(4);
+    calls.forEach((call) => {
+      expect(JSON.stringify(call.body)).not.toContain(accessToken);
+    });
+  });
+
+  it('still deep-links the cabinet in a private chat marked by chat.type', async () => {
+    const slot = await dogsBookingService.createSlot({
+      startsAt: '2027-06-12T09:00:00.000Z',
+      endsAt: '2027-06-12T10:00:00.000Z',
+    });
+    const request = await dogsBookingService.createRequest({
+      name: 'Егор',
+      phone: '+7 900 321 45 68',
+      serviceId: 'training',
+      slotId: slot!.id,
+      source: 'site',
+    });
+    await dogsBookingService.linkTelegramClient(request.client.accessToken, '737373');
+
+    const calls = mockTelegramFetch();
+    await handleDogsTelegramUpdate({
+      message: { text: '/my', chat: { id: 737373, type: 'private' }, from: { id: 737373 } },
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body.text).toContain(request.client.accessToken);
+  });
+
   it('re-links the same client idempotently when the /start deep link is tapped twice', async () => {
     const slot = await dogsBookingService.createSlot({
       startsAt: '2027-06-09T09:00:00.000Z',

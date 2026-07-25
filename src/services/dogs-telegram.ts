@@ -13,7 +13,7 @@ import {
 
 interface TelegramMessage {
   text?: string;
-  chat: { id: number | string };
+  chat: { id: number | string; type?: string };
   from?: { id: number | string };
 }
 
@@ -122,24 +122,47 @@ function mainMenuMarkup(accessToken?: string | null): TelegramReplyMarkup {
   };
 }
 
-async function menuForTelegramUser(telegramUserId: string) {
+// A client's access token is a bearer capability: whoever holds the link can
+// read the client's name/phone and cancel their lessons. So it may only ever be
+// sent into a 1:1 chat with that client — never into a group the bot was added
+// to, where every member would read it. Telegram marks private chats with
+// chat.type; when the field is absent (partial payload) fall back to the
+// invariant that a private chat's id IS the sender's id.
+function isPrivateChat(message: TelegramMessage) {
+  if (message.chat.type) {
+    return message.chat.type === 'private';
+  }
+  if (message.from?.id === undefined) {
+    return true;
+  }
+  return String(message.chat.id) === String(message.from.id);
+}
+
+async function menuForTelegramUser(telegramUserId: string, personal: boolean) {
+  if (!personal) {
+    return mainMenuMarkup();
+  }
   const client = await dogsBookingService.getClientByTelegramId(telegramUserId).catch(() => null);
   return mainMenuMarkup(client?.accessToken);
 }
 
-async function sendStart(chatId: number | string, telegramUserId: string) {
+async function sendStart(chatId: number | string, telegramUserId: string, personal: boolean) {
   await sendMessage(
     chatId,
     'Здравствуйте! Здесь можно записаться на занятие к кинологу и посмотреть свои заявки.',
-    await menuForTelegramUser(telegramUserId)
+    await menuForTelegramUser(telegramUserId, personal)
   );
 }
 
-async function sendContacts(chatId: number | string, telegramUserId: string) {
-  await sendMessage(chatId, buildContactsText(), await menuForTelegramUser(telegramUserId));
+async function sendContacts(chatId: number | string, telegramUserId: string, personal: boolean) {
+  await sendMessage(
+    chatId,
+    buildContactsText(),
+    await menuForTelegramUser(telegramUserId, personal)
+  );
 }
 
-async function sendMyBookings(chatId: number | string, telegramUserId: string) {
+async function sendMyBookings(chatId: number | string, telegramUserId: string, personal: boolean) {
   const client = await dogsBookingService.getClientByTelegramId(telegramUserId);
   if (!client) {
     await sendMessage(
@@ -150,10 +173,35 @@ async function sendMyBookings(chatId: number | string, telegramUserId: string) {
     return;
   }
 
+  if (!personal) {
+    // Asked in a group: point the sender to our DM instead of pasting their
+    // personal link where everyone can read it.
+    await sendMessage(
+      chatId,
+      'Личная ссылка на заявки приходит в личные сообщения — напишите мне.'
+    );
+    return;
+  }
+
   await sendMessage(chatId, `Ваши заявки: ${bookingLink(client.accessToken)}`);
 }
 
-async function linkClient(chatId: number | string, telegramUserId: string, accessToken: string) {
+async function linkClient(
+  chatId: number | string,
+  telegramUserId: string,
+  accessToken: string,
+  personal: boolean
+) {
+  if (!personal) {
+    // A deep-link token pasted into a group is already half-exposed; refuse to
+    // act on it and never echo it back into the group.
+    await sendMessage(
+      chatId,
+      'Привязать Telegram можно только в личном чате со мной — напишите мне напрямую.'
+    );
+    return;
+  }
+
   let client;
   try {
     client = await dogsBookingService.linkTelegramClient(accessToken, telegramUserId);
@@ -190,28 +238,30 @@ export async function handleDogsTelegramUpdate(update: TelegramUpdate) {
   const chatId = message.chat.id;
   const telegramUserId = String(message.from?.id ?? chatId);
   const text = message.text.trim();
+  // Gates everything that carries the client's access token (see isPrivateChat).
+  const personal = isPrivateChat(message);
 
   if (text.startsWith('/start ')) {
-    await linkClient(chatId, telegramUserId, text.replace('/start ', '').trim());
+    await linkClient(chatId, telegramUserId, text.replace('/start ', '').trim(), personal);
     return;
   }
 
   if (text === '/start') {
-    await sendStart(chatId, telegramUserId);
+    await sendStart(chatId, telegramUserId, personal);
     return;
   }
 
   if (text === '/my' || text === 'Мои заявки') {
-    await sendMyBookings(chatId, telegramUserId);
+    await sendMyBookings(chatId, telegramUserId, personal);
     return;
   }
 
   if (text === '/contacts' || text === 'Контакты') {
-    await sendContacts(chatId, telegramUserId);
+    await sendContacts(chatId, telegramUserId, personal);
     return;
   }
 
-  await sendStart(chatId, telegramUserId);
+  await sendStart(chatId, telegramUserId, personal);
 }
 
 export async function notifyDogsOwnerNewRequest(request: DogsBookingRequest) {

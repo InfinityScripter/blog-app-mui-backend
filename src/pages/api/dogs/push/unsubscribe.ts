@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
 import { validateBody } from '@/src/middlewares/validate';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { dogsWebPushService } from '@/src/services/dogs-webpush';
 import { dogsPushUnsubscribeSchema } from '@/src/schemas/dogs-booking';
@@ -21,4 +22,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods([HTTP_METHOD.POST])(validateBody(dogsPushUnsubscribeSchema)(handler));
+// Same guessing surface as subscribe — the access token in the body is the auth.
+export default withRateLimit({ routeName: 'dogs.push.unsubscribe', windowMs: 60_000, max: 10 })(
+  withMethods([HTTP_METHOD.POST])(validateBody(dogsPushUnsubscribeSchema)(handler))
+);

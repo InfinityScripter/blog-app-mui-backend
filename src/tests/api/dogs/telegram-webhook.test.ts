@@ -70,4 +70,39 @@ describe('Dogs telegram webhook API', () => {
 
     expect(res._getStatusCode()).toBe(HTTP.SERVICE_UNAVAILABLE);
   });
+
+  it('rejects an update carrying the wrong secret', async () => {
+    process.env.DOGS_TELEGRAM_WEBHOOK_SECRET = 'the-real-secret';
+    handleUpdateMock.mockResolvedValue(undefined);
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      headers: { 'x-telegram-bot-api-secret-token': 'not-the-secret' },
+      body: { message: { text: '/start', chat: { id: 1 } } },
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(HTTP.UNAUTHORIZED);
+    expect(handleUpdateMock).not.toHaveBeenCalled();
+    delete process.env.DOGS_TELEGRAM_WEBHOOK_SECRET;
+  });
+
+  // Fails CLOSED: an unset secret in production means "misconfigured", not
+  // "open to everyone" — a forged update can leak a client's portal link.
+  it('rejects every update in production when the secret is not configured', async () => {
+    const nodeEnv = process.env.NODE_ENV;
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true });
+    delete process.env.DOGS_TELEGRAM_WEBHOOK_SECRET;
+    handleUpdateMock.mockResolvedValue(undefined);
+
+    try {
+      const { req, res } = postUpdate();
+      await webhookHandler(req, res);
+
+      expect(res._getStatusCode()).toBe(HTTP.UNAUTHORIZED);
+      expect(handleUpdateMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process.env, 'NODE_ENV', { value: nodeEnv, configurable: true });
+    }
+  });
 });

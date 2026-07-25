@@ -11,6 +11,20 @@ import { handleDogsTelegramUpdate } from '@/src/services/dogs-telegram';
 function hasValidSecret(req: NextApiRequest) {
   const expected = process.env.DOGS_TELEGRAM_WEBHOOK_SECRET;
   if (!expected) {
+    // FAILS CLOSED in production. An unset secret used to mean "accept
+    // everything", so a deploy that forgot the env var served a fully open
+    // update endpoint: a forged update can make the bot hand a client's private
+    // portal link (view + cancel their bookings, name, phone) to any chat id
+    // the caller names. Same posture as JWT_SECRET in lib/jwt.ts — refuse
+    // rather than run unauthenticated. Dev/test keep the open path so the
+    // webhook is callable without ceremony.
+    if (process.env.NODE_ENV === 'production') {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[dogs telegram webhook] DOGS_TELEGRAM_WEBHOOK_SECRET is not set — rejecting every update. Set it and re-register the webhook with the same secret_token.'
+      );
+      return false;
+    }
     return true;
   }
   const provided = req.headers['x-telegram-bot-api-secret-token'];

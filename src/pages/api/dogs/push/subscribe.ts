@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
 import { validateBody } from '@/src/middlewares/validate';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { dogsWebPushService } from '@/src/services/dogs-webpush';
 import { dogsPushSubscribeSchema } from '@/src/schemas/dogs-booking';
@@ -21,4 +22,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods([HTTP_METHOD.POST])(validateBody(dogsPushSubscribeSchema)(handler));
+// Token-in-body write: rate-limited like the other capability-token routes so
+// the token can't be brute-forced (and the table can't be flooded) for free.
+export default withRateLimit({ routeName: 'dogs.push.subscribe', windowMs: 60_000, max: 10 })(
+  withMethods([HTTP_METHOD.POST])(validateBody(dogsPushSubscribeSchema)(handler))
+);

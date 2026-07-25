@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { HTTP_METHOD } from '@/src/constants/http';
 import { ok, sendError } from '@/src/utils/response';
+import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { sendDogsStatusChanged } from '@/src/utils/dogs-email';
 import { dogsBookingService } from '@/src/services/dogs-booking';
@@ -51,6 +52,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withMethods([HTTP_METHOD.PATCH])(
-  validateQuery(dogsClientTokenQuerySchema)(validateBody(cancelDogsBookingRequestSchema)(handler))
+// Same guessing surface as the portal GET, but this one mutates (a guessed
+// token cancels someone's lesson), so it gets the tighter budget.
+export default withRateLimit({
+  routeName: 'dogs.booking.client-cancel',
+  windowMs: 60_000,
+  max: 10,
+})(
+  withMethods([HTTP_METHOD.PATCH])(
+    validateQuery(dogsClientTokenQuerySchema)(validateBody(cancelDogsBookingRequestSchema)(handler))
+  )
 );
