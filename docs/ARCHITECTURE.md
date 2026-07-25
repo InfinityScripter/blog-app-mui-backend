@@ -22,7 +22,7 @@ src/
   constants/            http status codes, user-facing messages, shared
                         domain constants (auth, pagination, dogs). NO logic.
   types/                Shared TS contracts (api, audit, bot-control,
-                        system-metrics, subscriber, model-release, kanban, dogs).
+                        system-metrics, subscriber, model-release, dogs).
   utils/                PURE helpers only (response, email, audit-context,
                         normalize-email, slug, uuid…). No route logic.
 ```
@@ -77,7 +77,8 @@ export default withMethods(['POST'])(validateBody(signInSchema)(handler));
    `AppError` + `sendError`, `withMethods` middleware. + auth domain as the
    reference implementation (authService, thin sign-in/sign-up).
 2. post domain → `services/post`, thin routes.
-3. chat / kanban / calendar domains.
+3. ~~chat / kanban / calendar domains~~ — deleted 2026-07-25 along with
+   mail/product and `src/_mock/`: template leftovers no consumer ever called.
 4. ✅ DONE (2026-07-04): `utils/{auth,admin,dogs-admin-auth,validate,rate-limit}`
    → `middlewares/` (kebab-case names). Per-route `utils/cors` deleted — the
    edge middleware (`src/middleware.ts`) is the single CORS source.

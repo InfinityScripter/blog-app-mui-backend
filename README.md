@@ -17,8 +17,8 @@ Next.js 14 (pages router, используется только как API-се�
 - **Файлы** — загрузка и раздача файлов прямо из PostgreSQL (см. [README-FILE-STORAGE.md](README-FILE-STORAGE.md)).
 - **Админка** — пользователи, посты, audit-логи, метрики сервера, управление новостным ботом (`ai-bot-tg`).
 - **Dogs-teacher** — запись на занятия к кинологу (отдельный сайт teacher.dog): слоты, заявки, Telegram-бот, web push, напоминания. Живёт в отдельной БД `dogs_teacher`.
-- **Chat / Kanban / Calendar** — PG-бэкенд одноимённых разделов дашборда (фронт сейчас их не вызывает, но API рабочий и покрыт тестами).
-- **Mail / Product** — мок-данные для демонстрационных разделов фронта (не БД).
+
+> Унаследованные от Minimal-шаблона разделы **Chat / Kanban / Calendar / Mail / Product** удалены 2026-07-25 (роуты, сервисы, тесты, `src/_mock/`, таблицы `chat_*` / `kanban_*` / `calendar_events` в DDL). Их не вызывал ни один потребитель — ни blog-app-mui-frontend, ни dogs-teacher, ни ai-bot-tg; фронт выпилил соответствующие разделы раньше, бэкенд остался. Публичная поверхность без потребителя — это только риск и стоимость поддержки. В старой БД сами таблицы остались: `DROP TABLE` руками, см. комментарий в `src/lib/db.ts`.
 
 ## Как устроен код
 
@@ -52,11 +52,10 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 | `src/services/`         | Бизнес-логика доменов. Бросают `AppError`, роут маппит через `sendError()`                                                                                                                                                                             |
 | `src/models/`           | `User`, `Post`, `File` — активные записи поверх PostgreSQL (Mongoose-подобный API: `findById`, `findOne`, `create`, `save`)                                                                                                                            |
 | `src/schemas/`          | Zod-схемы запросов + выведенные из них типы тел                                                                                                                                                                                                        |
-| `src/types/`            | Общие TS-контракты: `api.ts` (`ApiSuccess`/`ApiError`/`AppError`), `audit.ts`, `bot-control.ts`, `system-metrics.ts`, `subscriber.ts`, `model-release.ts`, `kanban.ts`, `dogs.ts`                                                                      |
+| `src/types/`            | Общие TS-контракты: `api.ts` (`ApiSuccess`/`ApiError`/`AppError`), `audit.ts`, `bot-control.ts`, `system-metrics.ts`, `subscriber.ts`, `model-release.ts`, `dogs.ts`                                                                                   |
 | `src/constants/`        | Общие константы: `http.ts` (статусы + методы), `messages.ts` (тексты ответов), `auth.ts` (SALT_ROUNDS, лимит неудачных входов), `pagination.ts` (лимиты списков), `dogs.ts` (телефон/карта бизнеса)                                                    |
 | `src/lib/`              | Инфраструктура: `db.ts` (pg Pool + автосхема), `dogs-db.ts`, `jwt.ts`, `passport.ts` (Google OAuth)                                                                                                                                                    |
 | `src/utils/`            | Чистые хелперы: `response.ts` (`ok`/`sendError`), `email.ts`, `normalize-email.ts`, `audit-context.ts` (`emitAudit`), `allowed-origin.ts`, `client-ip.ts`, `public-user.ts`, `post-payload.ts`, `slug.ts`, `uuidv4.ts`, `change-case.ts`, dogs-хелперы |
-| `src/_mock/`            | Статические данные для демо-роутов mail/product                                                                                                                                                                                                        |
 | `src/tests/`            | Jest + Supertest; БД — `pg-mem` (in-memory Postgres), структура зеркалит `src/`                                                                                                                                                                        |
 | `scripts/`              | Отдельные ops-скрипты (сид changelog, аудит новостей) — см. [scripts/README.md](scripts/README.md)                                                                                                                                                     |
 | `deploy/`, `Dockerfile` | Docker-вариант запуска (VDS сейчас работает без Docker, через systemd)                                                                                                                                                                                 |
@@ -72,7 +71,7 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 
 ## Ручки API
 
-Авторизация: **JWT** — заголовок `Authorization: Bearer <token>`; **admin** — JWT + `role === 'admin'`; **dogs-admin** — отдельный токен из `/api/dogs/admin/login`; **public** — без авторизации.
+Авторизация: **JWT** — httpOnly-кука `access_token` (браузерный SPA; мутации дополнительно требуют double-submit CSRF: кука `csrf_token` + заголовок `X-CSRF-Token`), либо `Authorization: Bearer <token>` для сервис-клиентов — новостного бота и легаси; **admin** — JWT + `role === 'admin'`; **dogs-admin** — отдельный токен из `/api/dogs/admin/login`; **public** — без авторизации.
 
 ### Auth `/api/auth`
 
@@ -166,21 +165,11 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 | POST     | `/telegram/webhook`                                                           | секрет в Bearer | Вебхук Telegram-бота (привязка клиента, меню, контакты)                   |
 | GET/POST | `/internal/reminders`                                                         | опц. секрет     | Триггер напоминаний о занятиях (дергает cron; в процессе тоже тикает сам) |
 
-### Chat / Kanban / Calendar (JWT; фронт пока не подключён)
-
-- `GET/POST /api/chat/channels`, `GET/POST /api/chat/{channelId}/messages`, `GET /api/chat/{channelId}/stream` (SSE, токен в query)
-- `GET/POST /api/kanban/boards`, `GET/DELETE /api/kanban/boards/{boardId}`, `POST .../columns`, `DELETE /api/kanban/columns/{columnId}`, `POST .../tasks`, `PATCH/DELETE /api/kanban/tasks/{taskId}`
-- `GET/POST /api/calendar/events`, `PATCH/DELETE /api/calendar/events/{id}`
-
-### Демо-данные (Minimal-шаблон, без БД)
-
-- `GET /api/mail/list|details|labels`, `GET /api/product/list|details|search` — статика из `src/_mock/`, нужны разделам Mail/Product фронта.
-
 ## База данных
 
 PostgreSQL 14+. Схема создаётся **автоматически при старте** (`src/lib/db.ts`, `CREATE TABLE IF NOT EXISTS`) — отдельные миграции для локального запуска не нужны.
 
-- Основная БД `blog_app`: `users`, `posts`, `files`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `chat_*`, `kanban_*`, `calendar_events`.
+- Основная БД `blog_app`: `users`, `posts`, `files`, `post_translations`, `refresh_tokens`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `app_settings`.
 - Отдельная БД `dogs_teacher` (пул в `lib/dogs-db.ts`, своя автосхема): клиенты, слоты, заявки, push-подписки.
 - В тестах (`NODE_ENV=test`) вместо реального Postgres поднимается **pg-mem** — поэтому `pg-mem` лежит в `dependencies` (его импортирует `lib/db.ts`).
 

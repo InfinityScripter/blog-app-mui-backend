@@ -113,78 +113,14 @@ const schemaSql = `
   ALTER TABLE oauth_consent_challenges ADD COLUMN IF NOT EXISTS claim_id TEXT;
   ALTER TABLE oauth_consent_challenges ADD COLUMN IF NOT EXISTS claim_expires_at TIMESTAMPTZ;
 
-  CREATE TABLE IF NOT EXISTS chat_channels (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
-    name TEXT,
-    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS chat_members (
-    channel_id TEXT NOT NULL REFERENCES chat_channels(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (channel_id, user_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS chat_messages (
-    id TEXT PRIMARY KEY,
-    channel_id TEXT NOT NULL REFERENCES chat_channels(id) ON DELETE CASCADE,
-    sender_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-    body TEXT NOT NULL,
-    attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS kanban_boards (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS kanban_board_members (
-    board_id TEXT NOT NULL REFERENCES kanban_boards(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    PRIMARY KEY (board_id, user_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS kanban_columns (
-    id TEXT PRIMARY KEY,
-    board_id TEXT NOT NULL REFERENCES kanban_boards(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    position INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS kanban_tasks (
-    id TEXT PRIMARY KEY,
-    column_id TEXT NOT NULL REFERENCES kanban_columns(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    description TEXT,
-    assignees JSONB NOT NULL DEFAULT '[]'::jsonb,
-    labels JSONB NOT NULL DEFAULT '[]'::jsonb,
-    due_date TIMESTAMPTZ,
-    position INTEGER NOT NULL DEFAULT 0,
-    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS calendar_events (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    color TEXT NOT NULL DEFAULT 'primary',
-    start_date TIMESTAMPTZ NOT NULL,
-    end_date TIMESTAMPTZ NOT NULL,
-    all_day BOOLEAN NOT NULL DEFAULT FALSE,
-    type TEXT NOT NULL,
-    created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
+  -- The template's chat_*/kanban_*/calendar_events tables were removed here on
+  -- 2026-07-25 together with their routes and services: no frontend ever called
+  -- them. This DDL no longer creates them, so fresh environments come up without
+  -- them. Tables that already exist in an older database are NOT dropped from
+  -- code — deleting user data is a manual, deliberate act:
+  --   DROP TABLE IF EXISTS chat_messages, chat_members, chat_channels,
+  --     kanban_tasks, kanban_columns, kanban_board_members, kanban_boards,
+  --     calendar_events;
 
   -- Audit trail of business actions (who/what/when). Append-only.
   -- actor_id keeps the trail when a user is deleted (SET NULL); target_id has
@@ -438,14 +374,6 @@ export async function dbQuery<T extends QueryResultRow = QueryResultRow>(
 
 export async function resetDatabase() {
   const pool = await dbConnect();
-  await pool.query('DELETE FROM calendar_events');
-  await pool.query('DELETE FROM kanban_tasks');
-  await pool.query('DELETE FROM kanban_columns');
-  await pool.query('DELETE FROM kanban_board_members');
-  await pool.query('DELETE FROM kanban_boards');
-  await pool.query('DELETE FROM chat_messages');
-  await pool.query('DELETE FROM chat_members');
-  await pool.query('DELETE FROM chat_channels');
   await pool.query('DELETE FROM files');
   await pool.query('DELETE FROM posts');
   await pool.query('DELETE FROM audit_logs');

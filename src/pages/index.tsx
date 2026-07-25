@@ -72,11 +72,8 @@ const GROUPS: RouteGroup[] = [
     ],
   },
   {
-    title: 'Приложения (chat / kanban / calendar / dogs)',
+    title: 'Dogs-teacher',
     routes: [
-      { method: '*', path: '/api/chat/channels · /api/chat/{channelId}/…', note: 'JWT' },
-      { method: '*', path: '/api/kanban/boards · columns · tasks', note: 'JWT' },
-      { method: '*', path: '/api/calendar/events', note: 'JWT' },
       { method: '*', path: '/api/dogs/… (booking, admin, push, telegram)', note: 'см. README' },
     ],
   },
