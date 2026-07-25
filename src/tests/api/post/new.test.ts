@@ -61,6 +61,32 @@ describe('POST /api/post/new', () => {
     expect(post?.title).toBe('Test Post Title');
   });
 
+  it('assigns a different cover to each coverless post', async () => {
+    // The regression this guards: the news bot publishes imageless items without
+    // a coverUrl, and every such post used to land on a repeating stock photo.
+    delete process.env.UNSPLASH_ACCESS_KEY;
+    const token = jwt.sign(
+      { userId: '6060694b2c21843bf8307f43' },
+      process.env.JWT_SECRET || 'secret123'
+    );
+
+    const covers: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      const { req, res } = createMocks({
+        method: HTTP_METHOD.POST,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: { title: `Новость ${i}`, tags: 'ai,новости', publish: 'published' },
+      });
+      // eslint-disable-next-line no-await-in-loop
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(201);
+      covers.push(JSON.parse(res._getData()).post.coverUrl);
+    }
+
+    expect(new Set(covers).size).toBe(covers.length);
+    covers.forEach((cover) => expect(cover).toBeTruthy());
+  });
+
   it('should return 401 with invalid token', async () => {
     const { req, res } = createMocks({
       method: HTTP_METHOD.POST,

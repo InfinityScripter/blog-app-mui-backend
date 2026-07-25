@@ -8,7 +8,12 @@ import { HTTP } from '@/src/constants/http';
 import { MSG } from '@/src/constants/messages';
 import { paramCase } from '@/src/utils/change-case';
 import { getReadingTime } from '@/src/utils/reading-time';
-import { buildNewPostPayload, buildPostPatchPayload } from '@/src/utils/post-payload';
+import { pickUnusedCover } from '@/src/services/cover-assign';
+import {
+  needsAssignedCover,
+  buildNewPostPayload,
+  buildPostPatchPayload,
+} from '@/src/utils/post-payload';
 
 // Business logic for the post domain. No HTTP — routes call these and map
 // the result/throws to a response.
@@ -129,6 +134,17 @@ async function createPost(userId: string, body: Record<string, any>) {
   }
   const author = { name: user.name, avatarUrl: user.avatarURL };
   const payload = buildNewPostPayload(body, author, user._id);
+  // The payload builder can only reach for a title-hashed bundled cover, which
+  // repeats as soon as two titles collide. When the caller brought no cover of
+  // its own (the news bot omits it for imageless items), replace that with one
+  // no other post uses — see services/cover-assign.ts for why the ledger lives
+  // in the DB rather than in the publisher.
+  if (needsAssignedCover(body.coverUrl)) {
+    const assigned = await pickUnusedCover({ tags: payload.tags, title: payload.title });
+    payload.coverUrl = assigned.url;
+    payload.coverCreditName = assigned.creditName ?? null;
+    payload.coverCreditUrl = assigned.creditUrl ?? null;
+  }
   return Post.create(payload);
 }
 

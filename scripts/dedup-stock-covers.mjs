@@ -1,28 +1,31 @@
 #!/usr/bin/env node
-// Stock-cover de-duplication for the EXISTING post backlog.
+// Post-cover de-duplication for the EXISTING backlog.
 //
-// The real cover duplication on the blog is not cover-1 (that's
-// backfill-post-covers.mjs) but the news bot reusing a handful of Unsplash stock
-// photos: on the live DB one image sat on 11 posts, another on 9, a third on 7.
-// The bot picks covers from topical pools (ai-bot-tg src/blog/defaultCovers.ts),
-// but bare `новости` posts (the majority) fell to a tiny universal pool, so they
-// cycled the same few images. The bot side is fixed separately; this script
-// re-spreads the EXISTING posts across each topic's full pool so they stop
-// repeating.
+// On the live DB (2026-07-25) 136 posts shared 92 covers: 69 of them sat on an
+// auto-assigned stock photo, but only 26 DISTINCT ones — one image was on 5
+// posts, several on 4. Cause: the news bot picked `pool[candidateId % poolSize]`
+// from the pool matching the post's topic, and nearly every post is AI-tagged,
+// so 62 posts rotated 19 images while 80 others went unused.
 //
-// The pools live in scripts/cover-pools.json — a snapshot ported verbatim from
-// ai-bot-tg src/blog/defaultCovers.ts (99 verified Unsplash image URLs), same
-// pattern as seed-changelog.mjs + changelog-seed-data.json. A post is a candidate
-// ONLY if its cover is one of those URLs (i.e. an auto-assigned bot cover).
-// Feed/og images (e.g. 3dnews.ru), uploads (/api/file/...), the bundled /assets
-// covers, and anything else are LEFT UNTOUCHED.
+// The runtime fix moved cover assignment to the blog (src/services/cover-assign.ts),
+// where posts.cover_url IS the ledger of what is taken. This script applies the
+// same rule to the posts already published: for every cover carried by MORE THAN
+// ONE post, the OLDEST post keeps it and each later one gets a cover no post
+// uses. Result: every auto-assigned cover appears exactly once.
 //
-// For each candidate the post's tags choose a topical pool (same mapping as the
-// bot); within that pool the posts are ordered by created_at and assigned
-// pool[i % poolSize], so a topic's posts cycle its whole pool before any repeat.
-// Deterministic + idempotent (stable order → same assignment), so re-running is a
-// no-op once spread. --apply guards each write on the scanned cover, so a post
-// re-covered in the app meanwhile is skipped, not clobbered.
+// SCOPE — a post is a candidate ONLY when its cover is one of the auto-assigned
+// ones (src/data/cover-pool.json: the stock URLs or the bundled /assets covers)
+// AND that cover is shared with an older post. Left untouched: the article's own
+// image scraped from the source, uploads (/api/file/…), and any auto cover that
+// is already unique. Duplicated NON-pool covers are reported, never rewritten —
+// two posts sharing a source image is the source's business, not ours.
+//
+// Deterministic and idempotent: candidates are processed oldest-first and free
+// covers are handed out in pool order, so a re-run after --apply finds nothing
+// left to do. Reversible — it only rewrites cover_url (and bumps updated_at).
+//
+// Offline: no Unsplash key needed. The static pool has enough free slots for the
+// backlog; if it ever doesn't, the script says so instead of reusing an image.
 //
 // SAFE BY DEFAULT — dry run.
 //   DATABASE_URL=postgres://… node scripts/dedup-stock-covers.mjs            # dry run
@@ -36,22 +39,25 @@ import pg from 'pg';
 
 const APPLY = process.argv.includes('--apply');
 
-// Topical Unsplash cover pools + tag→pool map, ported from ai-bot-tg
-// src/blog/defaultCovers.ts. Kept as data (not code) so a re-port is a data edit.
-const { pools: POOLS, tagMap: TAG_TO_POOL } = JSON.parse(
-  readFileSync(new URL('./cover-pools.json', import.meta.url), 'utf8')
-);
+// The SAME data file the runtime reads (src/data/cover-pool.json) — the pool
+// used to be copy-pasted per consumer and the copies drifted.
+const {
+  pools: POOLS,
+  tagMap: TAG_TO_TOPIC,
+  bundled: BUNDLED,
+} = JSON.parse(readFileSync(new URL('../src/data/cover-pool.json', import.meta.url), 'utf8'));
 
-// Universal fallback = the full de-duplicated union of every topical pool
-// (matches the bot fix). Also the membership set for "is this a bot cover?".
-const UNIVERSAL = [...new Set(Object.values(POOLS).flat())];
-const POOL_SET = new Set(UNIVERSAL);
+const STOCK = [...new Set(Object.values(POOLS).flat())];
+// Priority order when handing out a free cover: stock first, bundled assets as
+// the tail — mirrors the ladder in src/services/cover-assign.ts.
+const INVENTORY = [...STOCK, ...BUNDLED];
+const AUTO_COVERS = new Set(INVENTORY);
 
-/** First topical tag that maps to a pool wins; else the universal pool. */
-function poolFor(tags) {
+/** First tag with a topic mapping wins; null = no topical preference. */
+function topicalCovers(tags) {
   const list = Array.isArray(tags) ? tags : [];
-  const id = list.map((tag) => TAG_TO_POOL[String(tag).toLowerCase().trim()]).find(Boolean);
-  return id && POOLS[id] ? POOLS[id] : UNIVERSAL;
+  const topic = list.map((tag) => TAG_TO_TOPIC[String(tag).toLowerCase().trim()]).find(Boolean);
+  return topic && POOLS[topic] ? POOLS[topic] : [];
 }
 
 const { DATABASE_URL } = process.env;
@@ -63,10 +69,10 @@ if (!DATABASE_URL) {
 }
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
-function topCounts(covers, n) {
+function countBy(covers) {
   const counts = new Map();
   for (const cover of covers) counts.set(cover, (counts.get(cover) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+  return counts;
 }
 const shortUrl = (url) => (url.length > 60 ? `${url.slice(0, 57)}…` : url);
 
@@ -74,77 +80,91 @@ async function main() {
   const { rows } = await pool.query(
     'SELECT id, title, cover_url, tags, created_at FROM posts ORDER BY created_at ASC, id ASC'
   );
-  // Candidates: posts whose cover is one of the bot's stock pool URLs.
-  const candidates = rows.filter((row) => POOL_SET.has(row.cover_url));
+  const counts = countBy(rows.map((row) => row.cover_url).filter(Boolean));
 
-  // Group candidates by their topical pool (stable created_at order preserved).
-  const byPool = new Map();
-  for (const row of candidates) {
-    const themePool = poolFor(row.tags);
-    if (!byPool.has(themePool)) byPool.set(themePool, []);
-    byPool.get(themePool).push(row);
+  // Duplicated covers we do NOT own — reported for visibility only.
+  const foreignDupes = [...counts.entries()].filter(
+    ([cover, n]) => n > 1 && !AUTO_COVERS.has(cover)
+  );
+
+  // Oldest post on each duplicated auto cover keeps it; every later one moves.
+  const seen = new Set();
+  const toReassign = [];
+  for (const row of rows) {
+    if (!AUTO_COVERS.has(row.cover_url)) continue;
+    if (seen.has(row.cover_url)) toReassign.push(row);
+    else seen.add(row.cover_url);
   }
-  // Assign pool[i % size] within each group; keep only the real changes.
+
+  // Free = never used by ANY post (including the ones we are about to free up:
+  // those stay with their oldest holder, so they are not free).
+  const used = new Set(rows.map((row) => row.cover_url).filter(Boolean));
+  const free = INVENTORY.filter((cover) => !used.has(cover));
+  const freeSet = new Set(free);
+
+  const take = (tags) => {
+    // Topical first, then anything free — an off-topic but unique cover beats
+    // the same photo twice (the whole point of the fix).
+    const topical = topicalCovers(tags).find((cover) => freeSet.has(cover));
+    const chosen = topical ?? free.find((cover) => freeSet.has(cover));
+    if (chosen) freeSet.delete(chosen);
+    return chosen ?? null;
+  };
+
   const changes = [];
-  for (const [themePool, group] of byPool) {
-    group.forEach((row, i) => {
-      const to = themePool[i % themePool.length];
-      if (to !== row.cover_url) {
-        changes.push({ id: row.id, from: row.cover_url, to, title: row.title });
-      }
-    });
+  const unresolved = [];
+  for (const row of toReassign) {
+    const to = take(row.tags);
+    if (to) changes.push({ id: row.id, from: row.cover_url, to, title: row.title });
+    else unresolved.push(row);
   }
 
-  const beforeTop = topCounts(
-    candidates.map((row) => row.cover_url),
-    6
-  );
-  const afterByCover = new Map(changes.map((change) => [change.id, change.to]));
-  const afterTop = topCounts(
-    candidates.map((row) => afterByCover.get(row.id) ?? row.cover_url),
-    6
-  );
-
-  console.log(`\n=== Stock-cover dedup ${APPLY ? '(APPLY)' : '(dry run)'} ===`);
+  const worstBefore = Math.max(0, ...[...counts.values()]);
+  console.log(`\n=== Cover dedup ${APPLY ? '(APPLY)' : '(dry run)'} ===`);
   console.log(`posts total                        : ${rows.length}`);
-  console.log(`on a bot stock cover (candidates)  : ${candidates.length}`);
-  console.log(`will be re-spread                  : ${changes.length}`);
-  console.log(`most-duplicated BEFORE             : ${beforeTop[0]?.[1] ?? 0} posts on one cover`);
-  console.log(`most-duplicated AFTER              : ${afterTop[0]?.[1] ?? 0} posts on one cover`);
-  if (beforeTop.length > 0) {
-    console.log('\ntop covers BEFORE:');
-    for (const [cover, n] of beforeTop)
+  console.log(`distinct covers                    : ${counts.size}`);
+  console.log(`most posts on ONE cover (before)   : ${worstBefore}`);
+  console.log(`duplicate posts to re-cover        : ${toReassign.length}`);
+  console.log(`free covers in the pool            : ${free.length} of ${INVENTORY.length}`);
+  console.log(`free left after this run           : ${freeSet.size}`);
+
+  if (foreignDupes.length > 0) {
+    console.log('\nDuplicated covers NOT from the pool (left untouched by design):');
+    for (const [cover, n] of foreignDupes)
       console.log(`  ${String(n).padStart(3)}  ${shortUrl(cover)}`);
+  }
+  if (unresolved.length > 0) {
+    console.log(
+      `\n⚠️  ${unresolved.length} post(s) stay duplicated — the pool ran out of free covers.` +
+        '\n   Add URLs to src/data/cover-pool.json and re-run.'
+    );
   }
 
   if (changes.length === 0) {
-    console.log('\nNothing to dedup — stock covers are already spread. ✅');
+    console.log('\nNothing to dedup — every auto-assigned cover is already unique. ✅');
     return;
   }
   if (!APPLY) {
-    console.log('\nSample of planned changes (first 12):');
+    console.log('\nPlanned changes (first 12):');
     for (const change of changes.slice(0, 12)) {
-      console.log(`  ${shortUrl(change.from)}  →  ${shortUrl(change.to)}   ${change.title}`);
+      console.log(`  ${shortUrl(change.from)}\n    → ${shortUrl(change.to)}   [${change.title}]`);
     }
     if (changes.length > 12) console.log(`  … and ${changes.length - 12} more`);
-    console.log('\nDry run — nothing changed. Re-run with --apply if the AFTER count looks right.');
+    console.log('\nDry run — nothing changed. Re-run with --apply when the numbers look right.');
     return;
   }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const ids = changes.map((change) => change.id);
-    const tos = changes.map((change) => change.to);
-    const froms = changes.map((change) => change.from);
     // Guard on the scanned cover (from_cover): a post re-covered in the app
     // between scan and write no longer matches and is skipped, not clobbered.
     const res = await client.query(
       `UPDATE posts AS p
-          SET cover_url = v.cover, updated_at = NOW()
+          SET cover_url = v.cover, cover_credit_name = NULL, cover_credit_url = NULL, updated_at = NOW()
          FROM unnest($1::text[], $2::text[], $3::text[]) AS v(id, cover, from_cover)
         WHERE p.id = v.id AND p.cover_url = v.from_cover`,
-      [ids, tos, froms]
+      [changes.map((c) => c.id), changes.map((c) => c.to), changes.map((c) => c.from)]
     );
     await client.query('COMMIT');
     console.log(`\nUpdated ${res.rowCount} post cover(s).`);
@@ -153,7 +173,14 @@ async function main() {
         `Note: ${changes.length - res.rowCount} candidate(s) changed between scan and write — skipped (guard held).`
       );
     }
-    console.log('Reversible: re-run is a no-op, or restore from the backup.');
+    console.log('Re-running is a no-op; restore from the backup to undo.');
+    // The script writes straight to the DB, so Next.js ISR (revalidate = 3600)
+    // keeps serving the old covers for up to an hour. Nothing here can clear it:
+    // the frontend's /api/revalidate is guarded by an admin session cookie.
+    console.log(
+      'Public pages are ISR-cached for up to 1h — trigger a revalidate from the\n' +
+        'admin panel (or just wait) for the new covers to show on the site.'
+    );
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

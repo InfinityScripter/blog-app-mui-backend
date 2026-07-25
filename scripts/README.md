@@ -67,33 +67,35 @@ empty or still on the old default. It rewrites `cover_url` only — reversible v
 the `pg_dump` backup (take one first). `--report-files` is informational only:
 files-table blob dedup is a separate, larger change and is **not** performed here.
 
-## `dedup-stock-covers.mjs` — de-duplicate the news bot's stock covers
+## `dedup-stock-covers.mjs` — make every auto-assigned cover unique
 
-The bigger cover-duplication source is not `cover-1` but the news bot reusing a
-handful of Unsplash stock photos: on the live DB one image sat on 11 posts,
-another on 9, a third on 7. The bot picks from topical pools
-(`ai-bot-tg/src/blog/defaultCovers.ts`), but bare `новости` posts (the majority)
-fell to a tiny universal pool, so they cycled the same few images. The **bot** is
-fixed separately (its universal pool now spans every topical pool); this script
-re-spreads the **existing** posts.
+The real cover-duplication source was never `cover-1` but the news bot rotating
+`pool[candidateId % poolSize]` inside the pool matching the post's topic. Nearly
+every post is AI-tagged, so 62 posts cycled 19 images while 80 others went
+unused: on the live DB (2026-07-25) 69 stock-covered posts shared just 26
+distinct photos, one of them on 5 posts. Cover assignment now lives in the blog
+(`src/services/cover-assign.ts`), where `posts.cover_url` is the ledger of what
+is taken; this script applies the same rule to posts already published.
 
 ```bash
-# 1) DRY RUN — prints most-duplicated BEFORE/AFTER + a sample, touches nothing:
+# 1) DRY RUN — prints the duplicate count, free pool capacity and a sample:
 DATABASE_URL=postgres://… npm run posts:dedup-covers
 
-# 2) Only after the AFTER count looks right — write the spread-out covers:
+# 2) Only after the numbers look right — write the new covers:
 DATABASE_URL=postgres://… npm run posts:dedup-covers -- --apply
 ```
 
-The pools live in `scripts/cover-pools.json` (99 Unsplash URLs ported verbatim
-from the bot). A post is a candidate **only** if its cover is one of those URLs
-(an auto-assigned bot cover); feed/og images (e.g. `3dnews.ru`), uploads
-(`/api/file/…`), and the bundled `/assets` covers are left untouched. Each
-candidate's tags choose a topical pool (same mapping as the bot) and posts are
-assigned `pool[i % poolSize]` in `created_at` order, so a topic's posts cycle its
-whole pool before repeating. Deterministic + idempotent (re-running is a no-op);
-`--apply` guards each write on the scanned cover, so a post re-covered in the app
-meanwhile is skipped. Reversible via the `pg_dump` backup.
+For every cover carried by more than one post, the **oldest** post keeps it and
+each later one gets a cover no post uses — topical first, then anything free
+(an off-topic but unique photo beats the same photo twice). Candidates come only
+from the auto-assigned inventory in `src/data/cover-pool.json` — the same file
+the runtime reads, so the two can't drift; the article's own scraped image,
+uploads (`/api/file/…`) and already-unique covers are left alone. Duplicated
+covers outside the pool are reported, never rewritten. Offline — no Unsplash key
+needed; if free covers run out the script says so instead of reusing an image.
+Deterministic + idempotent (re-running is a no-op); `--apply` guards each write
+on the scanned cover, so a post re-covered in the app meanwhile is skipped.
+Reversible via the `pg_dump` backup.
 
 ## `seed-changelog.mjs` — seed `/changelog` with real model releases
 

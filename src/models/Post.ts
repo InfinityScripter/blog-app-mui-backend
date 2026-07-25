@@ -37,6 +37,10 @@ export interface IPost {
   description: string;
   content: string;
   coverUrl: string;
+  /** Photographer name, set only for covers fetched from the Unsplash API. */
+  coverCreditName?: string | null;
+  /** Photographer profile link (with the utm params the API terms require). */
+  coverCreditUrl?: string | null;
   tags: string[];
   metaTitle: string;
   metaDescription: string;
@@ -71,6 +75,8 @@ type PostRow = {
   author: { avatarUrl?: string; name: string };
   comments: IComment[];
   content: string;
+  cover_credit_name: string | null;
+  cover_credit_url: string | null;
   cover_url: string;
   created_at: Date;
   description: string;
@@ -96,6 +102,8 @@ function mapPostRow(row: PostRow): IPost {
     author: row.author || { name: '' },
     comments: row.comments || [],
     content: row.content || '',
+    coverCreditName: row.cover_credit_name ?? null,
+    coverCreditUrl: row.cover_credit_url ?? null,
     coverUrl: row.cover_url || '',
     createdAt: row.created_at,
     description: row.description || '',
@@ -280,6 +288,10 @@ export class Post implements IPost {
 
   metaTitle: string;
 
+  coverCreditName?: string | null;
+
+  coverCreditUrl?: string | null;
+
   publish: 'draft' | 'published';
 
   tags: string[];
@@ -308,6 +320,8 @@ export class Post implements IPost {
     this.description = data.description || '';
     this.content = data.content || '';
     this.coverUrl = data.coverUrl || '';
+    this.coverCreditName = data.coverCreditName ?? null;
+    this.coverCreditUrl = data.coverCreditUrl ?? null;
     this.tags = data.tags || [];
     this.metaTitle = data.metaTitle || '';
     this.metaDescription = data.metaDescription || '';
@@ -441,6 +455,8 @@ export class Post implements IPost {
           description,
           content,
           cover_url,
+          cover_credit_name,
+          cover_credit_url,
           tags,
           meta_title,
           meta_description,
@@ -455,7 +471,7 @@ export class Post implements IPost {
           author,
           updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10::jsonb, $11, $12, $13, $14, $15::jsonb, $16::jsonb, $17, $18::jsonb, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19, $20::jsonb, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
           publish = EXCLUDED.publish,
@@ -463,6 +479,8 @@ export class Post implements IPost {
           description = EXCLUDED.description,
           content = EXCLUDED.content,
           cover_url = EXCLUDED.cover_url,
+          cover_credit_name = EXCLUDED.cover_credit_name,
+          cover_credit_url = EXCLUDED.cover_credit_url,
           tags = EXCLUDED.tags,
           meta_title = EXCLUDED.meta_title,
           meta_description = EXCLUDED.meta_description,
@@ -485,6 +503,8 @@ export class Post implements IPost {
         this.description,
         this.content,
         this.coverUrl,
+        this.coverCreditName ?? null,
+        this.coverCreditUrl ?? null,
         JSON.stringify(this.tags),
         this.metaTitle,
         this.metaDescription,

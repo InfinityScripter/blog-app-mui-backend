@@ -126,5 +126,31 @@
     "наука и техника": "science",
     "бизнес": "business",
     "технологии": "tech"
-  }
+  },
+  "bundled": [
+    "/assets/images/cover/cover-1.webp",
+    "/assets/images/cover/cover-2.webp",
+    "/assets/images/cover/cover-3.webp",
+    "/assets/images/cover/cover-4.webp",
+    "/assets/images/cover/cover-5.webp",
+    "/assets/images/cover/cover-6.webp",
+    "/assets/images/cover/cover-7.webp",
+    "/assets/images/cover/cover-8.webp",
+    "/assets/images/cover/cover-9.webp",
+    "/assets/images/cover/cover-10.webp",
+    "/assets/images/cover/cover-11.webp",
+    "/assets/images/cover/cover-12.webp",
+    "/assets/images/cover/cover-13.webp",
+    "/assets/images/cover/cover-14.webp",
+    "/assets/images/cover/cover-15.webp",
+    "/assets/images/cover/cover-16.webp",
+    "/assets/images/cover/cover-17.webp",
+    "/assets/images/cover/cover-18.webp",
+    "/assets/images/cover/cover-19.webp",
+    "/assets/images/cover/cover-20.webp",
+    "/assets/images/cover/cover-21.webp",
+    "/assets/images/cover/cover-22.webp",
+    "/assets/images/cover/cover-23.webp",
+    "/assets/images/cover/cover-24.webp"
+  ]
 }

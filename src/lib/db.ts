@@ -85,6 +85,15 @@ const schemaSql = `
   ALTER TABLE users
     ADD COLUMN IF NOT EXISTS personal_data_consent_version TEXT;
 
+  -- Photographer credit for covers fetched from the Unsplash API — their terms
+  -- require naming the author next to the photo. NULL for every other cover
+  -- (source images, uploads, the bundled assets and the static stock pool).
+  ALTER TABLE posts
+    ADD COLUMN IF NOT EXISTS cover_credit_name TEXT;
+
+  ALTER TABLE posts
+    ADD COLUMN IF NOT EXISTS cover_credit_url TEXT;
+
   CREATE TABLE IF NOT EXISTS oauth_consent_challenges (
     token_hash TEXT PRIMARY KEY,
     claim_id TEXT,

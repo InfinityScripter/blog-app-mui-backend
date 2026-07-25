@@ -15,11 +15,27 @@ const COVER_ASSET_COUNT = 24;
 const DEFAULT_POST_COVER_URL = `${COVER_ASSET_BASE}/cover-1.webp`;
 
 /**
- * Deterministically spreads a post across the 24 bundled cover images so posts
- * created WITHOUT an explicit cover no longer all land on cover-1. The mapping
- * is a pure function of `seed` (the post title), so:
- *  - two different posts almost always get different covers (no visible dupes), and
- *  - re-saving the same post never reshuffles its cover (stable, idempotent).
+ * Polynomial rolling hash of a seed string → a non-negative integer (arithmetic
+ * only — no bitwise, matching the codebase style). 31 is the classic multiplier;
+ * the large prime modulus keeps every intermediate well under
+ * Number.MAX_SAFE_INTEGER so the math stays exact. Shared with
+ * src/utils/cover-pool.ts, which uses it to pick deterministically among the
+ * free covers — one hash, so the two can never drift.
+ */
+export function coverSeed(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 1_000_000_007;
+  }
+  return hash;
+}
+
+/**
+ * Deterministically spreads a post across the 24 bundled cover images. This is
+ * now only the value the payload STARTS with: services/post.ts overwrites it via
+ * cover-assign.ts with a cover no other post uses whenever the caller sent none.
+ * Kept because it is pure and synchronous — the payload builder must never be
+ * able to persist a blank cover, whatever happens downstream.
  * An empty/whitespace seed falls back to the legacy default.
  *
  * NOTE: scripts/backfill-post-covers.mjs hand-ports this exact algorithm to fix
@@ -32,15 +48,7 @@ function pickDefaultCover(seed?: string): string {
     return DEFAULT_POST_COVER_URL;
   }
 
-  // Polynomial rolling hash (arithmetic only — no bitwise, matching the codebase
-  // style). 31 is the classic multiplier; the large prime modulus keeps every
-  // intermediate well under Number.MAX_SAFE_INTEGER so the math stays exact.
-  let hash = 0;
-  for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) % 1_000_000_007;
-  }
-
-  const index = (hash % COVER_ASSET_COUNT) + 1; // 1 … 24
+  const index = (coverSeed(key) % COVER_ASSET_COUNT) + 1; // 1 … 24
   return `${COVER_ASSET_BASE}/cover-${index}.webp`;
 }
 
@@ -97,6 +105,16 @@ function resolveCoverUrl(coverUrl?: CoverInput, fallback = DEFAULT_POST_COVER_UR
   return coverUrl?.path ?? fallback;
 }
 
+/**
+ * True when the caller sent no usable cover of its own (absent, blank, or an
+ * upload object with no path) and one must be assigned. Runs `resolveCoverUrl`
+ * with an empty fallback so the "what counts as a cover" rule lives in ONE place
+ * — services/post.ts asks this before spending a DB round trip on assignment.
+ */
+export function needsAssignedCover(coverUrl?: CoverInput): boolean {
+  return !resolveCoverUrl(coverUrl, '');
+}
+
 function pickDefined<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
     Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined)
@@ -139,6 +157,15 @@ export function buildPostPatchPayload(
     totalComments?: number;
   } = {}
 ) {
+  const coverUrl =
+    input.coverUrl !== undefined
+      ? resolveCoverUrl(input.coverUrl, options.coverUrlFallback)
+      : undefined;
+  // Swapping the cover invalidates the photographer credit stored alongside the
+  // old image — clear it, or the post would keep crediting a photo it no longer
+  // shows. Untouched cover → both stay `undefined` and drop out of the patch.
+  const coverChanged = coverUrl !== undefined && coverUrl !== options.coverUrlFallback;
+
   return pickDefined({
     title: input.title,
     publish: input.publish,
@@ -147,10 +174,9 @@ export function buildPostPatchPayload(
     content: input.content,
     tags: input.tags !== undefined ? parseStringArray(input.tags) || [] : undefined,
     metaTitle: input.metaTitle,
-    coverUrl:
-      input.coverUrl !== undefined
-        ? resolveCoverUrl(input.coverUrl, options.coverUrlFallback)
-        : undefined,
+    coverUrl,
+    coverCreditName: coverChanged ? null : undefined,
+    coverCreditUrl: coverChanged ? null : undefined,
     totalViews: input.totalViews,
     totalShares: input.totalShares,
     totalComments: options.totalComments,
