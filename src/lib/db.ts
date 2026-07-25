@@ -116,8 +116,11 @@ const schemaSql = `
   -- The template's chat_*/kanban_*/calendar_events tables were removed here on
   -- 2026-07-25 together with their routes and services: no frontend ever called
   -- them. This DDL no longer creates them, so fresh environments come up without
-  -- them. Tables that already exist in an older database are NOT dropped from
-  -- code — deleting user data is a manual, deliberate act:
+  -- them, and prod was dropped by hand the same day (all 8 held 0 rows; dump
+  -- kept at /root/backups/dead-tables-20260725-161909.sql on the VDS). Dropping
+  -- stays OUT of this file on purpose: schema code runs on every boot, and a
+  -- DROP that ships in it would be one bad merge away from deleting a live
+  -- table. Any older database still carrying them is cleaned the same way:
   --   DROP TABLE IF EXISTS chat_messages, chat_members, chat_channels,
   --     kanban_tasks, kanban_columns, kanban_board_members, kanban_boards,
   --     calendar_events;

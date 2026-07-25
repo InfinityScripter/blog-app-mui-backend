@@ -18,7 +18,7 @@ Next.js 14 (pages router, используется только как API-се�
 - **Админка** — пользователи, посты, audit-логи, метрики сервера, управление новостным ботом (`ai-bot-tg`).
 - **Dogs-teacher** — запись на занятия к кинологу (отдельный сайт teacher.dog): слоты, заявки, Telegram-бот, web push, напоминания. Живёт в отдельной БД `dogs_teacher`.
 
-> Унаследованные от Minimal-шаблона разделы **Chat / Kanban / Calendar / Mail / Product** удалены 2026-07-25 (роуты, сервисы, тесты, `src/_mock/`, таблицы `chat_*` / `kanban_*` / `calendar_events` в DDL). Их не вызывал ни один потребитель — ни blog-app-mui-frontend, ни dogs-teacher, ни ai-bot-tg; фронт выпилил соответствующие разделы раньше, бэкенд остался. Публичная поверхность без потребителя — это только риск и стоимость поддержки. В старой БД сами таблицы остались: `DROP TABLE` руками, см. комментарий в `src/lib/db.ts`.
+> Унаследованные от Minimal-шаблона разделы **Chat / Kanban / Calendar / Mail / Product** удалены 2026-07-25 (роуты, сервисы, тесты, `src/_mock/`, таблицы `chat_*` / `kanban_*` / `calendar_events` в DDL). Их не вызывал ни один потребитель — ни blog-app-mui-frontend, ни dogs-teacher, ни ai-bot-tg; фронт выпилил соответствующие разделы раньше, бэкенд остался. Публичная поверхность без потребителя — это только риск и стоимость поддержки. В проде таблицы дропнуты 2026-07-25 (во всех восьми было 0 строк; дамп схемы — `/root/backups/dead-tables-20260725-161909.sql` на VDS). Старые локальные БД чистятся тем же `DROP TABLE` — SQL в комментарии `src/lib/db.ts`.
 
 ## Как устроен код
 
@@ -169,7 +169,7 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 
 PostgreSQL 14+. Схема создаётся **автоматически при старте** (`src/lib/db.ts`, `CREATE TABLE IF NOT EXISTS`) — отдельные миграции для локального запуска не нужны.
 
-- Основная БД `blog_app`: `users`, `posts`, `files`, `post_translations`, `refresh_tokens`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `app_settings`.
+- Основная БД `blog_app` (11 таблиц): `users`, `posts`, `files`, `post_translations`, `refresh_tokens`, `oauth_consent_challenges`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `app_settings`.
 - Отдельная БД `dogs_teacher` (пул в `lib/dogs-db.ts`, своя автосхема): клиенты, слоты, заявки, push-подписки.
 - В тестах (`NODE_ENV=test`) вместо реального Postgres поднимается **pg-mem** — поэтому `pg-mem` лежит в `dependencies` (его импортирует `lib/db.ts`).
 
