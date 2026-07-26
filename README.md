@@ -165,6 +165,24 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 | POST     | `/telegram/webhook`                                                           | секрет в Bearer | Вебхук Telegram-бота (привязка клиента, меню, контакты)                   |
 | GET/POST | `/internal/reminders`                                                         | опц. секрет     | Триггер напоминаний о занятиях (дергает cron; в процессе тоже тикает сам) |
 
+## Зависимости
+
+В репозитории лежат **оба** локфайла, но деплой ставит зависимости через
+`yarn install --frozen-lockfile` — боевой локфайл это `yarn.lock`, и он обязан
+сходиться с `package.json`.
+
+- Менять зависимости только `yarn add` / `yarn remove`, коммитить оба локфайла.
+  `npm uninstall` правит `package-lock.json` и попутно вычищает запись из
+  `yarn.lock`; откатить только первый — значит уронить деплой на
+  `--frozen-lockfile`.
+- Не коммитить локфайл, пере-резолвленный с машины, которая ходит через
+  корпоративное зеркало: `resolved`-URL'ы уедут на `npm.yandex-team.ru`, куда
+  VDS не достучится. Все URL должны остаться на `registry.npmjs.org` —
+  `grep -c "yandex-team\|npmmirror" yarn.lock package-lock.json` перед коммитом.
+- Проверить изменение до пуша тем же гейтом, что и в CI: скопировать
+  `package.json` + `yarn.lock` в пустую папку и запустить там
+  `yarn install --frozen-lockfile`.
+
 ## База данных
 
 PostgreSQL 14+. Схема создаётся **автоматически при старте** (`src/lib/db.ts`, `CREATE TABLE IF NOT EXISTS`) — отдельные миграции для локального запуска не нужны.
