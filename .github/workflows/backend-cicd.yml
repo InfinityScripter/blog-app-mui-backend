@@ -5,9 +5,6 @@ on:
     branches:
       - main
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 # Serialize deploys: two close pushes to main must not race each other over
 # the shared staging dir / live-dir swap on the VDS.
 concurrency:
@@ -27,7 +24,7 @@ jobs:
           if [ -z "${{ secrets.VDS_SSH_PRIVATE_KEY || secrets.VDS }}" ]; then echo "Missing secret: VDS_SSH_PRIVATE_KEY (or VDS fallback)"; exit 1; fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Sources go to a STAGING dir, not the live one. The old deploy scheme
       # (scp rm:true straight into /opt/blog-app/backend, then install+build
