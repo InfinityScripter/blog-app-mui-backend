@@ -167,21 +167,28 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 
 ## Зависимости
 
-В репозитории лежат **оба** локфайла, но деплой ставит зависимости через
-`yarn install --frozen-lockfile` — боевой локфайл это `yarn.lock`, и он обязан
-сходиться с `package.json`.
+**Пакетный менеджер один — yarn, локфайл один — `yarn.lock`.** Деплой ставит
+зависимости через `yarn install --frozen-lockfile`, поэтому `yarn.lock` обязан
+сходиться с `package.json`. `package-lock.json` удалён (2026-07-27) и внесён в
+`.gitignore`: пока в репозитории лежали оба, второй тихо расходился с первым и
+дважды ронял деплой.
 
-- Менять зависимости только `yarn add` / `yarn remove`, коммитить оба локфайла.
-  `npm uninstall` правит `package-lock.json` и попутно вычищает запись из
-  `yarn.lock`; откатить только первый — значит уронить деплой на
-  `--frozen-lockfile`.
+- Менять зависимости только `yarn add` / `yarn remove`. `npm install` /
+  `npm uninstall` здесь запрещены: они правят `package-lock.json` (который больше
+  не коммитится) **и попутно вычищают запись из `yarn.lock`** — молчаливая правка
+  боевого локфайла мимо ревью.
 - Не коммитить локфайл, пере-резолвленный с машины, которая ходит через
   корпоративное зеркало: `resolved`-URL'ы уедут на `npm.yandex-team.ru`, куда
   VDS не достучится. Все URL должны остаться на `registry.npmjs.org` —
-  `grep -c "yandex-team\|npmmirror" yarn.lock package-lock.json` перед коммитом.
+  `grep -c "yandex-team\|npmmirror" yarn.lock` перед коммитом должен дать `0`.
+- Убрать одну зависимость без пере-резолва всего дерева проще руками: удалить
+  запись из `package.json` и её блок (вместе с осиротевшими транзитивными) из
+  `yarn.lock`. Так `--frozen-lockfile` остаётся зелёным, а `resolved`-URL'ы
+  никуда не уезжают.
 - Проверить изменение до пуша тем же гейтом, что и в CI: скопировать
   `package.json` + `yarn.lock` в пустую папку и запустить там
-  `yarn install --frozen-lockfile`.
+  `corepack yarn@1.22.22 install --frozen-lockfile` (ровно эта команда идёт на
+  VDS) — ожидается exit 0.
 
 ## База данных
 
@@ -205,8 +212,8 @@ PostgreSQL 14+. Схема создаётся **автоматически пр�
 3. Установка и старт:
 
    ```sh
-   npm install   # или yarn
-   npm run dev   # http://localhost:7272
+   yarn install   # только yarn — см. «Зависимости»
+   npm run dev    # http://localhost:7272
    ```
 
 4. Фронт (`blog-app-mui-frontend`) стартует на 3033 с `NEXT_PUBLIC_SERVER_URL=http://localhost:7272`.

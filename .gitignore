@@ -8,6 +8,12 @@ yarn-error.log*
 node_modules
 .pnp
 .pnp.js
+# yarn.lock is the single source of truth (the VDS deploy runs
+# `yarn install --frozen-lockfile`). A package-lock.json created by a stray local
+# `npm install` must never be committed: it drifts from yarn.lock silently, and on
+# a machine behind the corporate npm mirror its `resolved` URLs point at a host
+# the VDS can't reach.
+package-lock.json
 
 # testing
 coverage
