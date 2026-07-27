@@ -4,6 +4,18 @@ import { dbQuery } from '@/src/lib/db';
 import coverPool from '@/src/data/cover-pool.json';
 import { pickUnusedCover } from '@/src/services/cover-assign';
 
+/** A fetch that never answers — what an unreachable api.unsplash.com looks like. */
+function hangingFetch() {
+  const calls: string[] = [];
+  global.fetch = jest.fn((url: string, init?: { signal?: AbortSignal }) => {
+    calls.push(String(url));
+    return new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new Error('TimeoutError')));
+    });
+  }) as unknown as typeof fetch;
+  return calls;
+}
+
 // Array.from, not [...set] — es5 target without downlevelIteration turns a
 // spread Set into an empty array, which would make these cases pass vacuously.
 const STOCK: string[] = Array.from(new Set(Object.values(coverPool.pools).flat()));
@@ -24,6 +36,13 @@ async function seedCovers(covers: string[]) {
 }
 
 describe('pickUnusedCover', () => {
+  const realFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = realFetch;
+    delete process.env.UNSPLASH_ACCESS_KEY;
+  });
+
   beforeEach(async () => {
     // The Unsplash top-up must stay off here: these cases pin the offline
     // ladder, and a key in the developer's shell would make them hit network.
@@ -105,6 +124,36 @@ describe('pickUnusedCover', () => {
       ]);
     }
     expect(seen.size).toBe(40);
+  });
+
+  it('takes a stashed Unsplash photo first, with its attribution', async () => {
+    await dbQuery(
+      `INSERT INTO cover_reserve (url, topic, credit_name, credit_url) VALUES ($1, $2, $3, $4)`,
+      [
+        'https://images.unsplash.com/photo-reserved?auto=format&fit=crop&w=1200&q=80',
+        'ai',
+        'Ivan Petrov',
+        'https://unsplash.com/@ivan?utm_source=aifirst',
+      ]
+    );
+    const cover = await pickUnusedCover({ tags: ['ai'], title: 'Из запаса' });
+    expect(cover.url).toContain('photo-reserved');
+    expect(cover.creditName).toBe('Ivan Petrov');
+    expect(cover.creditUrl).toContain('utm_source=');
+  });
+
+  it('never touches the network, even with a key configured', async () => {
+    // The point of the whole change: Unsplash is fetched AHEAD of publishing, so
+    // an unreachable api.unsplash.com cannot slow a publish down. If this ever
+    // makes a request again, the publish path is back on the critical path.
+    process.env.UNSPLASH_ACCESS_KEY = 'test-key';
+    const calls = hangingFetch();
+    const started = Date.now();
+    const { url } = await pickUnusedCover({ tags: ['ai'], title: 'Unsplash недоступен' });
+    expect(calls).toHaveLength(0);
+    expect(Date.now() - started).toBeLessThan(1_000);
+    // …and the post still gets a real, unique cover.
+    expect([...STOCK, ...BUNDLED]).toContain(url);
   });
 
   it('counts covers of drafts and hand-made posts as taken too', async () => {

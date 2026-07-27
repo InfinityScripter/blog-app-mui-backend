@@ -8,6 +8,12 @@ import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireAuth } from '@/src/middlewares/require-auth';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { warmPostTranslations } from '@/src/services/translation-warmup';
+import { armCoverReserveScheduler } from '@/src/services/cover-reserve-scheduler';
+
+// Publishing is the only thing that drains the Unsplash cover reserve, so this
+// route is where the background top-up gets armed. Idempotent — see
+// services/cover-reserve-scheduler.ts.
+armCoverReserveScheduler();
 
 // Thin route: requireAuth → postService.createPost → respond.
 // Keeps the { post } key the frontend reads.

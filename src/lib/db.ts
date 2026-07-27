@@ -263,6 +263,24 @@ const schemaSql = `
     value TEXT NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  -- Unsplash photos fetched AHEAD of publishing, so a publish never waits on
+  -- api.unsplash.com (see services/cover-reserve.ts). A background job fills
+  -- this; createPost claims a row with DELETE ... RETURNING, which is what makes
+  -- two concurrent publishes unable to take the same photo. The url IS the
+  -- primary key: the same photo can never sit here twice.
+  -- download_location is Unsplash's per-photo attribution endpoint, pinged when
+  -- the photo is actually claimed (their terms) rather than when it is stashed.
+  CREATE TABLE IF NOT EXISTS cover_reserve (
+    url TEXT PRIMARY KEY,
+    topic TEXT NOT NULL DEFAULT '',
+    credit_name TEXT NOT NULL DEFAULT '',
+    credit_url TEXT NOT NULL DEFAULT '',
+    download_location TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS cover_reserve_topic_idx ON cover_reserve (topic);
 `;
 
 type PoolLike = NodePool;
@@ -386,6 +404,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM refresh_tokens');
   await pool.query('DELETE FROM post_translations');
   await pool.query('DELETE FROM app_settings');
+  await pool.query('DELETE FROM cover_reserve');
   await pool.query('DELETE FROM users');
 }
 
