@@ -1,5 +1,3 @@
-import { topicFor } from '@/src/utils/cover-pool';
-
 // Unsplash is the OPEN-ENDED cover source: the static pool is finite (≈120
 // images at ~2 auto-covered posts a day it runs out in weeks), and once it is
 // drained covers start repeating again — the exact problem this whole mechanism
@@ -8,21 +6,24 @@ import { topicFor } from '@/src/utils/cover-pool';
 // so the blog keeps working with no configuration at all.
 const RANDOM_URL = 'https://api.unsplash.com/photos/random';
 
-// This call sits on the SYNCHRONOUS publish path: "Создать пост" (and every bot
-// publish) waits for it. api.unsplash.com is not reliably reachable — measured
-// 2026-07-25, 3 of 5 probes never answered while the ones that did came back in
-// ~0.5s — so the budget is what a stalled publish costs, not what a slow reply
-// costs. It was 8s, which froze the dashboard for 8 seconds on every unreachable
-// attempt. 3s is ~6x the observed good-path latency, and losing the race costs
-// nothing but a static-pool cover (still unique, chosen instantly).
-const TIMEOUT_MS = 3_000;
+// NOBODY WAITS FOR THIS. Until 2026-07-27 this call sat on the synchronous
+// publish path, so the budget had to be what a stalled publish costs: 8s froze
+// the dashboard for 8s on every unreachable attempt (api.unsplash.com is not
+// reliably reachable — measured 2026-07-25, 3 of 5 probes never answered while
+// the ones that did came back in ~0.5s), and cutting it to 3s only made the
+// freeze shorter. Now these photos are fetched AHEAD of publishing, into the
+// cover_reserve table, by a background job (services/cover-reserve.ts), so a
+// slow reply delays nobody. The budget is back to a roomy one — losing the race
+// costs a reserve slot we simply top up on the next tick, but timing out early
+// on a link that WOULD have answered costs a real photo.
+const TIMEOUT_MS = 10_000;
 
 // The attribution ping is fire-and-forget, so a slow one delays nobody; keep the
 // old, roomier budget there rather than dropping pings Unsplash's terms require.
 const ATTRIBUTION_TIMEOUT_MS = 8_000;
 
-// One request returns several candidates so an already-used photo (Unsplash can
-// hand back the same popular shot twice) doesn't cost a second round trip.
+// One request returns several candidates — the reserve stashes every usable one,
+// so a single round trip fills many publishes.
 const CANDIDATES = 10;
 
 // Required by the Unsplash API guidelines on every link back to unsplash.com.
@@ -44,10 +45,15 @@ const TOPIC_QUERIES: Record<string, string> = {
 };
 const DEFAULT_QUERY = 'technology abstract';
 
-export type UnsplashCover = {
+/** The topics the reserve keeps stock for — the ones we can actually query. */
+export const UNSPLASH_TOPICS: string[] = Object.keys(TOPIC_QUERIES);
+
+export type UnsplashCandidate = {
   url: string;
   creditName: string;
   creditUrl: string;
+  /** Unsplash's per-photo attribution endpoint; pinged when the photo is used. */
+  downloadLocation: string | null;
 };
 
 type RandomPhoto = {
@@ -55,6 +61,11 @@ type RandomPhoto = {
   links?: { download_location?: string };
   user?: { name?: string; links?: { html?: string } };
 };
+
+/** Whether a key is configured at all; without one this module is a no-op. */
+export function isUnsplashConfigured(): boolean {
+  return Boolean(process.env.UNSPLASH_ACCESS_KEY);
+}
 
 /**
  * Normalizes a photo URL to exactly the shape the static pool uses:
@@ -77,9 +88,12 @@ function normalizeUrl(raw: string): string | null {
 /**
  * Tells Unsplash the photo was used. Required by their API terms; deliberately
  * fire-and-forget — a failed ping must never cost us a cover or delay a publish.
+ * Fires when a photo is CLAIMED off the reserve (that is when it becomes a real
+ * cover), not when it is stashed — stashing is not a use.
  */
-function triggerDownload(location: string | undefined, accessKey: string) {
-  if (!location) {
+export function pingUnsplashDownload(location: string | null | undefined) {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!location || !accessKey) {
     return;
   }
   fetch(location, {
@@ -91,22 +105,22 @@ function triggerDownload(location: string | undefined, accessKey: string) {
 }
 
 /**
- * Fetches a fresh cover nobody used yet, matched to the post's topic. Returns
- * null — never throws — when the key is missing, the API is unhappy, the body is
- * malformed, or every candidate is already taken; the caller then walks the
- * static pool. Fail-soft is the whole point: a cover is decoration, and an
- * Unsplash outage must not block a publish.
+ * Fetches a batch of candidate photos for one topic. Returns an empty array —
+ * never throws — when the key is missing, the API is unhappy or the body is
+ * malformed; the reserve then simply stays as deep as it was and the static
+ * ladder covers the next publish. Fail-soft is the whole point: a cover is
+ * decoration, and an Unsplash outage must not be able to break publishing.
+ *
+ * Caller-side duties this deliberately does NOT do: filtering out photos already
+ * on a post, and pinging download_location. Both belong to the moment a photo
+ * becomes a real cover, which is the claim in services/cover-reserve.ts.
  */
-export async function fetchUnsplashCover(
-  tags: readonly string[],
-  used: ReadonlySet<string>
-): Promise<UnsplashCover | null> {
+export async function fetchUnsplashCandidates(topic: string | null): Promise<UnsplashCandidate[]> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY;
   if (!accessKey) {
-    return null;
+    return [];
   }
 
-  const topic = topicFor(tags);
   const query = (topic && TOPIC_QUERIES[topic]) || DEFAULT_QUERY;
   const endpoint =
     `${RANDOM_URL}?query=${encodeURIComponent(query)}` +
@@ -123,37 +137,35 @@ export async function fetchUnsplashCover(
     });
     if (!response.ok) {
       // eslint-disable-next-line no-console
-      console.warn(`[unsplash] ${response.status} for query "${query}" — using the static pool`);
-      return null;
+      console.warn(`[unsplash] ${response.status} for query "${query}" — reserve not topped up`);
+      return [];
     }
     const body = await response.json();
     if (!Array.isArray(body)) {
       // eslint-disable-next-line no-console
-      console.warn('[unsplash] unexpected body shape — using the static pool');
-      return null;
+      console.warn('[unsplash] unexpected body shape — reserve not topped up');
+      return [];
     }
     photos = body as RandomPhoto[];
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn('[unsplash] request failed — using the static pool', error);
-    return null;
+    console.warn('[unsplash] request failed — reserve not topped up', error);
+    return [];
   }
 
-  // First candidate that normalizes AND is not already on a post. Unsplash can
-  // hand back a photo we used months ago; without this check it would slip
-  // through and the whole point of the mechanism would be lost.
-  const free = photos
-    .map((photo) => ({ photo, url: normalizeUrl(photo.urls?.raw ?? '') }))
-    .find((entry) => entry.url !== null && !used.has(entry.url));
-  if (!free || !free.url) {
-    return null;
-  }
-
-  triggerDownload(free.photo.links?.download_location, accessKey);
-  const profile = free.photo.user?.links?.html ?? 'https://unsplash.com';
-  return {
-    url: free.url,
-    creditName: free.photo.user?.name ?? 'Unsplash',
-    creditUrl: `${profile}?${UTM}`,
-  };
+  return photos.flatMap((photo) => {
+    const url = normalizeUrl(photo.urls?.raw ?? '');
+    if (!url) {
+      return [];
+    }
+    const profile = photo.user?.links?.html ?? 'https://unsplash.com';
+    return [
+      {
+        url,
+        creditName: photo.user?.name ?? 'Unsplash',
+        creditUrl: `${profile}?${UTM}`,
+        downloadLocation: photo.links?.download_location ?? null,
+      },
+    ];
+  });
 }

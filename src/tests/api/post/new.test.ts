@@ -118,6 +118,48 @@ describe('POST /api/post/new', () => {
     expect(res._getStatusCode()).toBe(401);
   });
 
+  it('answers immediately while api.unsplash.com is unreachable', async () => {
+    // Regression guard for the change that took Unsplash off the publish path.
+    // Before it, this exact scenario cost the caller the full fetch timeout
+    // (measured 3.0s, and 8.0s before the budget was cut) on EVERY publish
+    // without its own cover — the dashboard button and every bot post alike.
+    process.env.UNSPLASH_ACCESS_KEY = 'test-key';
+    const realFetch = global.fetch;
+    const calls: string[] = [];
+    global.fetch = jest.fn((url: string, init?: { signal?: AbortSignal }) => {
+      calls.push(String(url));
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('TimeoutError')));
+      });
+    }) as unknown as typeof fetch;
+
+    try {
+      const token = jwt.sign(
+        { userId: '6060694b2c21843bf8307f43' },
+        process.env.JWT_SECRET || 'secret123'
+      );
+      const { req, res } = createMocks({
+        method: HTTP_METHOD.POST,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        // No coverUrl — this is the path that used to reach out to Unsplash.
+        body: { title: 'Пост без обложки', content: 'c', publish: 'draft', tags: 'ai' },
+      });
+
+      const started = Date.now();
+      await handler(req, res);
+      const elapsed = Date.now() - started;
+
+      expect(res._getStatusCode()).toBe(201);
+      expect(elapsed).toBeLessThan(1_000);
+      expect(calls).toHaveLength(0);
+      // The post still leaves with a real cover, not a blank one.
+      expect(JSON.parse(res._getData()).post.coverUrl).toBeTruthy();
+    } finally {
+      global.fetch = realFetch;
+      delete process.env.UNSPLASH_ACCESS_KEY;
+    }
+  });
+
   it('should return 405 for non-POST methods', async () => {
     // requireAuth runs first, so an authenticated request is needed to reach
     // the method check.

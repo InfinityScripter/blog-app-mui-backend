@@ -1,4 +1,3 @@
-import { dbQuery } from '@/src/lib/db';
 import {
   STOCK_COVERS,
   topicalCovers,
@@ -6,7 +5,8 @@ import {
   pickDeterministic,
 } from '@/src/utils/cover-pool';
 
-import { fetchUnsplashCover } from './unsplash-cover';
+import { coverCounts } from './cover-ledger';
+import { claimReservedCover } from './cover-reserve';
 
 // WHY THIS EXISTS. Covers used to be chosen by `pool[postId % poolSize]` in the
 // news bot: pure rotation, no memory of what was already taken, and the pool was
@@ -31,14 +31,6 @@ export type AssignedCover = {
   creditUrl?: string;
 };
 
-/** How many posts sit on each cover — the used set and the tie-breaker in one query. */
-async function coverCounts(): Promise<Map<string, number>> {
-  const { rows } = await dbQuery<{ cover_url: string; count: string }>(
-    "SELECT cover_url, COUNT(*) AS count FROM posts WHERE cover_url <> '' GROUP BY cover_url"
-  );
-  return new Map(rows.map((row) => [row.cover_url, Number(row.count)]));
-}
-
 /** The pool entry the fewest posts use — the graceful floor when nothing is free. */
 function leastUsed(counts: Map<string, number>, seed: string): string {
   const inventory = [...STOCK_COVERS, ...BUNDLED_COVERS];
@@ -52,14 +44,16 @@ function leastUsed(counts: Map<string, number>, seed: string): string {
 /**
  * Picks a cover no other post uses, preferring the post's topic:
  *
- *   1. Unsplash (when UNSPLASH_ACCESS_KEY is set) — open-ended and on-topic
+ *   1. the Unsplash reserve (when UNSPLASH_ACCESS_KEY is set) — open-ended
  *   2. free covers from the topical pool
  *   3. free covers from the WHOLE stock pool — off-topic but unique
  *   4. free bundled /assets covers
  *   5. the least-used cover — only when literally everything is taken
  *
- * Always resolves to a usable URL; steps 2–5 need no network. The caller decides
- * when to ask (only when the post has no cover of its own).
+ * Always resolves to a usable URL, and NEVER touches the network: step 1 reads
+ * photos a background job fetched ahead of time (services/cover-reserve.ts), so
+ * an Unsplash outage costs a pool cover, not a stalled publish. The caller
+ * decides when to ask (only when the post has no cover of its own).
  */
 export async function pickUnusedCover(input: {
   tags?: string[];
@@ -71,13 +65,15 @@ export async function pickUnusedCover(input: {
   const used = new Set(counts.keys());
   const isFree = (cover: string) => !used.has(cover);
 
-  const fresh = await fetchUnsplashCover(tags, used);
-  if (fresh) {
-    return fresh;
+  const reserved = await claimReservedCover(tags, used);
+  if (reserved) {
+    return reserved;
   }
 
-  // Only the static ladder can run dry, so the warning belongs here — with a
-  // key configured we never get this far and there is nothing to top up.
+  // Only the static ladder can run dry, so the warning belongs here. With a key
+  // configured this is the path taken while the reserve happens to be empty —
+  // a fresh boot, a burst of publishes, or an Unsplash outage — so it is worth
+  // knowing how much runway the offline pool still has.
   const freeStock = STOCK_COVERS.filter(isFree);
   const freeBundled = BUNDLED_COVERS.filter(isFree);
   const free = freeStock.length + freeBundled.length;
