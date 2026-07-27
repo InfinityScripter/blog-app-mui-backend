@@ -8,6 +8,7 @@ import { issueSession } from '@/src/services/session';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { normalizeEmail } from '@/src/utils/normalize-email';
 import { requireFeature } from '@/src/middlewares/require-feature';
+import { validateAndClearOAuthState } from '@/src/lib/oauth-state';
 import {
   createOAuthConsentChallenge,
   requiresOAuthConsentChallenge,
@@ -30,23 +31,6 @@ type YandexUserResponse = {
   real_name?: string;
 };
 
-const getCookieValue = (cookieHeader: string | undefined, key: string) => {
-  if (!cookieHeader) {
-    return null;
-  }
-
-  const cookie = cookieHeader
-    .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${key}=`));
-
-  if (!cookie) {
-    return null;
-  }
-
-  return decodeURIComponent(cookie.split('=').slice(1).join('='));
-};
-
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.GET) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
@@ -67,14 +51,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_no_code`);
   }
 
-  if (!state || Array.isArray(state)) {
-    return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_state`);
-  }
-
-  const expectedState = getCookieValue(req.headers.cookie, 'oauth_state_yandex');
-  res.setHeader('Set-Cookie', 'oauth_state_yandex=; Max-Age=0; Path=/api/auth/yandex/callback');
-
-  if (!expectedState || expectedState !== state) {
+  // Same helper the Google pair uses: constant-time compare, and the clearing
+  // cookie carries the same HttpOnly/SameSite/Secure attributes it was set with.
+  if (!validateAndClearOAuthState(req, res, 'yandex', state)) {
     return res.redirect(`${frontendURL}/auth/jwt/sign-in?oauthError=yandex_state`);
   }
 

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { randomBytes } from 'crypto';
 import { MSG } from '@/src/constants/messages';
+import { issueOAuthState } from '@/src/lib/oauth-state';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireFeature } from '@/src/middlewares/require-feature';
 
@@ -19,14 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const authorizeUrl = new URL('https://oauth.yandex.com/authorize');
-  const state = randomBytes(16).toString('hex');
-
-  res.setHeader(
-    'Set-Cookie',
-    `oauth_state_yandex=${state}; Max-Age=600; Path=/api/auth/yandex/callback; HttpOnly; SameSite=Lax${
-      process.env.NODE_ENV === 'production' ? '; Secure' : ''
-    }`
-  );
+  const state = issueOAuthState(req, res, 'yandex');
 
   authorizeUrl.searchParams.set('response_type', 'code');
   authorizeUrl.searchParams.set('client_id', yandexClientId);
