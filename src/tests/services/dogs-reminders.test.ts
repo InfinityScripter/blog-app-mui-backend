@@ -16,6 +16,7 @@ jest.mock('nodemailer', () => ({
 import { resetDogsDatabase } from '@/src/lib/dogs-db';
 import { runDogsReminders } from '@/src/services/dogs-reminders';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 /* eslint-enable import/first */
 
 function hoursFromNow(hours: number) {
@@ -42,6 +43,8 @@ async function createBooking(startInHours: number, email: string | null = 'anna@
     serviceId: 'training',
     slotId: slot.id,
     source: 'site',
+    personalDataConsent: true,
+    personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
   });
 }
 

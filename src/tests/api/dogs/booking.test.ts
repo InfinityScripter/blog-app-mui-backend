@@ -1,11 +1,13 @@
 import '@jest/globals';
 import { createMocks } from 'node-mocks-http';
+import { dogsDbQuery } from '@/src/lib/dogs-db';
 import { HTTP_METHOD } from '@/src/constants/http';
 import adminLoginHandler from '@/src/pages/api/dogs/admin/login';
 import adminSlotsHandler from '@/src/pages/api/dogs/admin/slots';
 import { dogsBookingService } from '@/src/services/dogs-booking';
 import requestsHandler from '@/src/pages/api/dogs/booking/requests';
 import clientHandler from '@/src/pages/api/dogs/booking/client/[token]';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 jest.mock('@/src/utils/dogs-email', () => ({
   sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
@@ -65,6 +67,8 @@ describe('Dogs booking API', () => {
         serviceId: 'training',
         slotId: slot.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       },
     });
     await requestsHandler(req, res);
@@ -98,6 +102,8 @@ describe('Dogs booking API', () => {
         serviceId: 'training',
         slotId: slot!.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       },
     });
     await requestsHandler(req, res);
@@ -119,6 +125,8 @@ describe('Dogs booking API', () => {
         serviceId: 'training',
         slotId: slot!.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       },
     });
     await requestsHandler(req, res);
@@ -143,6 +151,8 @@ describe('Dogs booking API', () => {
         serviceId: 'training',
         slotId: slot!.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       },
     });
     await requestsHandler(req, res);
@@ -166,9 +176,88 @@ describe('Dogs booking API', () => {
         serviceId: 'training',
         slotId: slot!.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       },
     });
     await requestsHandler(req, res);
     expect(res._getStatusCode()).toBe(201);
+  });
+
+  it('rejects a booking request without personal data consent', async () => {
+    const slot = await dogsBookingService.createSlot({
+      startsAt: '2027-02-07T09:00:00.000Z',
+      endsAt: '2027-02-07T10:00:00.000Z',
+    });
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      body: {
+        name: 'Анна',
+        phone: '+7 900 111 22 33',
+        serviceId: 'training',
+        slotId: slot!.id,
+        source: 'site',
+      },
+    });
+    await requestsHandler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    expect(JSON.parse(res._getData()).message).toContain('personalDataConsent');
+  });
+
+  it('rejects a booking request with an unknown consent version', async () => {
+    const slot = await dogsBookingService.createSlot({
+      startsAt: '2027-02-08T09:00:00.000Z',
+      endsAt: '2027-02-08T10:00:00.000Z',
+    });
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      body: {
+        name: 'Анна',
+        phone: '+7 900 111 22 33',
+        serviceId: 'training',
+        slotId: slot!.id,
+        source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: '1999-01-01',
+      },
+    });
+    await requestsHandler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+  });
+
+  it('stores the consent version and a server-side consent timestamp', async () => {
+    const slot = await dogsBookingService.createSlot({
+      startsAt: '2027-02-09T09:00:00.000Z',
+      endsAt: '2027-02-09T10:00:00.000Z',
+    });
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.POST,
+      body: {
+        name: 'Анна',
+        phone: '+7 900 111 22 33',
+        serviceId: 'training',
+        slotId: slot!.id,
+        source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
+      },
+    });
+    await requestsHandler(req, res);
+    expect(res._getStatusCode()).toBe(201);
+    const requestId = JSON.parse(res._getData()).data.request.id;
+
+    const stored = await dogsDbQuery<{
+      personal_data_consent_at: Date | null;
+      personal_data_consent_version: string | null;
+    }>(
+      `SELECT personal_data_consent_at, personal_data_consent_version
+       FROM dogs_booking_requests WHERE id = $1`,
+      [requestId]
+    );
+    expect(stored.rows[0]!.personal_data_consent_at).not.toBeNull();
+    expect(stored.rows[0]!.personal_data_consent_version).toBe(DOGS_PERSONAL_DATA_CONSENT_VERSION);
   });
 });

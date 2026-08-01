@@ -1,5 +1,6 @@
 import '@jest/globals';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 import {
   handleDogsTelegramUpdate,
   notifyDogsClientReminder,
@@ -62,6 +63,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.linkTelegramClient(request.client.accessToken, '987654');
 
@@ -85,6 +88,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const calls = mockTelegramFetch();
@@ -106,6 +111,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const calls = mockTelegramFetch();
@@ -127,6 +134,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const calls = mockTelegramFetch();
@@ -148,6 +157,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.linkTelegramClient(request.client.accessToken, '424242');
 
@@ -171,6 +182,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const calls = mockTelegramFetch();
@@ -191,6 +204,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.linkTelegramClient(request.client.accessToken, '515151');
 
@@ -213,6 +228,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.linkTelegramClient(request.client.accessToken, '616161');
 
@@ -243,6 +260,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     const { accessToken } = request.client;
     await dogsBookingService.linkTelegramClient(accessToken, '727272');
@@ -275,6 +294,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.linkTelegramClient(request.client.accessToken, '737373');
 
@@ -298,6 +319,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const calls = mockTelegramFetch();
@@ -332,6 +355,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slotA!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     const slotB = await dogsBookingService.createSlot({
       startsAt: '2027-06-11T09:00:00.000Z',
@@ -343,6 +368,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slotB!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     await dogsBookingService.linkTelegramClient(first.client.accessToken, '138621554');
@@ -400,6 +427,8 @@ describe('dogs telegram service', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const calls = mockTelegramFetch();
