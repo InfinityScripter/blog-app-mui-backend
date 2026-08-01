@@ -286,6 +286,13 @@ async function getRequestDetails(requestId: string) {
 }
 
 async function createRequest(input: CreateDogsBookingRequestInput) {
+  // The route schema already enforces consent, but this row is the legal proof
+  // of it — keep the invariant in the layer that writes the record, so a future
+  // direct caller (script, admin tool) can't create a request without consent.
+  if (input.personalDataConsent !== true) {
+    throw new AppError(HTTP.BAD_REQUEST, 'Personal data consent is required');
+  }
+
   const slot = await dogsDbQuery<DogsSlotRow>(
     `SELECT * FROM dogs_booking_slots
      WHERE id = $1 AND is_active = TRUE AND starts_at >= NOW()`,
@@ -305,8 +312,9 @@ async function createRequest(input: CreateDogsBookingRequestInput) {
   try {
     await dogsDbQuery<DogsBookingRequestRow>(
       `INSERT INTO dogs_booking_requests
-         (id, client_id, slot_id, service_id, dog, comment, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         (id, client_id, slot_id, service_id, dog, comment, source,
+          personal_data_consent_at, personal_data_consent_version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)`,
       [
         id,
         client.id,
@@ -315,6 +323,7 @@ async function createRequest(input: CreateDogsBookingRequestInput) {
         input.dog ?? '',
         input.comment ?? '',
         input.source,
+        input.personalDataConsentVersion,
       ]
     );
   } catch (error) {

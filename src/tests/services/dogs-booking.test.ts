@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import '@jest/globals';
 import dogsDbConnect from '@/src/lib/dogs-db';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 type DogsPool = Awaited<ReturnType<typeof dogsDbConnect>>;
 
@@ -83,6 +84,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     expect(request.status).toBe('pending');
@@ -105,6 +108,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const slots = await dogsBookingService.listAvailableSlots({});
@@ -117,6 +122,8 @@ describe('dogsBookingService', () => {
         serviceId: 'training',
         slotId: slot.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       })
     ).rejects.toMatchObject({ status: 409 });
   });
@@ -132,6 +139,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     await dogsBookingService.updateBookingStatus(request.id, 'declined');
@@ -182,6 +191,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     await dogsBookingService.deleteRequest(request.id);
@@ -242,6 +253,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     expect(request.client.email).toBe('anna@example.com');
@@ -261,6 +274,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     expect(request.client.email).toBeNull();
@@ -277,6 +292,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const cancelled = await dogsBookingService.cancelClientRequest(
@@ -300,6 +317,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.updateBookingStatus(request.id, 'confirmed');
 
@@ -321,6 +340,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const otherSlot = await dogsBookingService.createSlot({
@@ -333,6 +354,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: otherSlot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     await expect(
@@ -351,6 +374,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     await expect(
@@ -369,6 +394,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
     await dogsBookingService.updateBookingStatus(request.id, 'declined');
 
@@ -388,6 +415,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     await dogsBookingService.cancelClientRequest(request.client.accessToken, request.id);
@@ -408,6 +437,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     // Admin declines first; a client cancel must then be rejected, not silently
@@ -433,6 +464,8 @@ describe('dogsBookingService', () => {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const client = await dogsBookingService.getClientById(request.client.id);
@@ -467,6 +500,8 @@ describe('dogsBookingService', () => {
         serviceId: 'training',
         slotId: slot!.id,
         source: 'site',
+        personalDataConsent: true,
+        personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
       });
       return request.client;
     }

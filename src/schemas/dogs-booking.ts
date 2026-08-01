@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 const dateTimeSchema = z.string().trim().datetime({ offset: true });
 
@@ -81,6 +82,8 @@ export const createDogsBookingRequestSchema = z.object({
   serviceId: z.string().trim().min(1).max(80),
   slotId: z.string().trim().min(1).max(80),
   source: dogsBookingSourceSchema.default('site'),
+  personalDataConsent: z.literal(true),
+  personalDataConsentVersion: z.literal(DOGS_PERSONAL_DATA_CONSENT_VERSION),
 });
 
 export const updateDogsBookingStatusSchema = z.object({

@@ -3,6 +3,7 @@ import { createMocks } from 'node-mocks-http';
 import { dogsDbQuery } from '@/src/lib/dogs-db';
 import { HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 // VAPID keys must exist before the service reads them (it reads lazily at call
 // time, but set them here so isConfigured() is true throughout). setVapidDetails
@@ -82,6 +83,8 @@ async function createBookingRequest() {
     serviceId: 'training',
     slotId: slot!.id,
     source: 'site',
+    personalDataConsent: true,
+    personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
   });
 }
 

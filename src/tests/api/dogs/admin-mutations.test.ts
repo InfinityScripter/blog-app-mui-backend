@@ -7,6 +7,7 @@ import slotIdHandler from '@/src/pages/api/dogs/admin/slots/[id]';
 import requestsHandler from '@/src/pages/api/dogs/booking/requests';
 import slotsBatchHandler from '@/src/pages/api/dogs/admin/slots/batch';
 import bookingIdHandler from '@/src/pages/api/dogs/admin/bookings/[id]';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 jest.mock('@/src/utils/dogs-email', () => ({
   sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
@@ -41,6 +42,8 @@ async function createBooking() {
       serviceId: 'training',
       slotId: slot.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     },
   });
   await requestsHandler(req, res);

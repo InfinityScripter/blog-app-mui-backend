@@ -40,6 +40,8 @@ const dogsSchemaSql = `
     comment TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'declined', 'cancelled')),
     source TEXT NOT NULL DEFAULT 'site' CHECK (source IN ('site', 'telegram')),
+    personal_data_consent_at TIMESTAMPTZ,
+    personal_data_consent_version TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
@@ -102,6 +104,40 @@ async function applyDogsSafeMigrations(pool: PoolLike) {
     console.warn(
       '[dogs-db] Failed to add dogs_booking_requests.reminder_sent_at column.',
       error instanceof Error ? error.message : error
+    );
+  }
+
+  // dogs_booking_requests.personal_data_consent_{at,version} — proof of the
+  // 152-ФЗ consent given with each booking submitted from the site. NULL on
+  // rows created before the consent checkbox shipped (2026-08-01).
+  try {
+    await pool.query(
+      'ALTER TABLE dogs_booking_requests ADD COLUMN IF NOT EXISTS personal_data_consent_at TIMESTAMPTZ'
+    );
+    await pool.query(
+      'ALTER TABLE dogs_booking_requests ADD COLUMN IF NOT EXISTS personal_data_consent_version TEXT'
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[dogs-db] Failed to add dogs_booking_requests personal-data-consent columns.',
+      error instanceof Error ? error.message : error
+    );
+  }
+
+  // Unlike the best-effort steps above, the consent columns are load-bearing:
+  // every booking INSERT references them, so a silently missing column would
+  // 500 the whole public booking flow with only a startup warn as the trace.
+  // Verify they exist and refuse to start otherwise — a crash is visible, a
+  // warn line is not.
+  const consentColumns = await pool.query(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_name = 'dogs_booking_requests'
+       AND column_name IN ('personal_data_consent_at', 'personal_data_consent_version')`
+  );
+  if (consentColumns.rows.length !== 2) {
+    throw new Error(
+      '[dogs-db] dogs_booking_requests is missing the personal-data-consent columns after migration'
     );
   }
 

@@ -2,6 +2,7 @@ import '@jest/globals';
 import { createMocks } from 'node-mocks-http';
 import { HTTP_METHOD } from '@/src/constants/http';
 import { dogsBookingService } from '@/src/services/dogs-booking';
+import { DOGS_PERSONAL_DATA_CONSENT_VERSION } from '@/src/constants/privacy';
 
 jest.mock('@/src/utils/dogs-email', () => ({
   sendDogsRequestReceived: jest.fn().mockResolvedValue(undefined),
@@ -36,6 +37,8 @@ async function createBooking() {
     serviceId: 'training',
     slotId: slot!.id,
     source: 'site',
+    personalDataConsent: true,
+    personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
   });
 }
 
@@ -75,6 +78,8 @@ describe('Dogs client cancel API', () => {
       serviceId: 'training',
       slotId: otherSlot!.id,
       source: 'site',
+      personalDataConsent: true,
+      personalDataConsentVersion: DOGS_PERSONAL_DATA_CONSENT_VERSION,
     });
 
     const { req, res } = createMocks({
