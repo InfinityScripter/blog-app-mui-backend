@@ -194,7 +194,7 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 
 PostgreSQL 14+. Схема создаётся **автоматически при старте** (`src/lib/db.ts`, `CREATE TABLE IF NOT EXISTS`) — отдельные миграции для локального запуска не нужны.
 
-- Основная БД `blog_app` (11 таблиц): `users`, `posts`, `files`, `post_translations`, `refresh_tokens`, `oauth_consent_challenges`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `app_settings`.
+- Основная БД `blog_app` (13 таблиц): `users`, `posts`, `files`, `post_translations`, `refresh_tokens`, `oauth_consent_challenges`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `app_settings`, `cover_reserve`, `finance_operations`.
 - Отдельная БД `dogs_teacher` (пул в `lib/dogs-db.ts`, своя автосхема): клиенты, слоты, заявки, push-подписки.
 - В тестах (`NODE_ENV=test`) вместо реального Postgres поднимается **pg-mem** — поэтому `pg-mem` лежит в `dependencies` (его импортирует `lib/db.ts`).
 

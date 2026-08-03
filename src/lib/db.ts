@@ -281,6 +281,34 @@ const schemaSql = `
   );
 
   CREATE INDEX IF NOT EXISTS cover_reserve_topic_idx ON cover_reserve (topic);
+
+  -- Personal finance ledger imported from Т-Банк CSV statements (admin-only
+  -- dashboard page). flow/bucket/income_source are derived columns: the
+  -- classifier recomputes them over the WHOLE table on every import (wash-pair
+  -- detection needs neighbouring rows), so they are safe to rewrite. The dedup
+  -- unique index makes re-importing an overlapping statement a no-op instead
+  -- of doubling history. Plain btree only (pg-mem + boot safe).
+  CREATE TABLE IF NOT EXISTS finance_operations (
+    id TEXT PRIMARY KEY,
+    op_at TIMESTAMPTZ NOT NULL,
+    ym TEXT NOT NULL,
+    pay_date TEXT NOT NULL DEFAULT '',
+    card TEXT NOT NULL DEFAULT '',
+    amount NUMERIC NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    bank_category TEXT NOT NULL DEFAULT '',
+    mcc TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    cashback NUMERIC NOT NULL DEFAULT 0,
+    flow TEXT NOT NULL DEFAULT 'expense' CHECK (flow IN ('income', 'expense', 'internal', 'wash')),
+    bucket TEXT NOT NULL DEFAULT '',
+    income_source TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS finance_operations_dedup_unique
+    ON finance_operations (op_at, amount, description, card);
+  CREATE INDEX IF NOT EXISTS finance_operations_ym_idx ON finance_operations (ym);
 `;
 
 type PoolLike = NodePool;
@@ -405,6 +433,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM post_translations');
   await pool.query('DELETE FROM app_settings');
   await pool.query('DELETE FROM cover_reserve');
+  await pool.query('DELETE FROM finance_operations');
   await pool.query('DELETE FROM users');
 }
 
