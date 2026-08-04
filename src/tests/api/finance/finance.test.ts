@@ -308,6 +308,14 @@ describe('finance routes', () => {
     expect(buckets.get('Налоги')).toBeCloseTo(15000);
     expect(buckets.get('Переводы Елене (семья)')).toBeCloseTo(23000);
 
+    const salary = data.incomeBySource.find(
+      (source: { source: string }) => source.source === 'Зарплата'
+    );
+    expect(salary.total).toBeCloseTo(84251);
+    expect(salary.payers).toEqual([
+      { name: 'Пополнение. ООО "ТЕХНОЛОГИИ 211". Зарплата', total: 84251, count: 1 },
+    ]);
+
     expect(data.internalVolume).toBeCloseTo(1532532.76 + 1530000);
     expect(data.washVolume).toBeCloseTo(10000);
     expect(data.coverage[0]).toMatchObject({ ym: '2026-07', count: STORED_ROWS });
@@ -345,6 +353,36 @@ describe('finance routes', () => {
     });
   });
 
+  it('lists the operations behind an income source', async () => {
+    await importFixture();
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+      query: { source: 'Зарплата' },
+    });
+    await operationsHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const { data } = JSON.parse(res._getData());
+
+    expect(data.operations).toHaveLength(1);
+    expect(data.operations[0]).toMatchObject({
+      description: 'Пополнение. ООО "ТЕХНОЛОГИИ 211". Зарплата',
+      amount: 84251,
+      card: '*5874',
+    });
+
+    // Источник и категория расходов живут в разных flow — источник не должен
+    // подтягивать траты, и наоборот.
+    const cashback = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+      query: { source: 'Кэшбэк и бонусы' },
+    });
+    await operationsHandler(cashback.req, cashback.res);
+    expect(JSON.parse(cashback.res._getData()).data.operations).toHaveLength(1);
+    expect(JSON.parse(cashback.res._getData()).data.operations[0].amount).toBeCloseTo(118);
+  });
+
   it('keeps non-expense flows and other months out of the bucket drill-down', async () => {
     await importFixture();
     const otherMonth = createMocks({
@@ -355,12 +393,20 @@ describe('finance routes', () => {
     await operationsHandler(otherMonth.req, otherMonth.res);
     expect(JSON.parse(otherMonth.res._getData()).data.operations).toHaveLength(0);
 
-    const missingBucket = createMocks({
+    const missingTarget = createMocks({
       method: HTTP_METHOD.GET,
       headers: { authorization: await adminAuth() },
     });
-    await operationsHandler(missingBucket.req, missingBucket.res);
-    expect(missingBucket.res._getStatusCode()).toBe(400);
+    await operationsHandler(missingTarget.req, missingTarget.res);
+    expect(missingTarget.res._getStatusCode()).toBe(400);
+
+    const bothTargets = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+      query: { bucket: 'Налоги', source: 'Зарплата' },
+    });
+    await operationsHandler(bothTargets.req, bothTargets.res);
+    expect(bothTargets.res._getStatusCode()).toBe(400);
   });
 
   it('exports the range as CSV and as JSON', async () => {

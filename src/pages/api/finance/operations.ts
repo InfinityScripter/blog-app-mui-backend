@@ -14,8 +14,13 @@ import { rejectBotToken } from '@/src/middlewares/reject-bot-token';
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
-    const { bucket, from, to } = req.query as { bucket: string; from?: string; to?: string };
-    const operations = await financeService.getBucketOperations(bucket, from, to);
+    const { bucket, source, from, to } = req.query as {
+      bucket?: string;
+      source?: string;
+      from?: string;
+      to?: string;
+    };
+    const operations = await financeService.getOperations({ bucket, source }, from, to);
     return ok(res, { operations });
   } catch (error) {
     return sendError(res, error);

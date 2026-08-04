@@ -75,7 +75,7 @@ export interface FinanceSummary {
   months: Array<{ ym: string; income: number; expense: number }>;
   coverage: Array<{ ym: string; count: number }>;
   totals: { income: number; expense: number; saved: number };
-  incomeBySource: Array<{ source: string; total: number }>;
+  incomeBySource: Array<{ source: string; total: number; payers: FinanceMerchant[] }>;
   buckets: Array<{ bucket: string; total: number; merchants: FinanceMerchant[] }>;
   subscriptions: Array<{ name: string; average: number; monthsCount: number; total: number }>;
   internalVolume: number;
@@ -270,7 +270,7 @@ async function getSummary(from?: string, to?: string): Promise<FinanceSummary> {
   let expense = 0;
   let internalVolume = 0;
   let washVolume = 0;
-  const sources = new Map<string, number>();
+  const sources = new Map<string, { total: number; payers: Map<string, FinanceMerchant> }>();
   const buckets = new Map<string, { total: number; merchants: Map<string, FinanceMerchant> }>();
   const recurring = new Map<
     string,
@@ -288,7 +288,20 @@ async function getSummary(from?: string, to?: string): Promise<FinanceSummary> {
     }
     if (op.flow === 'income') {
       income += op.amount;
-      sources.set(op.incomeSource, (sources.get(op.incomeSource) ?? 0) + op.amount);
+      const source = sources.get(op.incomeSource) ?? {
+        total: 0,
+        payers: new Map<string, FinanceMerchant>(),
+      };
+      source.total += op.amount;
+      const payerName = normalizeMerchant(op.description);
+      const payerKey = payerName.toLowerCase();
+      const payer = source.payers.get(payerKey) ?? { name: payerName, total: 0, count: 0 };
+      payer.total += op.amount;
+      if (op.amount > 0) {
+        payer.count += 1;
+      }
+      source.payers.set(payerKey, payer);
+      sources.set(op.incomeSource, source);
       return;
     }
     expense += -op.amount;
@@ -362,7 +375,14 @@ async function getSummary(from?: string, to?: string): Promise<FinanceSummary> {
     coverage,
     totals: { income: round2(income), expense: round2(expense), saved: round2(income - expense) },
     incomeBySource: Array.from(sources.entries())
-      .map(([source, total]) => ({ source, total: round2(total) }))
+      .map(([source, value]) => ({
+        source,
+        total: round2(value.total),
+        payers: Array.from(value.payers.values())
+          .filter((payer) => Math.abs(payer.total) >= 0.005)
+          .sort((a, b) => b.total - a.total)
+          .map((payer) => ({ ...payer, total: round2(payer.total) })),
+      }))
       .sort((a, b) => b.total - a.total),
     buckets: bucketList,
     subscriptions,
@@ -371,17 +391,27 @@ async function getSummary(from?: string, to?: string): Promise<FinanceSummary> {
   };
 }
 
-// Дрилл-даун из карточки категории: сводка агрегирует траты до получателя, а
-// здесь отдаются сами операции — та же выборка, что суммируется в bucket.total
-// (flow='expense'), поэтому суммы строк сходятся с итогом категории.
-async function getBucketOperations(
-  bucket: string,
+// Дрилл-даун из карточки категории расходов или источника дохода: сводка
+// агрегирует до получателя/плательщика, а здесь отдаются сами операции — та же
+// выборка, что суммируется в bucket.total / source.total, поэтому суммы строк
+// сходятся с итогом карточки.
+async function getOperations(
+  target: { bucket?: string; source?: string },
   from?: string,
   to?: string
 ): Promise<FinanceBucketOperation[]> {
   await dbConnect();
-  const params: string[] = [bucket];
-  const conditions = ["flow = 'expense'", 'bucket = $1'];
+  const params: string[] = [];
+  const conditions: string[] = [];
+  if (target.source) {
+    params.push(target.source);
+    conditions.push("flow = 'income'", `income_source = $${params.length}`);
+  } else if (target.bucket) {
+    params.push(target.bucket);
+    conditions.push("flow = 'expense'", `bucket = $${params.length}`);
+  } else {
+    throw new Error('Нужна категория расходов или источник дохода');
+  }
   if (from) {
     params.push(from);
     conditions.push(`ym >= $${params.length}`);
@@ -508,7 +538,7 @@ function toCsv(operations: FinanceOperation[]): string {
 export const financeService = {
   importCsv,
   getSummary,
-  getBucketOperations,
+  getOperations,
   getExport,
   toCsv,
 };

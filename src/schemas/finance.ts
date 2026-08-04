@@ -19,6 +19,15 @@ export const financeExportSchema = financeRangeSchema.extend({
   format: z.enum(['csv', 'json']).optional(),
 });
 
-export const financeOperationsSchema = financeRangeSchema.extend({
-  bucket: z.string().trim().min(1, 'Нужна категория').max(120),
-});
+// Ровно один адрес дрилл-дауна: либо категория расходов, либо источник дохода.
+// Оба сразу — противоречивый запрос (разные flow), ни одного — выборка «всё
+// подряд», которой у этого роута нет назначения.
+export const financeOperationsSchema = financeRangeSchema
+  .extend({
+    bucket: z.string().trim().min(1).max(120).optional(),
+    source: z.string().trim().min(1).max(120).optional(),
+  })
+  .refine(
+    (query) => Boolean(query.bucket) !== Boolean(query.source),
+    'Нужна либо категория расходов (bucket), либо источник дохода (source)'
+  );
