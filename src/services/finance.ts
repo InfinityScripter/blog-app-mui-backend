@@ -58,6 +58,18 @@ export interface FinanceMerchant {
   count: number;
 }
 
+export interface FinanceBucketOperation {
+  id: string;
+  opAt: string;
+  merchant: string;
+  description: string;
+  amount: number;
+  card: string;
+  mcc: string;
+  bankCategory: string;
+  cashback: number;
+}
+
 export interface FinanceSummary {
   range: { from: string | null; to: string | null };
   months: Array<{ ym: string; income: number; expense: number }>;
@@ -359,6 +371,42 @@ async function getSummary(from?: string, to?: string): Promise<FinanceSummary> {
   };
 }
 
+// Дрилл-даун из карточки категории: сводка агрегирует траты до получателя, а
+// здесь отдаются сами операции — та же выборка, что суммируется в bucket.total
+// (flow='expense'), поэтому суммы строк сходятся с итогом категории.
+async function getBucketOperations(
+  bucket: string,
+  from?: string,
+  to?: string
+): Promise<FinanceBucketOperation[]> {
+  await dbConnect();
+  const params: string[] = [bucket];
+  const conditions = ["flow = 'expense'", 'bucket = $1'];
+  if (from) {
+    params.push(from);
+    conditions.push(`ym >= $${params.length}`);
+  }
+  if (to) {
+    params.push(to);
+    conditions.push(`ym <= $${params.length}`);
+  }
+  const { rows } = await dbQuery<FinanceOperationRow>(
+    `SELECT * FROM finance_operations WHERE ${conditions.join(' AND ')} ORDER BY op_at DESC, id ASC`,
+    params
+  );
+  return rows.map(toOperation).map((op) => ({
+    id: op.id,
+    opAt: op.opAt,
+    merchant: normalizeMerchant(op.description),
+    description: op.description,
+    amount: op.amount,
+    card: op.card,
+    mcc: op.mcc,
+    bankCategory: op.bankCategory,
+    cashback: op.cashback,
+  }));
+}
+
 async function getExport(from?: string, to?: string): Promise<FinanceOperation[]> {
   await dbConnect();
   const conditions: string[] = [];
@@ -460,6 +508,7 @@ function toCsv(operations: FinanceOperation[]): string {
 export const financeService = {
   importCsv,
   getSummary,
+  getBucketOperations,
   getExport,
   toCsv,
 };

@@ -18,3 +18,7 @@ export const financeRangeSchema = z.object({
 export const financeExportSchema = financeRangeSchema.extend({
   format: z.enum(['csv', 'json']).optional(),
 });
+
+export const financeOperationsSchema = financeRangeSchema.extend({
+  bucket: z.string().trim().min(1, 'Нужна категория').max(120),
+});

@@ -10,6 +10,7 @@ import importHandler from '@/src/pages/api/finance/import';
 import exportHandler from '@/src/pages/api/finance/export';
 import summaryHandler from '@/src/pages/api/finance/summary';
 import { parseTinkoffCsv } from '@/src/services/finance-csv';
+import operationsHandler from '@/src/pages/api/finance/operations';
 import { classifyFinanceOps } from '@/src/services/finance-classify';
 
 function makeToken(userId: string, role: string) {
@@ -312,6 +313,56 @@ describe('finance routes', () => {
     expect(data.coverage[0]).toMatchObject({ ym: '2026-07', count: STORED_ROWS });
   });
 
+  it('lists every operation of a bucket, newest first, with the merchant alias', async () => {
+    await importFixture();
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+      query: { bucket: 'Продукты (супермаркеты)' },
+    });
+    await operationsHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const { data } = JSON.parse(res._getData());
+
+    expect(data.operations).toHaveLength(1);
+    expect(data.operations[0]).toMatchObject({
+      description: "О'КЕЙ",
+      merchant: "О'КЕЙ",
+      amount: 854.18,
+      bankCategory: 'Супермаркеты',
+    });
+
+    const alias = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+      query: { bucket: 'ИИ-инструменты', from: '2026-07', to: '2026-07' },
+    });
+    await operationsHandler(alias.req, alias.res);
+    expect(JSON.parse(alias.res._getData()).data.operations[0]).toMatchObject({
+      description: 'ОАО Ардшинбанк',
+      merchant: 'ОАО Ардшинбанк (ИИ-подписки)',
+      amount: -20000,
+    });
+  });
+
+  it('keeps non-expense flows and other months out of the bucket drill-down', async () => {
+    await importFixture();
+    const otherMonth = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+      query: { bucket: 'Налоги', from: '2026-08' },
+    });
+    await operationsHandler(otherMonth.req, otherMonth.res);
+    expect(JSON.parse(otherMonth.res._getData()).data.operations).toHaveLength(0);
+
+    const missingBucket = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: { authorization: await adminAuth() },
+    });
+    await operationsHandler(missingBucket.req, missingBucket.res);
+    expect(missingBucket.res._getStatusCode()).toBe(400);
+  });
+
   it('exports the range as CSV and as JSON', async () => {
     await importFixture();
 
@@ -378,6 +429,14 @@ describe('finance hardening', () => {
     const exp = createMocks({ method: HTTP_METHOD.GET, headers: botAuth });
     await exportHandler(exp.req, exp.res);
     expect(exp.res._getStatusCode()).toBe(403);
+
+    const ops = createMocks({
+      method: HTTP_METHOD.GET,
+      headers: botAuth,
+      query: { bucket: 'Налоги' },
+    });
+    await operationsHandler(ops.req, ops.res);
+    expect(ops.res._getStatusCode()).toBe(403);
   });
 
   it('concurrent overlapping imports neither fail nor duplicate rows', async () => {
