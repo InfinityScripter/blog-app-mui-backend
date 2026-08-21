@@ -18,17 +18,23 @@ async function loadTranslate(env: Record<string, string | undefined>) {
   return mod;
 }
 
-/** Ответ Anthropic с одним текстовым блоком. */
-function claudeReply(text: string, stopReason = 'end_turn') {
+/** Ответ OpenRouter в формате chat completions. */
+function llmReply(text: string, finishReason = 'stop') {
   return {
     ok: true,
     status: 200,
-    json: () => Promise.resolve({ content: [{ type: 'text', text }], stop_reason: stopReason }),
+    json: () =>
+      Promise.resolve({ choices: [{ message: { content: text }, finish_reason: finishReason }] }),
   } as unknown as Response;
 }
 
 function httpError(status: number) {
-  return { ok: false, status, json: () => Promise.resolve({}) } as unknown as Response;
+  return {
+    ok: false,
+    status,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+  } as unknown as Response;
 }
 
 const OPTS = { source: 'RU', target: 'EN-US' };
@@ -45,23 +51,23 @@ afterEach(() => {
   process.env = savedEnv;
 });
 
-describe('Переводчик на Claude', () => {
-  it('включается, когда задан ANTHROPIC_API_KEY', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(claudeReply('Hello'));
+describe('Переводчик на GPT-5.6 Luna через OpenRouter', () => {
+  it('включается, когда задан OPENROUTER_API_KEY', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(llmReply('Hello'));
     global.fetch = fetchMock as unknown as typeof fetch;
     const { translationProvider } = await loadTranslate({
-      ANTHROPIC_API_KEY: 'test-key',
+      OPENROUTER_API_KEY: 'test-key',
       DEEPL_AUTH_KEY: 'deepl-key',
     });
 
     const result = await translationProvider.translateHtml('Привет', OPTS);
 
     expect(result).toBe('Hello');
-    const [url] = fetchMock.mock.calls[0];
-    expect(String(url)).toContain('api.anthropic.com');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('openrouter.ai');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBe('openai/gpt-5.6-luna');
   });
 
-  it('без ANTHROPIC_API_KEY остаётся на DeepL', async () => {
+  it('без OPENROUTER_API_KEY остаётся на DeepL', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -69,7 +75,7 @@ describe('Переводчик на Claude', () => {
     } as unknown as Response);
     global.fetch = fetchMock as unknown as typeof fetch;
     const { translationProvider } = await loadTranslate({
-      ANTHROPIC_API_KEY: undefined,
+      OPENROUTER_API_KEY: undefined,
       DEEPL_AUTH_KEY: 'deepl-key',
     });
 
@@ -79,25 +85,28 @@ describe('Переводчик на Claude', () => {
   });
 
   it('просит модель сохранять разметку и не добавлять ничего от себя', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(claudeReply('<p>Hello</p>'));
+    const fetchMock = jest.fn().mockResolvedValue(llmReply('<p>Hello</p>'));
     global.fetch = fetchMock as unknown as typeof fetch;
-    const { translationProvider } = await loadTranslate({ ANTHROPIC_API_KEY: 'test-key' });
+    const { translationProvider } = await loadTranslate({ OPENROUTER_API_KEY: 'test-key' });
 
     await translationProvider.translateHtml('<p>Привет</p>', OPTS);
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.system).toMatch(/HTML/i);
-    expect(body.system).toMatch(/Russian/);
-    expect(body.system).toMatch(/English/);
+    const system = body.messages.find((m: { role: string }) => m.role === 'system').content;
+    expect(system).toMatch(/HTML/i);
+    expect(system).toMatch(/Russian/);
+    expect(system).toMatch(/English/);
     // Исходник уходит модели байт в байт, без обёрток.
-    expect(body.messages[0].content).toBe('<p>Привет</p>');
+    expect(body.messages.find((m: { role: string }) => m.role === 'user').content).toBe(
+      '<p>Привет</p>'
+    );
     expect(body.temperature).toBe(0);
   });
 
   it('пустой текст не отправляет запрос вовсе', async () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    const { translationProvider } = await loadTranslate({ ANTHROPIC_API_KEY: 'test-key' });
+    const { translationProvider } = await loadTranslate({ OPENROUTER_API_KEY: 'test-key' });
 
     expect(await translationProvider.translateHtml('', OPTS)).toBe('');
     expect(fetchMock).not.toHaveBeenCalled();
@@ -106,11 +115,11 @@ describe('Переводчик на Claude', () => {
   it('длинный текст режет на куски и склеивает ответы по порядку', async () => {
     const fetchMock = jest
       .fn()
-      .mockResolvedValueOnce(claudeReply('one'))
-      .mockResolvedValueOnce(claudeReply('two'));
+      .mockResolvedValueOnce(llmReply('one'))
+      .mockResolvedValueOnce(llmReply('two'));
     global.fetch = fetchMock as unknown as typeof fetch;
     const { translationProvider, chunkHtml } = await loadTranslate({
-      ANTHROPIC_API_KEY: 'test-key',
+      OPENROUTER_API_KEY: 'test-key',
     });
 
     // Два блока, каждый заведомо крупнее лимита куска для LLM.
@@ -127,13 +136,20 @@ describe('Переводчик на Claude', () => {
     // подменил бы пост половиной статьи.
     global.fetch = jest
       .fn()
-      .mockResolvedValue(
-        claudeReply('Beginning of the text', 'max_tokens')
-      ) as unknown as typeof fetch;
-    const { translationProvider } = await loadTranslate({ ANTHROPIC_API_KEY: 'test-key' });
+      .mockResolvedValue(llmReply('Beginning of the text', 'length')) as unknown as typeof fetch;
+    const { translationProvider } = await loadTranslate({ OPENROUTER_API_KEY: 'test-key' });
 
     await expect(translationProvider.translateHtml('<p>Привет</p>', OPTS)).rejects.toThrow(
-      /max_tokens|обрыв|truncat/i
+      /truncat/i
+    );
+  });
+
+  it('пустой ответ модели — тоже ошибка, а не пустой перевод', async () => {
+    global.fetch = jest.fn().mockResolvedValue(llmReply('')) as unknown as typeof fetch;
+    const { translationProvider } = await loadTranslate({ OPENROUTER_API_KEY: 'test-key' });
+
+    await expect(translationProvider.translateHtml('<p>Привет</p>', OPTS)).rejects.toThrow(
+      /empty|missing/i
     );
   });
 
@@ -141,9 +157,9 @@ describe('Переводчик на Claude', () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValueOnce(httpError(429))
-      .mockResolvedValueOnce(claudeReply('Hello'));
+      .mockResolvedValueOnce(llmReply('Hello'));
     global.fetch = fetchMock as unknown as typeof fetch;
-    const { translationProvider } = await loadTranslate({ ANTHROPIC_API_KEY: 'test-key' });
+    const { translationProvider } = await loadTranslate({ OPENROUTER_API_KEY: 'test-key' });
 
     expect(await translationProvider.translateHtml('Привет', OPTS)).toBe('Hello');
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -151,7 +167,7 @@ describe('Переводчик на Claude', () => {
 
   it('бросает исключение, когда провайдер отказывает окончательно', async () => {
     global.fetch = jest.fn().mockResolvedValue(httpError(401)) as unknown as typeof fetch;
-    const { translationProvider } = await loadTranslate({ ANTHROPIC_API_KEY: 'test-key' });
+    const { translationProvider } = await loadTranslate({ OPENROUTER_API_KEY: 'test-key' });
 
     await expect(translationProvider.translateHtml('Привет', OPTS)).rejects.toThrow(/401/);
   });

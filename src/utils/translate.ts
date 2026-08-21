@@ -1,12 +1,12 @@
 import { HTTP_METHOD } from '@/src/constants/http';
 
-// Machine translation provider abstraction. Two implementations: Claude (the
-// Anthropic Messages API) and DeepL. The interface lets the post-translation
-// service stay provider-agnostic (and lets tests inject a mock without hitting
-// the network).
+// Machine translation provider abstraction. Two implementations: an LLM
+// (GPT-5.6 Luna through OpenRouter) and DeepL. The interface lets the
+// post-translation service stay provider-agnostic (and lets tests inject a mock
+// without hitting the network).
 //
 // Which one runs is decided by env at module load — see createProvider at the
-// bottom. Claude wins when ANTHROPIC_API_KEY is set; DeepL is the fallback.
+// bottom. The LLM wins when OPENROUTER_API_KEY is set; DeepL is the fallback.
 //
 // No HTTP dependency: both use the global fetch (Node 18+ / Next 14).
 
@@ -186,9 +186,11 @@ const deepLProvider: TranslationProvider = {
   },
 };
 
-const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
-const TRANSLATION_MODEL = 'claude-haiku-4-5';
+// OpenRouter's OpenAI-compatible endpoint — one key already proxies many
+// upstreams for the news bot, and it dodges the per-provider geo blocks that
+// killed the DeepL path from this box.
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+const TRANSLATION_MODEL = 'openai/gpt-5.6-luna';
 
 // Chunks are much smaller than DeepL's. DeepL's limit is a REQUEST-BODY cap, so
 // 24k characters fit fine; a model has to REPRODUCE the whole chunk in its
@@ -227,78 +229,82 @@ function translationSystemPrompt(opts: TranslateOptions): string {
   ].join('\n');
 }
 
-interface ClaudeResponse {
-  content?: { type: string; text?: string }[];
-  stop_reason?: string;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string }; finish_reason?: string }[];
 }
 
-async function postToClaude(
+async function postToOpenRouter(
   chunk: string,
   opts: TranslateOptions,
   apiKey: string
 ): Promise<Response> {
-  return fetch(ANTHROPIC_ENDPOINT, {
+  return fetch(OPENROUTER_ENDPOINT, {
     method: HTTP_METHOD.POST,
     headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': ANTHROPIC_VERSION,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: TRANSLATION_MODEL,
       max_tokens: LLM_MAX_TOKENS,
       temperature: 0,
-      system: translationSystemPrompt(opts),
-      messages: [{ role: 'user', content: chunk }],
+      messages: [
+        { role: 'system', content: translationSystemPrompt(opts) },
+        { role: 'user', content: chunk },
+      ],
     }),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 }
 
-async function translateChunkWithClaude(
+async function translateChunkWithLlm(
   chunk: string,
   opts: TranslateOptions,
   apiKey: string
 ): Promise<string> {
-  const response = await sendWithRetry(() => postToClaude(chunk, opts, apiKey), 'Claude');
-  const data = (await response.json()) as ClaudeResponse;
+  const response = await sendWithRetry(() => postToOpenRouter(chunk, opts, apiKey), 'OpenRouter');
+  const data = (await response.json()) as ChatCompletionResponse;
+  const choice = data.choices?.[0];
 
-  // A max_tokens stop means the answer was CUT OFF mid-translation. Returning it
-  // would cache half an article as a successful translation and serve that
-  // forever — so this is an error, and the caller degrades to the original.
-  if (data.stop_reason === 'max_tokens') {
-    throw new Error('Claude response hit max_tokens (truncated translation)');
+  // finish_reason 'length' means the answer was CUT OFF mid-translation.
+  // Returning it would cache half an article as a successful translation and
+  // serve that forever — so this is an error, and the caller degrades to the
+  // original text instead.
+  if (choice?.finish_reason === 'length') {
+    throw new Error('OpenRouter response was truncated (finish_reason=length)');
   }
 
-  const text = data.content?.find((block) => block.type === 'text')?.text;
-  if (text === undefined) {
-    throw new Error('Claude response missing text content');
+  const text = choice?.message?.content;
+  // An empty string is NOT a valid translation of non-empty input — caching it
+  // would blank the post. Treated the same as a missing field.
+  if (!text) {
+    throw new Error('OpenRouter response missing or empty text content');
   }
   return text;
 }
 
-const claudeProvider: TranslationProvider = {
+const llmProvider: TranslationProvider = {
   translateHtml(text: string, opts: TranslateOptions): Promise<string> {
     if (text === '') {
       return Promise.resolve('');
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return Promise.reject(new Error('ANTHROPIC_API_KEY is not configured'));
+      return Promise.reject(new Error('OPENROUTER_API_KEY is not configured'));
     }
 
     return translateChunksInOrder(text, LLM_MAX_CHUNK_CHARS, (chunk) =>
-      translateChunkWithClaude(chunk, opts, apiKey)
+      translateChunkWithLlm(chunk, opts, apiKey)
     );
   },
 };
 
-// Chosen by env at module load. Claude is preferred when its key is present;
+// Chosen by env at module load. The LLM path wins when its key is present;
 // without it we stay on DeepL, so the box keeps working unchanged until the key
 // is actually deployed.
 function createProvider(): TranslationProvider {
-  return process.env.ANTHROPIC_API_KEY ? claudeProvider : deepLProvider;
+  return process.env.OPENROUTER_API_KEY ? llmProvider : deepLProvider;
 }
 
 export const translationProvider: TranslationProvider = createProvider();
