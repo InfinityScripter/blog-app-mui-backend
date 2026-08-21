@@ -67,6 +67,7 @@ interface TranslationRow {
   source_hash: string;
   scope: string;
   status: string;
+  updated_at: Date | string;
 }
 
 /**
@@ -75,10 +76,36 @@ interface TranslationRow {
  * and holds the ORIGINAL fields — it must NOT be served or counted as cached, or
  * a transient outage would pin a post to its untranslated text forever (the
  * source_hash stays fresh, so it would never retry). Callers additionally check
- * `scope` when they need a full body.
+ * `scope` when they need a full body — and `isCoolingDown` for how soon an error
+ * row is allowed to trigger that retry.
  */
 function isFreshOk(row: TranslationRow | null, hash: string): row is TranslationRow {
   return row !== null && row.source_hash === hash && row.status === 'ok';
+}
+
+// How long a READ PATH leaves the provider alone after it refused this exact
+// post. The error row is still never SERVED — the retry it triggers is just
+// rate-limited to once per window instead of once per request.
+//
+// Why: a summary failure used to write nothing at all, so every feed read
+// re-attempted every failed post. With 109 posts stuck in error (DeepL refusing
+// with 456 since 2026-08-13) one view of the English homepage meant hundreds of
+// doomed provider calls — repeated for nine days. That request storm is the most
+// likely reason the provider started refusing us in the first place.
+const TRANSLATE_RETRY_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Whether a FAILED attempt on this exact source is still too recent to repeat.
+ * True only for a fresh-hash `error` row written inside the cooldown window —
+ * a stale hash (the post was edited) retries immediately, and once the window
+ * passes the next read tries the provider again, so nothing is pinned forever.
+ * The explicit warmup path ignores this: it IS the manual "retry now" lever.
+ */
+function isCoolingDown(row: TranslationRow | null, hash: string, now: number): boolean {
+  if (row === null || row.source_hash !== hash || row.status !== 'error') {
+    return false;
+  }
+  return now - new Date(row.updated_at).getTime() < TRANSLATE_RETRY_COOLDOWN_MS;
 }
 
 /**
@@ -94,7 +121,7 @@ function sourceHash(fields: TranslatableFields): string {
 
 async function readCache(postId: string, lang: Lang): Promise<TranslationRow | null> {
   const result = await dbQuery<TranslationRow>(
-    'SELECT title, description, content, source_hash, scope, status FROM post_translations WHERE post_id = $1 AND lang = $2 LIMIT 1',
+    'SELECT title, description, content, source_hash, scope, status, updated_at FROM post_translations WHERE post_id = $1 AND lang = $2 LIMIT 1',
     [postId, lang]
   );
   const row = result.rows[0] ?? null;
@@ -224,6 +251,13 @@ export async function getTranslatedPostFields<T extends TranslatableFields>(
     };
   }
 
+  // The provider refused this post recently — serve the original now and retry
+  // when the cooldown passes, instead of paying (and re-triggering) the refusal
+  // on every single page view.
+  if (isCoolingDown(cached, hash, Date.now())) {
+    return original;
+  }
+
   try {
     const translated = await translateFields(original, target);
     await upsertCache(postId, lang, translated, hash, 'ok', 'full');
@@ -293,7 +327,7 @@ async function translateSummaryFields<T extends TranslatableFields>(
     };
   }
 
-  if (cacheOnly) {
+  if (cacheOnly || isCoolingDown(cached, hash, Date.now())) {
     return original;
   }
 
@@ -310,6 +344,19 @@ async function translateSummaryFields<T extends TranslatableFields>(
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[post-translation] summary degrade to original for', postId, lang, error);
+    // Record the failure so the cooldown has a timestamp to count from — without
+    // this row the next read repeats the same doomed call. Best-effort: a cache
+    // write failure must not break the read (it only costs an earlier retry).
+    try {
+      await upsertCache(postId, lang, original, hash, 'error', 'summary');
+    } catch (cacheError) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[post-translation] failed to record summary error row for',
+        postId,
+        cacheError
+      );
+    }
     return original;
   }
 }

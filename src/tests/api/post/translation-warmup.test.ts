@@ -233,7 +233,7 @@ describe('warmFeedTranslations service', () => {
     expect(mockedTranslateHtml).not.toHaveBeenCalled();
   });
 
-  it("full warm UPGRADES an existing summary row to full", async () => {
+  it('full warm UPGRADES an existing summary row to full', async () => {
     const postId = await seedPost();
     await warmFeedTranslations(undefined, 'summary');
     expect((await readRows(postId))[0].scope).toBe('summary');
@@ -248,13 +248,19 @@ describe('warmFeedTranslations service', () => {
   });
 });
 
-describe('error rows are retried, never served as a cache hit', () => {
+describe('error rows are retried once the cooldown passes, never served as a cache hit', () => {
   // A row written with status='error' holds the ORIGINAL (untranslated) fields
   // after a provider outage. Its source_hash is fresh, so a naive
-  // "fresh + scope" check would serve it forever. Every read/warm path must
-  // instead re-translate it (status must be 'ok' to be a hit).
+  // "fresh + scope" check would serve it forever. No read/warm path may ever
+  // count it as a hit — it must end up re-translated (status must be 'ok').
+  //
+  // The RETRY is rate-limited, though: a read path leaves a just-failed post
+  // alone for TRANSLATE_RETRY_COOLDOWN_MS (6h) instead of repeating the doomed
+  // call on every request, which is what stormed DeepL for nine days. So the
+  // contract has two halves, and both are covered below: fresh error → original
+  // served, provider untouched; aged-out error → re-translated.
 
-  async function seedErrorRow(postId: string, scope: 'summary' | 'full') {
+  async function seedErrorRow(postId: string, scope: 'summary' | 'full', ageHours = 0) {
     // Simulate a prior failed translation: original fields, fresh hash, error.
     // The hash is computed in JS (pg-mem has no pgcrypto digest()) exactly as the
     // service does: sha256 of `title + ' ' + description + ' ' + content`.
@@ -263,14 +269,14 @@ describe('error rows are retried, never served as a cache hit', () => {
       .digest('hex');
     await dbQuery(
       `INSERT INTO post_translations (post_id, lang, title, description, content, source_hash, status, scope, updated_at)
-       VALUES ($1, 'en', $2, $3, $4, $5, 'error', $6, NOW())`,
+       VALUES ($1, 'en', $2, $3, $4, $5, 'error', $6, NOW() - INTERVAL '${ageHours} hours')`,
       [postId, ORIGINAL.title, ORIGINAL.description, ORIGINAL.content, hash, scope]
     );
   }
 
-  it('details re-translates a full ERROR row (does not serve the original)', async () => {
+  it('details re-translates a full ERROR row once it ages out of the cooldown', async () => {
     const postId = await seedPost();
-    await seedErrorRow(postId, 'full');
+    await seedErrorRow(postId, 'full', 7);
     expect((await readRows(postId))[0].status).toBe('error');
     mockedTranslateHtml.mockClear();
 
@@ -288,6 +294,24 @@ describe('error rows are retried, never served as a cache hit', () => {
     expect(rows[0].status).toBe('ok');
   });
 
+  it('details serves the original WITHOUT calling the provider while the error is fresh', async () => {
+    const postId = await seedPost();
+    await seedErrorRow(postId, 'full');
+    mockedTranslateHtml.mockClear();
+
+    const { req, res } = createMocks({
+      method: HTTP_METHOD.GET,
+      query: { id: postId, lang: 'en' },
+    });
+    await detailsHandler(req, res);
+
+    const { post } = JSON.parse(res._getData());
+    expect(post.title).toBe(ORIGINAL.title);
+    expect(mockedTranslateHtml).not.toHaveBeenCalled();
+    // Still an error row — nothing was served as a hit, the retry just waits.
+    expect((await readRows(postId))[0].status).toBe('error');
+  });
+
   it('a full warm re-translates an ERROR row (counts it translated, not cached)', async () => {
     const postId = await seedPost();
     await seedErrorRow(postId, 'summary');
@@ -299,9 +323,9 @@ describe('error rows are retried, never served as a cache hit', () => {
     expect((await readRows(postId))[0].status).toBe('ok');
   });
 
-  it('the list re-translates an ERROR row (serves the translation, not original)', async () => {
+  it('the list re-translates an ERROR row once it ages out of the cooldown', async () => {
     const postId = await seedPost();
-    await seedErrorRow(postId, 'summary');
+    await seedErrorRow(postId, 'summary', 7);
     mockedTranslateHtml.mockClear();
 
     const { req, res } = createMocks({ method: HTTP_METHOD.GET, query: { lang: 'en' } });
@@ -312,6 +336,19 @@ describe('error rows are retried, never served as a cache hit', () => {
     const rows = await readRows(postId);
     expect(rows[0].status).toBe('ok');
   });
+
+  it('the list leaves the provider alone while the error is fresh', async () => {
+    const postId = await seedPost();
+    await seedErrorRow(postId, 'summary');
+    mockedTranslateHtml.mockClear();
+
+    const { req, res } = createMocks({ method: HTTP_METHOD.GET, query: { lang: 'en' } });
+    await listHandler(req, res);
+
+    const { posts } = JSON.parse(res._getData());
+    expect(posts.find((p: { id: string }) => p.id === postId).title).toBe(ORIGINAL.title);
+    expect(mockedTranslateHtml).not.toHaveBeenCalled();
+  });
 });
 
 describe('HTML entities in translated title/description are decoded', () => {
@@ -319,23 +356,21 @@ describe('HTML entities in translated title/description are decoded', () => {
     const postId = await seedPost({ title: 'Заголовок с кавычками' });
     // DeepL (HTML mode) returns entities for punctuation in plain-text fields.
     mockedTranslateHtml.mockImplementation((text: string) =>
-      Promise.resolve(
-        text === '' ? '' : `&quot;Title&quot; it&#x27;s &amp; more`
-      )
+      Promise.resolve(text === '' ? '' : `&quot;Title&quot; it&#x27;s &amp; more`)
     );
 
     const { req, res } = createMocks({ method: HTTP_METHOD.GET, query: { lang: 'en' } });
     await listHandler(req, res);
 
     const { posts } = JSON.parse(res._getData());
-    const {title} = posts.find((p: { id: string }) => p.id === postId);
+    const { title } = posts.find((p: { id: string }) => p.id === postId);
     // Entities decoded to real characters — no literal &quot; leaks to the UI.
     expect(title).toBe('"Title" it\'s & more');
     expect(title).not.toContain('&quot;');
     expect(title).not.toContain('&#x27;');
   });
 
-  it("decodes entities in a details title but leaves the HTML body intact", async () => {
+  it('decodes entities in a details title but leaves the HTML body intact', async () => {
     const postId = await seedPost();
     mockedTranslateHtml.mockImplementation((text: string) => {
       if (text === '') return Promise.resolve('');
