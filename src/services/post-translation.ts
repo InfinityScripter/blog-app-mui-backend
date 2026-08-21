@@ -23,12 +23,14 @@ import { LANG, DEEPL_SOURCE_LANG, DEEPL_TARGET_BY_LANG } from '@/src/constants/i
 // count against it — a cached post is served translated even after the budget
 // is gone.
 //
-// Why: on 2026-08-20 DeepL started answering 429 to every request from the prod
-// VDS (a blanket per-IP block, not a load spike). The provider treats 429 as
-// transient and retries with 0.6 + 1.5 + 4 + 9s backoff, so every untranslated
-// field cost ~15s — and 108 posts had no translation cached. That turned
-// `/api/post/list?lang=en` into an hour-long response; the English homepage ran
-// past Vercel's 10s limit and served 504.
+// Why: on 2026-08-20 DeepL started refusing the prod key with 456 "Quota
+// exceeded" — NOT the monthly character budget, which /v2/usage still reported
+// at 247k of 1M. 108 posts had no cached translation, and a summary failure
+// writes no cache row, so EVERY list read re-attempted all 108. Hundreds of
+// doomed requests per read then drew 429s, which the provider DOES treat as
+// transient and retries with 0.6 + 1.5 + 4 + 9s backoff — ~15s per field. The
+// list stopped answering at all, and the English homepage ran past Vercel's 10s
+// limit and served 504 for a day.
 const LIST_TRANSLATE_BUDGET_MS = 3000;
 
 /**
