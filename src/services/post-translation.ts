@@ -19,6 +19,35 @@ import { LANG, DEEPL_SOURCE_LANG, DEEPL_TARGET_BY_LANG } from '@/src/constants/i
 //                body). Cheap: two short DeepL calls per post instead of a whole
 //                body. Opening the post upgrades the row to 'full'.
 
+// How long ONE list read may spend TALKING TO THE PROVIDER. Cache reads don't
+// count against it — a cached post is served translated even after the budget
+// is gone.
+//
+// Why: on 2026-08-20 DeepL started answering 429 to every request from the prod
+// VDS (a blanket per-IP block, not a load spike). The provider treats 429 as
+// transient and retries with 0.6 + 1.5 + 4 + 9s backoff, so every untranslated
+// field cost ~15s — and 108 posts had no translation cached. That turned
+// `/api/post/list?lang=en` into an hour-long response; the English homepage ran
+// past Vercel's 10s limit and served 504.
+const LIST_TRANSLATE_BUDGET_MS = 3000;
+
+/**
+ * Resolves to `fallback` if `promise` doesn't settle within `ms`. The losing
+ * translation keeps running — its cache write still helps the next read — but
+ * its rejection must be consumed here, or it surfaces as an unhandledRejection
+ * in the long-lived backend process.
+ */
+function withDeadline<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  promise.catch(() => undefined);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      timer = setTimeout(() => resolve(fallback), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 /** The subset of a post that carries translatable text. */
 export interface TranslatableFields {
   title: string;
@@ -229,10 +258,13 @@ function getPostId(post: TranslatableFields & { id?: string; _id?: string }): st
  *    returns. Writing summary is safe because getTranslatedPostFields refuses to
  *    serve a summary row for the body.
  *  - Provider error → the original short fields, no cache write. Never throws.
+ *  - `cacheOnly` → a cache miss returns the original with NO provider call. This
+ *    is how a list read treats the posts it reaches after its budget is spent.
  */
 async function translateSummaryFields<T extends TranslatableFields>(
   post: T,
-  lang: Lang
+  lang: Lang,
+  cacheOnly = false
 ): Promise<TranslatableFields> {
   const original: TranslatableFields = {
     title: post.title,
@@ -257,6 +289,10 @@ async function translateSummaryFields<T extends TranslatableFields>(
       description: cached.description,
       content: cached.content,
     };
+  }
+
+  if (cacheOnly) {
+    return original;
   }
 
   const opts = { source: DEEPL_SOURCE_LANG, target: DEEPL_TARGET_BY_LANG[lang] };
@@ -286,17 +322,38 @@ async function translateSummaryFields<T extends TranslatableFields>(
  * are reused without any network call, so a warmed feed stays fast. Each cold
  * post also self-warms a summary row (translateSummaryFields). Body translation
  * + upgrade to a full row is deferred to the details route.
+ *
+ * Provider calls are capped by a shared `budgetMs` (see
+ * LIST_TRANSLATE_BUDGET_MS): translation is the OPTIONAL step here and must not
+ * take the mandatory one — serving the feed — down with it. Once the budget is
+ * spent the remaining posts are read from the CACHE ONLY: cached ones still
+ * arrive translated, uncached ones as the original, and the warmup fills the
+ * rest in the background. Without this cap a single list read could outlive its
+ * caller's timeout and never answer at all.
  */
 export async function translatePosts<T extends TranslatableFields>(
   posts: T[],
-  lang: Lang
+  lang: Lang,
+  budgetMs: number = LIST_TRANSLATE_BUDGET_MS
 ): Promise<T[]> {
   if (lang === LANG.RU) {
     return posts;
   }
+  const deadline = Date.now() + budgetMs;
   return posts.reduce<Promise<T[]>>(async (accPromise, post) => {
     const acc = await accPromise;
-    const fields = await translateSummaryFields(post, lang);
+    const timeLeft = deadline - Date.now();
+    // The deadline is enforced INSIDE a post, not just between posts: the
+    // provider's own retry chain outlasts the whole budget, so a check that
+    // only ran before the next post would come ~15s too late.
+    const fields =
+      timeLeft > 0
+        ? await withDeadline(translateSummaryFields(post, lang), timeLeft, {
+            title: post.title,
+            description: post.description,
+            content: post.content,
+          })
+        : await translateSummaryFields(post, lang, true);
     return [...acc, { ...post, ...fields }];
   }, Promise.resolve([]));
 }
