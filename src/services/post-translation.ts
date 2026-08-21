@@ -221,6 +221,9 @@ async function translateFields(
  *    translated) is (re)translated in full, upserted as 'full', and returned.
  *  - provider/config error → the ORIGINAL fields, with a best-effort
  *    `status='error'` cache row and a logged error. Never throws to the caller.
+ *    EXCEPT when a fresh OK summary row already exists: then the translated
+ *    title/description are served with the original body and the row is left
+ *    alone, because an error row there would also un-translate the feed.
  */
 export async function getTranslatedPostFields<T extends TranslatableFields>(
   post: T,
@@ -258,6 +261,14 @@ export async function getTranslatedPostFields<T extends TranslatableFields>(
     return original;
   }
 
+  // A fresh OK row that only lacks the BODY. If the body translation below
+  // fails, this is what we fall back to — and, critically, what we must NOT
+  // overwrite with an error row: doing so would throw away an already-good
+  // feed title too, sending the post back to the original language everywhere.
+  const shortsAlreadyDone = isFreshOk(cached, hash)
+    ? { title: cached.title, description: cached.description }
+    : null;
+
   try {
     const translated = await translateFields(original, target);
     await upsertCache(postId, lang, translated, hash, 'ok', 'full');
@@ -265,6 +276,13 @@ export async function getTranslatedPostFields<T extends TranslatableFields>(
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[post-translation] degrade to original for', postId, lang, error);
+
+    if (shortsAlreadyDone) {
+      // Keep the summary row untouched and serve the translated short fields
+      // with the ORIGINAL body — strictly better for the reader than dropping
+      // back to the original title, and it leaves the feed's translation intact.
+      return { ...shortsAlreadyDone, content: original.content };
+    }
     // Best-effort: record the failure so we can see it, but never let a cache
     // write failure break the read either. An error row keeps scope 'full' so a
     // later successful details read overwrites it.

@@ -1,7 +1,11 @@
 import '@jest/globals';
 import { dbQuery } from '@/src/lib/db';
 import { translationProvider } from '@/src/utils/translate';
-import { translatePosts, warmPostSummary } from '@/src/services/post-translation';
+import {
+  translatePosts,
+  warmPostSummary,
+  getTranslatedPostFields,
+} from '@/src/services/post-translation';
 
 // Мок провайдера перевода: по умолчанию отказывает, как отказывал DeepL с 13.08
 // (456 «Quota exceeded»). Тесты, которым нужен успех, переопределяют поведение.
@@ -90,5 +94,29 @@ describe('Пауза после отказа переводчика', () => {
 
     expect(mockedTranslateHtml).toHaveBeenCalled();
     expect(outcome).toBe('error');
+  });
+});
+
+describe('Неудачный перевод тела не должен стирать готовый перевод заголовка', () => {
+  it('оставляет строку scope=summary нетронутой, когда тело перевести не удалось', async () => {
+    // Так выглядят 108 постов, залитых скриптом import-translations: заголовок и
+    // описание переведены (scope='summary'), тело осталось оригинальным.
+    mockedTranslateHtml.mockReset();
+    mockedTranslateHtml.mockImplementation((text: string) => Promise.resolve(`[EN] ${text}`));
+    await translatePosts([POST], 'en', 5000);
+    expect((await readRow())?.status).toBe('ok');
+
+    // Теперь читатель открывает английскую страницу поста, а переводчик отказывает.
+    mockedTranslateHtml.mockReset();
+    mockedTranslateHtml.mockRejectedValue(new Error('DeepL request failed with status 456'));
+    const fields = await getTranslatedPostFields(POST, 'en');
+
+    // Заголовок остаётся переведённым и в ответе, и в кеше — иначе пост вернулся
+    // бы в ленту по-русски, хотя перевод для неё уже был.
+    expect(fields.title).toBe('[EN] Заголовок');
+    expect(fields.content).toBe(POST.content);
+    const row = await readRow();
+    expect(row?.status).toBe('ok');
+    expect(row?.scope).toBe('summary');
   });
 });
