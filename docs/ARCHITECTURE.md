@@ -90,3 +90,29 @@ Success payload keys (`posts`, `post`, `accessToken`, `user`, `channel`…)
 are read directly by the frontend. Services may restructure internals but the
 route's final JSON keys MUST stay stable unless the frontend is updated in the
 same change.
+
+## Schema management (migrations decision)
+
+**Decision (2026-08-26, closes bug-class audit item 3.2): schema-as-code, no
+versioned migrations.** The full schema lives in `src/lib/db.ts` as idempotent
+DDL (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`,
+`CREATE INDEX IF NOT EXISTS`) and is applied on every boot by `dbConnect`.
+pg-mem tests run the exact same DDL, so schema drift between tests and prod is
+structurally impossible.
+
+Rules that make this safe:
+
+- Every schema change MUST be expressible idempotently and be
+  backward-compatible with the running app (add-only: new tables, new nullable
+  columns, new indexes). The deploy order "new code boots → DDL applies" is the
+  only migration mechanism.
+- Destructive or data-rewriting changes (DROP, type changes, backfills,
+  dedups) do NOT go into `schemaSql`. They are hand-written SQL committed under
+  `docs/*.sql` (see `2026-06-20-prod-email-dedup.sql`,
+  `2026-06-30-prod-dogs-slot-dedup.sql`), run manually against prod with a
+  backup taken first, and only then may `schemaSql` assume the result (e.g. the
+  `users_email_lower_unique` index guarded by a duplicate check in `db.ts`).
+
+Revisit (switch to numbered migrations) when either happens: a change cannot be
+written idempotently/add-only, or the app runs in more than one instance so
+concurrent boots race on DDL.

@@ -1,7 +1,11 @@
 # Containerization plan (deferred) — Docker Compose, NOT Kubernetes
 
+> **Статус (2026-08-26): выполнено.** `Dockerfile` и
+> `deploy/docker-compose.vds.yml` в репозитории; план ниже сохранён как
+> история решения (Compose, не k8s).
+
 **Date:** 2026-06-20
-**Status:** Deferred. Do it when a real move/scale need appears.
+**Status:** Done — Dockerfile + deploy/docker-compose.vds.yml shipped (see banner above).
 
 ## Decision
 
