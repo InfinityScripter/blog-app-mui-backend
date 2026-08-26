@@ -54,7 +54,7 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 | `src/schemas/`          | Zod-схемы запросов + выведенные из них типы тел                                                                                                                                                                                                        |
 | `src/types/`            | Общие TS-контракты: `api.ts` (`ApiSuccess`/`ApiError`/`AppError`), `audit.ts`, `bot-control.ts`, `system-metrics.ts`, `subscriber.ts`, `model-release.ts`, `dogs.ts`                                                                                   |
 | `src/constants/`        | Общие константы: `http.ts` (статусы + методы), `messages.ts` (тексты ответов), `auth.ts` (SALT_ROUNDS, лимит неудачных входов), `pagination.ts` (лимиты списков), `dogs.ts` (телефон/карта бизнеса)                                                    |
-| `src/lib/`              | Инфраструктура: `db.ts` (pg Pool + автосхема), `dogs-db.ts`, `jwt.ts`, `passport.ts` (Google OAuth)                                                                                                                                                    |
+| `src/lib/`              | Инфраструктура: `db.ts` (pg Pool), `migrations/` (versioned-раннер + реестры схем), `dogs-db.ts`, `jwt.ts`, `passport.ts` (Google OAuth)                                                                                                               |
 | `src/utils/`            | Чистые хелперы: `response.ts` (`ok`/`sendError`), `email.ts`, `normalize-email.ts`, `audit-context.ts` (`emitAudit`), `allowed-origin.ts`, `client-ip.ts`, `public-user.ts`, `post-payload.ts`, `slug.ts`, `uuidv4.ts`, `change-case.ts`, dogs-хелперы |
 | `src/tests/`            | Jest + Supertest; БД — `pg-mem` (in-memory Postgres), структура зеркалит `src/`                                                                                                                                                                        |
 | `scripts/`              | Отдельные ops-скрипты (сид changelog, аудит новостей) — см. [scripts/README.md](scripts/README.md)                                                                                                                                                     |
@@ -192,10 +192,10 @@ src/models/ + src/lib/db.ts  ← доступ к данным: активные 
 
 ## База данных
 
-PostgreSQL 14+. Схема создаётся **автоматически при старте** (`src/lib/db.ts`, `CREATE TABLE IF NOT EXISTS`) — отдельные миграции для локального запуска не нужны.
+PostgreSQL 14+. Схема живёт в **версионированных миграциях** (`src/lib/migrations/`: реестры `main.ts` / `dogs.ts`, журнал `schema_migrations`) и накатывается **автоматически при старте** — раннер применяет только неприменённый хвост, так что для локального запуска отдельных команд не нужно. Правила (append-only, frozen SQL, best-effort) — в `docs/ARCHITECTURE.md`, раздел Schema management.
 
 - Основная БД `blog_app` (13 таблиц): `users`, `posts`, `files`, `post_translations`, `refresh_tokens`, `oauth_consent_challenges`, `subscribers`, `model_releases`, `audit_logs`, `llm_stats_snapshots`, `app_settings`, `cover_reserve`, `finance_operations`.
-- Отдельная БД `dogs_teacher` (пул в `lib/dogs-db.ts`, своя автосхема): клиенты, слоты, заявки, push-подписки.
+- Отдельная БД `dogs_teacher` (пул в `lib/dogs-db.ts`, свой реестр миграций и журнал): клиенты, слоты, заявки, push-подписки.
 - В тестах (`NODE_ENV=test`) вместо реального Postgres поднимается **pg-mem** — поэтому `pg-mem` лежит в `dependencies` (его импортирует `lib/db.ts`).
 
 ## Локальный запуск

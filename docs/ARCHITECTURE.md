@@ -91,30 +91,38 @@ are read directly by the frontend. Services may restructure internals but the
 route's final JSON keys MUST stay stable unless the frontend is updated in the
 same change.
 
-## Schema management (migrations decision)
+## Schema management (versioned migrations)
 
-**Decision (2026-08-26, closes bug-class audit item 3.2): schema-as-code, no
-versioned migrations.** The full schema lives in `src/lib/db.ts` as idempotent
-DDL (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`,
-`CREATE INDEX IF NOT EXISTS`) and is applied on every boot by `dbConnect`.
-pg-mem tests run the exact same DDL, so schema drift between tests and prod is
-structurally impossible.
+**Decision (2026-08-26, supersedes the earlier schema-as-code note; closes
+bug-class audit item 3.2): versioned, forward-only SQL migrations.**
 
-Rules that make this safe:
-
-- Every schema change MUST be expressible idempotently and be
-  backward-compatible with the running app (add-only: new tables, new nullable
-  columns, new indexes). The deploy order "new code boots → DDL applies" is the
-  only migration mechanism.
-- Destructive or data-rewriting changes (DROP, type changes, backfills,
-  dedups) do NOT go into `schemaSql`. They are hand-written SQL committed under
-  `docs/*.sql` (see `2026-06-20-prod-email-dedup.sql`,
-  `2026-06-30-prod-dogs-slot-dedup.sql`), run manually against prod with a
-  backup taken first, and only then may `schemaSql` assume the result (e.g. the
-  `users_email_lower_unique` index is created in a try/catch in `db.ts` — a
-  boot against a database still holding pre-dedup duplicates logs and skips
-  it instead of crashing).
-
-Revisit (switch to numbered migrations) when either happens: a change cannot be
-written idempotently/add-only, or the app runs in more than one instance so
-concurrent boots race on DDL.
+- Registries: `src/lib/migrations/main.ts` (blog DB) and
+  `src/lib/migrations/dogs.ts` (dogs-teacher DB — a separate physical
+  database, so a separate registry and journal). `0001_baseline` in each is
+  the frozen full schema as of the switch; every later change is a new
+  numbered entry.
+- Runner: `src/lib/migrations/runner.ts`. Each boot takes an advisory lock,
+  reads the `schema_migrations` journal (id + sha256 checksum + applied_at)
+  and applies only the un-applied tail, each migration inside a transaction.
+  A failed migration aborts startup (fail fast); a migration marked
+  `bestEffort` may legitimately fail against legacy prod data (enforcement
+  indexes over still-dirty rows) — it warns, stays un-journaled and retries
+  next boot.
+- Rules: registries are **append-only**; an applied migration's SQL is
+  **frozen** (the runner warns on checksum drift, never re-executes);
+  migrations are **forward-only** — a rollback is a new migration that undoes
+  the change. Destructive data rewrites (dedups, backfills) stay as reviewed
+  SQL under `docs/*.sql`, run manually with a backup, and the migration that
+  depends on the result ships `bestEffort` until prod data is clean.
+- Existing databases adopt the journal transparently: the baseline is the
+  same idempotent DDL the old boot-time `schemaSql` ran, so the first boot on
+  an already-provisioned database walks through it as a structural no-op and
+  records it.
+- Tests (`src/tests/lib/migrations.test.ts`) pin the runner contract:
+  ordering, idempotence, tail-only application, strict-failure abort,
+  best-effort retry, checksum warning; pg-mem runs the exact same registries
+  as prod.
+- Migrations run on boot (`dbConnect`/`dogsDbConnect`) — deliberate for the
+  single-instance systemd deploy; the advisory lock already makes concurrent
+  boots safe, so moving `runMigrations` into a dedicated deploy step (CI or
+  container entrypoint) is a mechanical change when multi-instance arrives.
