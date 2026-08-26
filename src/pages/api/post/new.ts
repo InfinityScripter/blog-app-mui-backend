@@ -3,8 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { newPostSchema } from '@/src/schemas/post';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { validateBody } from '@/src/middlewares/validate';
 import { requireAuth } from '@/src/middlewares/require-auth';
 import { withMethods } from '@/src/middlewares/with-methods';
 import { warmPostTranslations } from '@/src/services/translation-warmup';
@@ -57,4 +59,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(withMethods([HTTP_METHOD.POST])(handler));
+export default requireAuth(withMethods([HTTP_METHOD.POST])(validateBody(newPostSchema)(handler)));

@@ -6,6 +6,8 @@ import { emitAudit } from '@/src/utils/audit-context';
 import { commentService } from '@/src/services/comment';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireAuth } from '@/src/middlewares/require-auth';
+import { validateBodyByMethod } from '@/src/middlewares/validate';
+import { addCommentSchema, editCommentSchema, deleteCommentSchema } from '@/src/schemas/post';
 
 // Thin route: requireAuth → commentService.{add,edit,delete} → respond.
 // The frontend reads the returned `post`, so that key is preserved.
@@ -75,4 +77,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(handler);
+export default requireAuth(
+  validateBodyByMethod({
+    [HTTP_METHOD.POST]: addCommentSchema,
+    [HTTP_METHOD.PUT]: editCommentSchema,
+    [HTTP_METHOD.DELETE]: deleteCommentSchema,
+  })(handler)
+);

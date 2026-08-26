@@ -8,6 +8,8 @@ import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { sendVerificationEmail } from '@/src/utils/email';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { normalizeEmail } from '@/src/utils/normalize-email';
+import { resendVerificationSchema } from '@/src/schemas/auth';
+import { validateBodyByMethod } from '@/src/middlewares/validate';
 
 // Neutral response used whether or not the account exists / is already verified,
 // so this endpoint can't be used to enumerate registered emails.
@@ -21,10 +23,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is required' });
-    }
 
     const normalizedEmail = normalizeEmail(email);
     const user = await User.findOne({ email: normalizedEmail });
@@ -58,4 +56,4 @@ export default withRateLimit({
   routeName: 'auth.resend-verification',
   windowMs: 60_000,
   max: 3,
-})(handler);
+})(validateBodyByMethod({ [HTTP_METHOD.POST]: resendVerificationSchema })(handler));

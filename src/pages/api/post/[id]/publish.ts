@@ -5,6 +5,8 @@ import { HTTP } from '@/src/constants/http';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
 import { emitAudit } from '@/src/utils/audit-context';
+import { setPublishSchema } from '@/src/schemas/post';
+import { validateBody } from '@/src/middlewares/validate';
 import { requireAuth } from '@/src/middlewares/require-auth';
 
 // Thin route: requireAuth → postService.setPublish → respond. Keeps { post }.
@@ -28,4 +30,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(handler);
+export default requireAuth(validateBody(setPublishSchema)(handler));
