@@ -1,8 +1,10 @@
 # Audit Logging — план (production-grade audit trail)
 
-> **Статус (2026-08-26): выполнено.** Таблица `audit_logs` (`src/lib/db.ts`),
-> `services/audit.ts`, `utils/audit-context.ts`, admin-роуты просмотра
-> (`/api/admin/audit-logs`) — в проде.
+> **Статус (2026-08-26): выполнено.** Таблица `audit_logs`, `services/audit.ts`,
+> `utils/audit-context.ts`, admin-роуты просмотра (`/api/admin/audit-logs`) —
+> в проде. Упоминания `schemaSql`/`applySafeMigrations` ниже описывают
+> механизм тех времён: с 2026-08-26 схема живёт в версионированных миграциях
+> (`src/lib/migrations/`), data-conditional шаги — миграции с `bestEffort`.
 
 **Цель:** взрослое прод-логирование действий — кто / что / когда по каждому
 мутирующему действию (post.created, user.deleted, auth.login…). Семантический

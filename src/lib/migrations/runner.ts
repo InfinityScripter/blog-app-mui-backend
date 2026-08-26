@@ -1,4 +1,4 @@
-import type { Pool as NodePool } from 'pg';
+import type { PoolClient, Pool as NodePool } from 'pg';
 
 import { createHash } from 'node:crypto';
 
@@ -81,12 +81,10 @@ function assertRegistryShape(migrations: Migration[], label: string) {
   });
 }
 
-type ClientLike = Awaited<ReturnType<PoolLike['connect']>>;
-
 /** Applies one migration transactionally and journals it. A best-effort
  * failure warns and leaves it un-journaled (retried next boot); a strict
  * failure aborts startup. */
-async function applyOne(client: ClientLike, migration: Migration, label: string) {
+async function applyOne(client: PoolClient, migration: Migration, label: string) {
   try {
     await client.query('BEGIN');
     await client.query(migration.sql);
@@ -109,6 +107,11 @@ async function applyOne(client: ClientLike, migration: Migration, label: string)
       );
       return;
     }
+    // Log the original pg error first: its code/detail/position pinpoint the
+    // failing statement inside a multi-statement migration (the flattened
+    // message below can't).
+    // eslint-disable-next-line no-console
+    console.error(`[${label}] migration ${migration.id} failed:`, error);
     throw new Error(
       `[${label}] migration ${migration.id} failed — refusing to start: ${
         error instanceof Error ? error.message : String(error)
@@ -126,16 +129,25 @@ export async function runMigrations(pool: PoolLike, migrations: Migration[], lab
     try {
       await client.query('SELECT pg_advisory_lock($1)', [lockKeyOf(label)]);
       locked = true;
-    } catch {
+    } catch (error) {
       // pg-mem implements no advisory locks; tests are single-writer anyway.
+      // On real Postgres a failed acquisition must abort — proceeding lockless
+      // would let two concurrently booting instances race the same journal,
+      // which is exactly what the lock exists to prevent.
+      if (process.env.NODE_ENV !== 'test') {
+        throw error;
+      }
     }
 
     // Guarded create instead of a bare IF NOT EXISTS: pg-mem raises
     // "Not supported" when it re-parses an IF NOT EXISTS CREATE for a table
-    // that already exists (real Postgres no-ops it). One schema per database
-    // here, so the name-only lookup is unambiguous.
+    // that already exists (real Postgres no-ops it). information_schema is
+    // database-wide, so scope to the schema we actually operate in ('public' —
+    // both app databases are single-public-schema; pg-mem uses it too), or a
+    // foreign tool's schema_migrations elsewhere in the DB would make us skip
+    // creating ours and crash on the journal SELECT below.
     const journalExists = await client.query(
-      "SELECT 1 FROM information_schema.tables WHERE table_name = 'schema_migrations'"
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'schema_migrations'"
     );
     if (journalExists.rows.length === 0) {
       await client.query(JOURNAL_SQL);

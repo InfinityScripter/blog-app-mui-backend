@@ -3,7 +3,9 @@ import type { Migration } from './runner';
 // Migration registry for the DOGS-TEACHER database (dogs-db.ts) — a separate
 // physical database (DOGS_DATABASE_URL), so it keeps its own registry and its
 // own schema_migrations journal. Same rules as main.ts: append-only, applied
-// sql is frozen.
+// sql is frozen. Ids carry a dogs_ marker so that even a misconfig pointing
+// both DATABASE_URLs at one physical database cannot collide the two
+// registries' histories in the shared journal table.
 
 const baselineSql = `
   CREATE TABLE IF NOT EXISTS dogs_clients (
@@ -70,7 +72,7 @@ const baselineSql = `
 `;
 
 export const DOGS_MIGRATIONS: Migration[] = [
-  { id: '0001_baseline', sql: baselineSql },
+  { id: '0001_dogs_baseline', sql: baselineSql },
   {
     // dogs_clients.email shipped after the table did — legacy prod tables need
     // the explicit ADD COLUMN (baseline's CREATE TABLE is a no-op for them).

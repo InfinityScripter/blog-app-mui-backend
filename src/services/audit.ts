@@ -6,7 +6,7 @@ import { MAX_LIMIT } from '@/src/constants/pagination';
 
 // Audit trail of business actions. No HTTP. Fire-and-forget: record() NEVER
 // throws and is NEVER awaited in the business path — an audit failure must not
-// break or roll back the action it describes (best-effort, like applySafeMigrations).
+// break or roll back the action it describes (best-effort, like the bestEffort migrations in src/lib/migrations).
 // Contracts live in src/types/audit.ts.
 
 const INSERT_SQL = `
