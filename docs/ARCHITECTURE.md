@@ -111,7 +111,9 @@ Rules that make this safe:
   `docs/*.sql` (see `2026-06-20-prod-email-dedup.sql`,
   `2026-06-30-prod-dogs-slot-dedup.sql`), run manually against prod with a
   backup taken first, and only then may `schemaSql` assume the result (e.g. the
-  `users_email_lower_unique` index guarded by a duplicate check in `db.ts`).
+  `users_email_lower_unique` index is created in a try/catch in `db.ts` — a
+  boot against a database still holding pre-dedup duplicates logs and skips
+  it instead of crashing).
 
 Revisit (switch to numbered migrations) when either happens: a change cannot be
 written idempotently/add-only, or the app runs in more than one instance so
