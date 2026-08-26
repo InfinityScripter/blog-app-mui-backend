@@ -48,14 +48,8 @@ export function validateBodyByMethod(schemas: Partial<Record<string, ZodType>>) 
     if (!schema) {
       return handler(req, res);
     }
-    const result = schema.safeParse(req.body);
-    if (!result.success) {
-      const first = result.error.issues[0];
-      const path = first?.path.join('.');
-      const message = first ? `${path ? `${path}: ` : ''}${first.message}` : 'Invalid request body';
-      return res.status(HTTP.BAD_REQUEST).json({ success: false, message });
-    }
-    req.body = result.data;
-    return handler(req, res);
+    // Delegate so the 400 contract (first-issue message, { success:false })
+    // has exactly one implementation.
+    return validateBody(schema)(handler)(req, res);
   };
 }

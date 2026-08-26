@@ -179,7 +179,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          existing=$(gh issue list --repo "${{ github.repository }}" --label prod-smoke --state open --json number --jq '.[0].number' || true)
+          existing=$(gh issue list --repo "${{ github.repository }}" --label prod-smoke --state open --author "app/github-actions" --json number --jq '.[0].number' || true)
           if [ -n "$existing" ] && [ "$existing" != "null" ]; then
             gh issue close "$existing" --repo "${{ github.repository }}" \
               --comment "Смоук снова зелёный ($(date -u '+%Y-%m-%d %H:%M UTC')): все проверки прошли. Закрываю автоматически. Ран: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

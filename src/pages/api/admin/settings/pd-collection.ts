@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(HTTP.METHOD_NOT_ALLOWED).json({ message: MSG.METHOD_NOT_ALLOWED });
   }
   try {
-    const body = req.body as { enabled: boolean };
+    const { body } = req;
     await settingsService.setFlag('pdCollection', body.enabled);
     emitAudit(req, {
       action: 'settings.pd_collection_toggled',

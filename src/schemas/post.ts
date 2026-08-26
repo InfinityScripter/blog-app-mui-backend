@@ -5,8 +5,10 @@ import { z } from 'zod';
 // schemas guarantee the TYPES at the HTTP boundary, so a numeric title or an
 // object in `tags` never reaches the builder/service.
 
-/** CSV string ("ai,новости") or array — post-payload's parseStringArray takes both. */
-const stringArrayOrCsv = z.union([z.array(z.string()), z.string()]);
+/** CSV string ("ai,новости") or array — post-payload's parseStringArray takes both.
+ * null is accepted where the pre-zod code tolerated it: a null patch value
+ * historically cleared the field to [] in the payload builder. */
+const stringArrayOrCsv = z.union([z.array(z.string()), z.string(), z.null()]);
 
 const publishField = z.enum(['draft', 'published']);
 
@@ -48,23 +50,26 @@ export const setPublishSchema = z.object({ publish: publishField });
 
 // Comment bodies (/api/post/[id]/comments) — one schema per method.
 
+// nullish (not optional): clients serialize "absent" as explicit null
+// (e.g. { parentCommentId: null } for a top-level comment), and the pre-zod
+// handlers tolerated that — `if (!parentCommentId)`, `tagUser || undefined`.
 export const addCommentSchema = z.object({
   message: z.string().trim().min(1),
-  parentCommentId: z.string().optional(),
-  tagUser: z.string().optional(),
+  parentCommentId: z.string().nullish(),
+  tagUser: z.string().nullish(),
 });
 
 export const editCommentSchema = z.object({
   commentId: z.string().min(1),
   message: z.string().trim().min(1),
-  isReply: z.boolean().optional(),
-  parentCommentId: z.string().optional(),
+  isReply: z.boolean().nullish(),
+  parentCommentId: z.string().nullish(),
 });
 
 export const deleteCommentSchema = z.object({
   commentId: z.string().min(1),
-  isReply: z.boolean().optional(),
-  parentCommentId: z.string().optional(),
+  isReply: z.boolean().nullish(),
+  parentCommentId: z.string().nullish(),
 });
 
 export type NewPostBody = z.infer<typeof newPostSchema>;
