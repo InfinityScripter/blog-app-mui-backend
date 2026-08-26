@@ -1,5 +1,12 @@
 # Bug-class audit — 2026-06-20
 
+> **Статус (2026-08-26): выполнено.** Email-нормализация +
+> `users_email_lower_unique` — есть; lockout — `services/auth.ts`;
+> enumeration-нейтральные ответы — есть; индексы — есть. 3.2 закрыт
+> версионированными миграциями (`src/lib/migrations/`, журнал
+> `schema_migrations`) — см. `docs/ARCHITECTURE.md`, раздел «Schema
+> management». Остаток валидации — BACKLOG.md, B-2.
+
 Архитектурный аудит классов багов, спровоцированный реальным прод-багом:
 в таблице `users` живут **два аккаунта одного человека** — `Mtal-va@mail.ru` и
 `mtal-va@mail.ru`. Причина — email хранится и сравнивается **регистрозависимо**,

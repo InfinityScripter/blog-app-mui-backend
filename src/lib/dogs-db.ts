@@ -2,134 +2,18 @@ import type { QueryResult, QueryResultRow, Pool as NodePool } from 'pg';
 
 import { newDb } from 'pg-mem';
 import uuidv4 from '@/src/utils/uuidv4';
+import { runMigrations } from '@/src/lib/migrations/runner';
+import { DOGS_MIGRATIONS } from '@/src/lib/migrations/dogs';
 
 const DEFAULT_DOGS_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/dogs_teacher';
 
-const dogsSchemaSql = `
-  CREATE TABLE IF NOT EXISTS dogs_clients (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    phone_normalized TEXT NOT NULL UNIQUE,
-    email TEXT,
-    access_token TEXT NOT NULL UNIQUE,
-    telegram_user_id TEXT UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS dogs_booking_slots (
-    id TEXT PRIMARY KEY,
-    starts_at TIMESTAMPTZ NOT NULL,
-    ends_at TIMESTAMPTZ NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (ends_at > starts_at)
-  );
-
-  CREATE INDEX IF NOT EXISTS dogs_booking_slots_active_starts_at_idx
-    ON dogs_booking_slots (is_active, starts_at);
-
-  CREATE TABLE IF NOT EXISTS dogs_booking_requests (
-    id TEXT PRIMARY KEY,
-    client_id TEXT NOT NULL REFERENCES dogs_clients(id) ON DELETE CASCADE,
-    slot_id TEXT NOT NULL REFERENCES dogs_booking_slots(id) ON DELETE CASCADE,
-    service_id TEXT NOT NULL,
-    dog TEXT NOT NULL DEFAULT '',
-    comment TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'declined', 'cancelled')),
-    source TEXT NOT NULL DEFAULT 'site' CHECK (source IN ('site', 'telegram')),
-    personal_data_consent_at TIMESTAMPTZ,
-    personal_data_consent_version TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE INDEX IF NOT EXISTS dogs_booking_requests_client_id_idx
-    ON dogs_booking_requests (client_id);
-  CREATE INDEX IF NOT EXISTS dogs_booking_requests_status_idx
-    ON dogs_booking_requests (status);
-  CREATE INDEX IF NOT EXISTS dogs_booking_requests_slot_id_idx
-    ON dogs_booking_requests (slot_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS dogs_booking_requests_active_slot_unique
-    ON dogs_booking_requests (slot_id)
-    WHERE status IN ('pending', 'confirmed');
-
-  CREATE TABLE IF NOT EXISTS dogs_push_subscriptions (
-    id TEXT PRIMARY KEY,
-    client_id TEXT NOT NULL REFERENCES dogs_clients(id) ON DELETE CASCADE,
-    endpoint TEXT NOT NULL UNIQUE,
-    p256dh TEXT NOT NULL,
-    auth TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE INDEX IF NOT EXISTS dogs_push_subscriptions_client_id_idx
-    ON dogs_push_subscriptions (client_id);
-`;
-
 type PoolLike = NodePool;
 
-/**
- * Best-effort migrations applied on top of dogsSchemaSql. They MUST be additive
- * and idempotent because CREATE TABLE IF NOT EXISTS never alters an existing
- * table — new columns/indexes added to the schema literal would silently NOT
- * land on an already-provisioned prod DB. Each step is guarded so a legacy-data
- * failure logs and continues instead of aborting startup.
- */
-async function applyDogsSafeMigrations(pool: PoolLike) {
-  // dogs_clients.email — added after the table first shipped, so existing prod
-  // tables need an explicit ADD COLUMN (the CREATE TABLE literal is a no-op for
-  // them). Idempotent; required by getClientPortal / listAdminBookings selects.
-  try {
-    await pool.query('ALTER TABLE dogs_clients ADD COLUMN IF NOT EXISTS email TEXT');
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[dogs-db] Failed to add dogs_clients.email column.',
-      error instanceof Error ? error.message : error
-    );
-  }
-
-  // dogs_booking_requests.reminder_sent_at — at-most-once claim flag for the
-  // lesson reminder scheduler (src/services/dogs-reminders.ts). NULL = the
-  // reminder for this request has not been sent yet.
-  try {
-    await pool.query(
-      'ALTER TABLE dogs_booking_requests ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ'
-    );
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[dogs-db] Failed to add dogs_booking_requests.reminder_sent_at column.',
-      error instanceof Error ? error.message : error
-    );
-  }
-
-  // dogs_booking_requests.personal_data_consent_{at,version} — proof of the
-  // 152-ФЗ consent given with each booking submitted from the site. NULL on
-  // rows created before the consent checkbox shipped (2026-08-01).
-  try {
-    await pool.query(
-      'ALTER TABLE dogs_booking_requests ADD COLUMN IF NOT EXISTS personal_data_consent_at TIMESTAMPTZ'
-    );
-    await pool.query(
-      'ALTER TABLE dogs_booking_requests ADD COLUMN IF NOT EXISTS personal_data_consent_version TEXT'
-    );
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[dogs-db] Failed to add dogs_booking_requests personal-data-consent columns.',
-      error instanceof Error ? error.message : error
-    );
-  }
-
-  // Unlike the best-effort steps above, the consent columns are load-bearing:
-  // every booking INSERT references them, so a silently missing column would
-  // 500 the whole public booking flow with only a startup warn as the trace.
-  // Verify they exist and refuse to start otherwise — a crash is visible, a
-  // warn line is not.
+// The consent columns are load-bearing: every booking INSERT references them,
+// so a silently missing column would 500 the whole public booking flow with
+// only a startup warn as the trace. Verify after migrating and refuse to start
+// otherwise — a crash is visible, a warn line is not.
+async function verifyDogsCriticalColumns(pool: PoolLike) {
   const consentColumns = await pool.query(
     `SELECT column_name FROM information_schema.columns
      WHERE table_name = 'dogs_booking_requests'
@@ -138,19 +22,6 @@ async function applyDogsSafeMigrations(pool: PoolLike) {
   if (consentColumns.rows.length !== 2) {
     throw new Error(
       '[dogs-db] dogs_booking_requests is missing the personal-data-consent columns after migration'
-    );
-  }
-
-  try {
-    await pool.query(
-      'CREATE UNIQUE INDEX IF NOT EXISTS dogs_booking_slots_starts_at_unique ON dogs_booking_slots (starts_at)'
-    );
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[dogs-db] Skipping dogs_booking_slots_starts_at_unique index (likely duplicate slot start times). ' +
-        'Clean duplicates, then restart to enforce slot uniqueness.',
-      error instanceof Error ? error.message : error
     );
   }
 }
@@ -181,8 +52,8 @@ async function createPool(): Promise<PoolLike> {
 
     const adapter = db.adapters.createPg();
     const pool = new adapter.Pool();
-    await pool.query(dogsSchemaSql);
-    await applyDogsSafeMigrations(pool);
+    await runMigrations(pool, DOGS_MIGRATIONS, 'dogs-db');
+    await verifyDogsCriticalColumns(pool);
     return pool;
   }
 
@@ -191,8 +62,8 @@ async function createPool(): Promise<PoolLike> {
     connectionString: process.env.DOGS_DATABASE_URL || DEFAULT_DOGS_DATABASE_URL,
   });
 
-  await pool.query(dogsSchemaSql);
-  await applyDogsSafeMigrations(pool);
+  await runMigrations(pool, DOGS_MIGRATIONS, 'dogs-db');
+  await verifyDogsCriticalColumns(pool);
   return pool;
 }
 

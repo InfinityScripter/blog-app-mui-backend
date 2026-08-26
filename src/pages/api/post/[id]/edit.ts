@@ -4,9 +4,11 @@ import dbConnect from '@/src/lib/db';
 import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { postService } from '@/src/services/post';
+import { editPostSchema } from '@/src/schemas/post';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireAuth } from '@/src/middlewares/require-auth';
+import { validateBodyByMethod } from '@/src/middlewares/validate';
 
 // Thin route: requireAuth → postService.updatePost → respond. Keeps { post }.
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -32,4 +34,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default requireAuth(handler);
+export default requireAuth(
+  validateBodyByMethod({ [HTTP_METHOD.PATCH]: editPostSchema, [HTTP_METHOD.PUT]: editPostSchema })(
+    handler
+  )
+);

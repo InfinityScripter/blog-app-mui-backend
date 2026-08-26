@@ -168,3 +168,19 @@ jobs:
             gh label create prod-smoke --repo "${{ github.repository }}" --color B60205 --description "Автосмоук прода упал" 2>/dev/null || true
             gh issue create --repo "${{ github.repository }}" --title "$title" --label prod-smoke --body "$body"
           fi
+
+      # Симметрия к шагу выше: фейл открывает/комментирует issue, значит
+      # восстановление обязано его закрывать — иначе issue висит открытым
+      # неделями после починки (как #18), а «открытый prod-smoke issue»
+      # перестаёт означать «прод сейчас лежит».
+      - name: Close recovered prod-smoke issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --repo "${{ github.repository }}" --label prod-smoke --state open --author "app/github-actions" --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ] && [ "$existing" != "null" ]; then
+            gh issue close "$existing" --repo "${{ github.repository }}" \
+              --comment "Смоук снова зелёный ($(date -u '+%Y-%m-%d %H:%M UTC')): все проверки прошли. Закрываю автоматически. Ран: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi

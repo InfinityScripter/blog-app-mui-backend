@@ -7,8 +7,10 @@ import { MSG } from '@/src/constants/messages';
 import { SALT_ROUNDS } from '@/src/constants/auth';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { updatePasswordSchema } from '@/src/schemas/auth';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { normalizeEmail } from '@/src/utils/normalize-email';
+import { validateBodyByMethod } from '@/src/middlewares/validate';
 
 // Completes the reset-by-code flow: reset-password.ts emails the code, this
 // route exchanges a valid code for a new password. Codes/emails are never
@@ -21,12 +23,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
     const { email, code, password } = req.body;
-
-    if (!email || !code || !password) {
-      return res.status(HTTP.BAD_REQUEST).json({
-        message: 'Email, verification code, and new password are required',
-      });
-    }
 
     const user = await User.findOne({
       // Normalize like the other email entry points (reset-password.ts,
@@ -82,4 +78,4 @@ export default withRateLimit({
   routeName: 'auth.update-password',
   windowMs: 60_000,
   max: 10,
-})(handler);
+})(validateBodyByMethod({ [HTTP_METHOD.POST]: updatePasswordSchema })(handler));
