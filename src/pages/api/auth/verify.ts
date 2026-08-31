@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { MSG } from '@/src/constants/messages';
+import { safeEqual } from '@/src/utils/safe-equal';
 import { emitAudit } from '@/src/utils/audit-context';
 import { verifyEmailSchema } from '@/src/schemas/auth';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
@@ -29,8 +30,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is already verified' });
     }
 
-    // codeField already normalized `code` to a trimmed string.
-    if (user.emailVerificationCode !== code) {
+    // codeField already normalized `code` to a trimmed string. Constant-time
+    // compare: the code is a 6-digit secret an attacker probes repeatedly
+    // (rate-limited, but defense in depth costs one line).
+    if (!user.emailVerificationCode || !safeEqual(code, user.emailVerificationCode)) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid verification code' });
     }
 

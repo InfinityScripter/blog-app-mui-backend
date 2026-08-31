@@ -2,11 +2,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { postListQuerySchema } from '@/src/schemas/post';
+import { validateQuery } from '@/src/middlewares/validate';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { withMethods } from '@/src/middlewares/with-methods';
 import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
 import { translatePosts } from '@/src/services/post-translation';
 import { postService, stripListContent } from '@/src/services/post';
@@ -89,4 +92,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 // ~60/min per IP — generous: SWR revalidates this feed frequently.
-export default withRateLimit({ routeName: 'post.list', windowMs: 60_000, max: 60 })(handler);
+export default withRateLimit({ routeName: 'post.list', windowMs: 60_000, max: 60 })(
+  withMethods([HTTP_METHOD.GET])(validateQuery(postListQuerySchema)(handler))
+);
