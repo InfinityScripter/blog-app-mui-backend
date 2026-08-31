@@ -54,18 +54,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (!started) {
     // Already running — not an error; report it so a caller can poll/retry.
-    return ok(res, { started: false, running: true, mode }, {
-      status: HTTP.OK,
-      message: 'A translation warmup is already running.',
-    });
+    return ok(
+      res,
+      { started: false, running: true, mode },
+      {
+        status: HTTP.OK,
+        message: 'A translation warmup is already running.',
+      }
+    );
   }
 
   // 202 Accepted: the warm runs detached; watch the server logs ([warmup] …) for
   // progress and the final counts.
-  return ok(res, { started: true, running: isWarmupRunning(), mode }, {
-    status: HTTP.ACCEPTED,
-    message: `Translation warmup started (mode=${mode}). Runs in the background.`,
-  });
+  return ok(
+    res,
+    { started: true, running: isWarmupRunning(), mode },
+    {
+      status: HTTP.ACCEPTED,
+      message: `Translation warmup started (mode=${mode}). Runs in the background.`,
+    }
+  );
 }
 
 export default requireAuth(requireAdmin(handler));
