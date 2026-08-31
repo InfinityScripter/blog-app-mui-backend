@@ -18,21 +18,18 @@ issues GitHub, сверка планов с фактическим кодом. �
 - **Фикс:** шаг auto-close в `prod-smoke.yml` (в этой ветке). После мержа в
   `main` ближайший зелёный ран закроет #18 сам.
 
-### B-2. Zod-валидация: остаток
+### B-4. Наблюдаемость: console.* вместо структурированного логгера
 
-Закрыто в этой ветке: домен `post` (new/edit/comments/publish),
-`admin` (posts/[id], settings/auto-publish, settings/pd-collection),
-остаток `auth` (reset-password, update-password, resend-verification, verify).
+~50 точек `console.log/warn/error` по сервисам и роутам. Работает, но грепать
+прод-инциденты тяжело. Кандидат: pino с request_id (audit-context уже несёт
+его). Средний размер, низкая срочность.
 
-Осталось (низкий приоритет, по мере надобности):
+### B-5. Миграционный CLI-шаг деплоя
 
-- Query-валидация read-роутов (`post/list`, `post/search`, `post/details`,
-  `post/latest`) — сейчас ручной парс с клампами (`parsePositiveInt`,
-  `typeof === 'string'`), работает корректно; zod здесь — только унификация.
-- OAuth-коллбеки (`auth/google/callback`, `auth/yandex/callback`) — query
-  приходит от провайдера, валидируется фактическим обменом кода на токен.
-- `admin/bot/*`, `admin/audit/ingest`, `dogs/telegram/webhook` — свои
-  контракты (бот-токен, telegram secret); ревизия по мере изменений.
+Сейчас миграции накатываются на буте (осознанно, single-instance). При
+переходе на multi-instance или при желании гонять миграции в CI — вынести
+`runMigrations` в отдельный entrypoint (`yarn migrate`). Путь описан в
+ARCHITECTURE.md → Schema management.
 
 ## Закрыто ранее (сверка аудитов с кодом, 2026-08-26)
 

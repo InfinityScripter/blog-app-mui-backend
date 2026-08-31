@@ -24,7 +24,11 @@ const coverLocation = z
   );
 const coverField = z.union([coverLocation, z.null(), z.object({ path: coverLocation.optional() })]);
 
-const favoritePersonField = z.array(z.object({ name: z.string(), avatarUrl: z.string() }));
+// avatarUrl бывает null у безаватарных пользователей (users.avatar_url
+// nullable) — сохранённые favoritePerson-записи с null обязаны проходить edit.
+const favoritePersonField = z.array(
+  z.object({ name: z.string(), avatarUrl: z.string().nullish() })
+);
 
 // Shared field set of the create/patch payload (everything optional here;
 // create tightens what it requires below). Unknown keys are stripped by zod,

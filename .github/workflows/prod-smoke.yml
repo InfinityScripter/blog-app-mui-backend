@@ -161,7 +161,7 @@ jobs:
           Ран: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           Куда смотреть: nginx access.log и \`journalctl -u blog-backend\` на VDS (ssh blog), Vercel deployments фронта. Плейбук инцидента: memory deploy-outage-window."
-          existing=$(gh issue list --repo "${{ github.repository }}" --label prod-smoke --state open --json number --jq '.[0].number' || true)
+          existing=$(gh issue list --repo "${{ github.repository }}" --label prod-smoke --state open --author "app/github-actions" --json number --jq '.[0].number' || true)
           if [ -n "$existing" ] && [ "$existing" != "null" ]; then
             gh issue comment "$existing" --repo "${{ github.repository }}" --body "$body"
           else
