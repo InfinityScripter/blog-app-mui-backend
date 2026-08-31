@@ -1,0 +1,52 @@
+name: PR Checks
+
+# До этого воркфлоу у PR не было НИКАКИХ проверок: backend-cicd деплоит только
+# по push в main, prod-smoke ходит по расписанию. Любой PR показывал «зелёный»
+# просто потому, что проверять было нечему (так в PR #19 чуть не уехали
+# сломанные типы — их держал только локальный запуск tsc).
+#
+# tsc здесь НАМЕРЕННО без --incremental: протухший .tsbuildinfo умеет молча
+# глотать ошибки (см. fix ae8e63c), а в CI инкрементальность и не нужна.
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install (frozen lockfile)
+        run: corepack yarn@1.22.22 install --frozen-lockfile
+
+      - name: Prettier
+        run: yarn fm:check
+
+      - name: ESLint
+        run: yarn lint
+
+      - name: TypeScript (no incremental cache)
+        run: yarn tsc --noEmit
+
+      - name: Tests
+        run: yarn jest --ci
+
+      - name: Production build
+        run: yarn build
