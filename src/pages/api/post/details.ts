@@ -7,7 +7,10 @@ import { MSG } from '@/src/constants/messages';
 import { sendError } from '@/src/utils/response';
 import { parseLang } from '@/src/constants/i18n';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { validateQuery } from '@/src/middlewares/validate';
+import { postDetailsQuerySchema } from '@/src/schemas/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { withMethods } from '@/src/middlewares/with-methods';
 import { getTranslatedPostFields } from '@/src/services/post-translation';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -67,4 +70,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 // 60/min per IP, как post.list: единственный публичный пост-роут без капа —
 // холодный ?lang= тянет DeepL синхронно, без лимита это дешёвый способ жечь
 // квоту и воркеры.
-export default withRateLimit({ routeName: 'post.details', windowMs: 60_000, max: 60 })(handler);
+export default withRateLimit({ routeName: 'post.details', windowMs: 60_000, max: 60 })(
+  withMethods([HTTP_METHOD.GET])(validateQuery(postDetailsQuerySchema)(handler))
+);

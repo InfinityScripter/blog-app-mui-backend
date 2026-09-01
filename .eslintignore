@@ -34,3 +34,6 @@ public/*
 
 # misc
 **/jsconfig.json
+
+# Конфиги вне tsconfig.jest.json — typed-linting на них падает parserOptions.project-ошибкой
+jest.config.js

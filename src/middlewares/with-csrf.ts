@@ -13,11 +13,7 @@ import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 // else (the browser SPA, which authenticates via the access_token cookie) must
 // present a matching double-submit CSRF token.
 
-const SAFE_METHODS: readonly string[] = [
-  HTTP_METHOD.GET,
-  HTTP_METHOD.HEAD,
-  HTTP_METHOD.OPTIONS,
-];
+const SAFE_METHODS: readonly string[] = [HTTP_METHOD.GET, HTTP_METHOD.HEAD, HTTP_METHOD.OPTIONS];
 
 export const withCsrf =
   (handler: NextApiHandler) => (req: NextApiRequest, res: NextApiResponse) => {

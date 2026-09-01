@@ -14,13 +14,13 @@ describe('getTrustedClientIp (rate-limit key, 1 trusted proxy)', () => {
 
   it('ignores spoofed LEFTMOST entries and returns the proxy-appended (rightmost) IP', () => {
     // nginx appends the real peer at the right; that is the trusted client IP.
-    expect(
-      getTrustedClientIp(reqWith({ 'x-forwarded-for': 'evil-spoof, 9.9.9.9' }))
-    ).toBe('9.9.9.9');
+    expect(getTrustedClientIp(reqWith({ 'x-forwarded-for': 'evil-spoof, 9.9.9.9' }))).toBe(
+      '9.9.9.9'
+    );
     // Rotating the leftmost spoof does not change the result → same rate bucket.
-    expect(
-      getTrustedClientIp(reqWith({ 'x-forwarded-for': 'other-spoof, 9.9.9.9' }))
-    ).toBe('9.9.9.9');
+    expect(getTrustedClientIp(reqWith({ 'x-forwarded-for': 'other-spoof, 9.9.9.9' }))).toBe(
+      '9.9.9.9'
+    );
   });
 
   it('falls back to X-Real-IP then socket when XFF is absent', () => {

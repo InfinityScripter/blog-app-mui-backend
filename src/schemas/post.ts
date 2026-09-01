@@ -12,12 +12,23 @@ const stringArrayOrCsv = z.union([z.array(z.string()), z.string(), z.null()]);
 
 const publishField = z.enum(['draft', 'published']);
 
-/** Plain URL string, explicit null, or the upload-widget object ({ path }). */
-const coverField = z.union([z.string(), z.null(), z.object({ path: z.string().optional() })]);
+/** Cover location: http(s) URL, site-relative path, empty string ("no cover" —
+ * the payload builder falls back), explicit null, or the upload-widget object.
+ * The refine shuts the stored-XSS door: a `javascript:`/`data:` value would be
+ * rendered into the post card's image URL as-is. */
+const coverLocation = z
+  .string()
+  .refine(
+    (value) => value.trim() === '' || /^https?:\/\//i.test(value) || value.startsWith('/'),
+    'coverUrl must be an http(s) URL or a site-relative path'
+  );
+const coverField = z.union([coverLocation, z.null(), z.object({ path: coverLocation.optional() })]);
 
-const countField = z.number().int().nonnegative();
-
-const favoritePersonField = z.array(z.object({ name: z.string(), avatarUrl: z.string() }));
+// avatarUrl бывает null у безаватарных пользователей (users.avatar_url
+// nullable) — сохранённые favoritePerson-записи с null обязаны проходить edit.
+const favoritePersonField = z.array(
+  z.object({ name: z.string(), avatarUrl: z.string().nullish() })
+);
 
 // Shared field set of the create/patch payload (everything optional here;
 // create tightens what it requires below). Unknown keys are stripped by zod,
@@ -30,10 +41,10 @@ const postFields = z.object({
   tags: stringArrayOrCsv,
   metaTitle: z.string(),
   coverUrl: coverField,
-  totalViews: countField,
-  totalShares: countField,
-  totalComments: countField,
-  totalFavorites: countField,
+  // Счётчики (totalViews/Shares/Comments/Favorites) НАМЕРЕННО не в схеме:
+  // zod их молча вырезает из тела, так что владелец поста не может накрутить
+  // себе просмотры через edit. Счётчиками управляют свои механизмы:
+  // просмотры — POST /api/post/[id]/view, totalComments — comment-сервис.
   metaDescription: z.string(),
   description: z.string(),
   favoritePerson: favoritePersonField,
@@ -74,3 +85,41 @@ export const deleteCommentSchema = z.object({
 
 export type NewPostBody = z.infer<typeof newPostSchema>;
 export type EditPostBody = z.infer<typeof editPostSchema>;
+
+// ----------------------------------------------------------------------
+// Query schemas for the public post read routes. Values stay STRINGS — the
+// handlers keep their existing parsing/clamping (parsePositiveInt, parseLang);
+// the schema's job is to reject malformed shapes (arrays via ?page=1&page=2,
+// non-digit page numbers) with a 400 instead of silently coercing them.
+// Unknown query keys (utm_* tracking tails and the like) are stripped, not
+// rejected.
+
+/** Digits-only string; the handler still clamps the parsed number. */
+const digitString = z.string().regex(/^\d+$/, 'must be a positive integer');
+
+/** parseLang narrows unknown values to the default locale itself. */
+const langQuery = z.string().optional();
+
+export const postListQuerySchema = z.object({
+  page: digitString.optional(),
+  limit: digitString.optional(),
+  tag: z.string().optional(),
+  excludeTag: z.string().optional(),
+  lang: langQuery,
+});
+
+export const postSearchQuerySchema = z.object({
+  query: z.string().optional(),
+  dashboard: z.enum(['true', 'false']).optional(),
+  lang: langQuery,
+});
+
+export const postDetailsQuerySchema = z.object({
+  id: z.string().min(1),
+  lang: langQuery,
+});
+
+export const postLatestQuerySchema = z.object({
+  title: z.string().trim().min(1),
+  lang: langQuery,
+});

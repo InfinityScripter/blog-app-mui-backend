@@ -5,6 +5,7 @@ import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { MSG } from '@/src/constants/messages';
 import { SALT_ROUNDS } from '@/src/constants/auth';
+import { safeEqual } from '@/src/utils/safe-equal';
 import { emitAudit } from '@/src/utils/audit-context';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { updatePasswordSchema } from '@/src/schemas/auth';
@@ -29,11 +30,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // verify.ts). The lookup is already case-insensitive at the model layer
       // (LOWER(email)=LOWER($n)); this just keeps every route consistent.
       email: normalizeEmail(email),
-      passwordResetCode: code,
       passwordResetExpires: { $gt: new Date() },
     });
 
-    if (!user) {
+    // Код сравнивается ЗДЕСЬ константно по времени, а не в SQL WHERE: это
+    // секрет захвата аккаунта, который атакующий перебирает; verify.ts делает
+    // то же для кода верификации. Ответ одинаковый для «нет юзера/кода
+    // просрочен» и «код не совпал» — без оракула существования.
+    if (!user || !user.passwordResetCode || !safeEqual(code, user.passwordResetCode)) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid or expired reset code' });
     }
 
