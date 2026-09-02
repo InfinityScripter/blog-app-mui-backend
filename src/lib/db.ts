@@ -183,6 +183,32 @@ const schemaSql = `
   CREATE INDEX IF NOT EXISTS model_releases_released_at_idx ON model_releases (released_at DESC);
   CREATE INDEX IF NOT EXISTS model_releases_vendor_idx ON model_releases (vendor);
 
+  -- Timeline entries published by the ai-changelog-watcher job (editorial text
+  -- for models that have no hand-written entry in the frontend's static data).
+  -- Same shape as the frontend LlmModel. release_date is a 'YYYY-MM-DD' string
+  -- on purpose: a DATE column round-trips through pg as a local-midnight Date
+  -- and shifts by a day on toISOString().
+  CREATE TABLE IF NOT EXISTS llm_timeline_models (
+    id TEXT PRIMARY KEY,
+    slug TEXT NOT NULL,
+    vendor TEXT NOT NULL,
+    name TEXT NOT NULL,
+    release_date TEXT NOT NULL,
+    context_tokens INTEGER,
+    params TEXT,
+    highlight TEXT NOT NULL,
+    description TEXT NOT NULL,
+    capabilities JSONB NOT NULL DEFAULT '[]'::jsonb,
+    source_url TEXT NOT NULL,
+    wiki_url TEXT,
+    fun_fact TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS llm_timeline_models_slug_unique ON llm_timeline_models (slug);
+  CREATE INDEX IF NOT EXISTS llm_timeline_models_release_date_idx ON llm_timeline_models (release_date);
+
   -- Newsletter subscribers (double-opt-in). TEXT pk + app-side uuidv4 (matches
   -- users/posts). confirm_token/unsubscribe_token are opaque uuids, never
   -- returned in any API response. All indexes are plain btree (pg-mem + boot safe).
@@ -428,6 +454,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM audit_logs');
   await pool.query('DELETE FROM llm_stats_snapshots');
   await pool.query('DELETE FROM model_releases');
+  await pool.query('DELETE FROM llm_timeline_models');
   await pool.query('DELETE FROM subscribers');
   await pool.query('DELETE FROM refresh_tokens');
   await pool.query('DELETE FROM post_translations');

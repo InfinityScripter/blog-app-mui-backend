@@ -7,6 +7,7 @@ import { slugify } from '@/src/utils/slug';
 import { AppError } from '@/src/types/api';
 import { HTTP } from '@/src/constants/http';
 import { MAX_LIMIT } from '@/src/constants/pagination';
+import { isUniqueViolation } from '@/src/utils/pg-errors';
 
 // AI model release changelog. Raw dbQuery service mapping snake_case rows to
 // the frozen ModelRelease contract (camelCase, ISO timestamps, null for
@@ -60,10 +61,6 @@ function mapRow(row: ModelReleaseRow): ModelRelease {
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
 }
 
 async function list(params: ListModelReleasesQuery = {}) {
