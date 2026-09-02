@@ -7,8 +7,10 @@ import User from '@/src/models/User';
 import { randomInt } from 'node:crypto';
 import { MSG } from '@/src/constants/messages';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { resetPasswordSchema } from '@/src/schemas/auth';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { normalizeEmail } from '@/src/utils/normalize-email';
+import { validateBodyByMethod } from '@/src/middlewares/validate';
 
 const NEUTRAL_RESET_MESSAGE =
   'If an account exists for that email, a password reset code has been sent.';
@@ -21,10 +23,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is required' });
-    }
 
     const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) {
@@ -114,4 +112,4 @@ export default withRateLimit({
   routeName: 'auth.reset-password',
   windowMs: 60_000,
   max: 5,
-})(handler);
+})(validateBodyByMethod({ [HTTP_METHOD.POST]: resetPasswordSchema })(handler));

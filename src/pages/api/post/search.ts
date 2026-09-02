@@ -2,11 +2,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { HTTP } from '@/src/constants/http';
 import { verifyToken } from '@/src/lib/jwt';
 import { parseLang } from '@/src/constants/i18n';
 import { sendError } from '@/src/utils/response';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { validateQuery } from '@/src/middlewares/validate';
+import { postSearchQuerySchema } from '@/src/schemas/post';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
+import { withMethods } from '@/src/middlewares/with-methods';
 import { readCookie, ACCESS_COOKIE } from '@/src/lib/cookies';
 import { translatePosts } from '@/src/services/post-translation';
 import { postService, stripListContent } from '@/src/services/post';
@@ -49,4 +52,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 // ~30/min per IP — search is user-typed, so a moderate cap is plenty.
-export default withRateLimit({ routeName: 'post.search', windowMs: 60_000, max: 30 })(handler);
+export default withRateLimit({ routeName: 'post.search', windowMs: 60_000, max: 30 })(
+  withMethods([HTTP_METHOD.GET])(validateQuery(postSearchQuerySchema)(handler))
+);

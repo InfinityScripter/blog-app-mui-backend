@@ -36,3 +36,20 @@ export function validateQuery<T>(schema: ZodType<T>) {
     return handler(req, res);
   };
 }
+
+/**
+ * Per-method body validation for multi-method routes (e.g. POST/PUT/DELETE on
+ * one comments endpoint). Methods absent from the map pass through untouched —
+ * the route's own method check (withMethods or inline 405) still applies.
+ */
+export function validateBodyByMethod(schemas: Partial<Record<string, ZodType>>) {
+  return (handler: NextApiHandler) => async (req: NextApiRequest, res: NextApiResponse) => {
+    const schema = req.method ? schemas[req.method] : undefined;
+    if (!schema) {
+      return handler(req, res);
+    }
+    // Delegate so the 400 contract (first-issue message, { success:false })
+    // has exactly one implementation.
+    return validateBody(schema)(handler)(req, res);
+  };
+}

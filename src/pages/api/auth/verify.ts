@@ -3,10 +3,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import User from '@/src/models/User';
 import { MSG } from '@/src/constants/messages';
+import { safeEqual } from '@/src/utils/safe-equal';
 import { emitAudit } from '@/src/utils/audit-context';
+import { verifyEmailSchema } from '@/src/schemas/auth';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { withRateLimit } from '@/src/middlewares/rate-limit';
 import { normalizeEmail } from '@/src/utils/normalize-email';
+import { validateBodyByMethod } from '@/src/middlewares/validate';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== HTTP_METHOD.POST) {
@@ -18,12 +21,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const { email, code } = req.body;
 
-    if (!email || !code) {
-      return res
-        .status(HTTP.BAD_REQUEST)
-        .json({ message: 'Email and verification code are required' });
-    }
-
     const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'User not found with this email' });
@@ -33,7 +30,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Email is already verified' });
     }
 
-    if (user.emailVerificationCode !== String(code).trim()) {
+    // codeField already normalized `code` to a trimmed string. Constant-time
+    // compare: the code is a 6-digit secret an attacker probes repeatedly
+    // (rate-limited, but defense in depth costs one line).
+    if (!user.emailVerificationCode || !safeEqual(code, user.emailVerificationCode)) {
       return res.status(HTTP.BAD_REQUEST).json({ message: 'Invalid verification code' });
     }
 
@@ -69,4 +69,4 @@ export default withRateLimit({
   routeName: 'auth.verify',
   windowMs: 60_000,
   max: 10,
-})(handler);
+})(validateBodyByMethod({ [HTTP_METHOD.POST]: verifyEmailSchema })(handler));

@@ -1,10 +1,7 @@
 import '@jest/globals';
 import User from '@/src/models/User';
 import { dbQuery } from '@/src/lib/db';
-import RefreshToken, {
-  hashRefreshToken,
-  generateRefreshToken,
-} from '@/src/models/RefreshToken';
+import RefreshToken, { hashRefreshToken, generateRefreshToken } from '@/src/models/RefreshToken';
 
 async function seedUser(id = 'u-refresh-1') {
   await User.create({ _id: id, name: 'RT User', email: `${id}@example.com` });

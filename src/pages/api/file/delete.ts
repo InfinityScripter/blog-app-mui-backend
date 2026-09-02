@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect from '@/src/lib/db';
 import { File } from '@/src/models/File';
 import { MSG } from '@/src/constants/messages';
+import { sendError } from '@/src/utils/response';
 import { HTTP, HTTP_METHOD } from '@/src/constants/http';
 import { requireAuth } from '@/src/middlewares/require-auth';
 
@@ -36,9 +37,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await File.findByIdAndDelete(id);
 
     return res.status(HTTP.OK).json({ message: 'File deleted successfully' });
-  } catch (error: any) {
-    console.error('[File Delete API]:', error);
-    return res.status(HTTP.INTERNAL).json({ message: MSG.INTERNAL, error: error.message });
+  } catch (error) {
+    // sendError logs and returns a neutral 500 — the raw error.message used to
+    // be sent to the client, which leaks internals (paths, SQL) to any caller.
+    return sendError(res, error);
   }
 }
 

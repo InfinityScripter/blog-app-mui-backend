@@ -2,13 +2,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import dbConnect from '@/src/lib/db';
-import { HTTP } from '@/src/constants/http';
 import { sendError } from '@/src/utils/response';
 import { parseLang } from '@/src/constants/i18n';
 import { postService } from '@/src/services/post';
+import { HTTP, HTTP_METHOD } from '@/src/constants/http';
+import { validateQuery } from '@/src/middlewares/validate';
+import { postLatestQuerySchema } from '@/src/schemas/post';
+import { withMethods } from '@/src/middlewares/with-methods';
 import { translatePosts } from '@/src/services/post-translation';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await dbConnect();
     const { title } = req.query;
@@ -29,3 +32,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return sendError(res, error);
   }
 }
+
+export default withMethods([HTTP_METHOD.GET])(validateQuery(postLatestQuerySchema)(handler));

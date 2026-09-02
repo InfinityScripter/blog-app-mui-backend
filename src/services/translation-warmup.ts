@@ -81,25 +81,22 @@ export async function warmFeedTranslations(
 
   const targetLangs = onlyLang ? [onlyLang] : TRANSLATABLE_LANGS;
 
-  const langs = await targetLangs.reduce<Promise<WarmLangStats[]>>(
-    async (accPromise, lang) => {
-      const acc = await accPromise;
-      const stats = await posts.reduce<Promise<WarmLangStats>>(
-        async (statPromise, post) => {
-          const running = await statPromise;
-          const outcome = await warmOne(post, lang, mode);
-          return tally(running, outcome);
-        },
-        Promise.resolve(emptyStats(lang))
-      );
-      // eslint-disable-next-line no-console
-      console.info(
-        `[warmup] ${mode} ${lang}: translated=${stats.translated} cached=${stats.cached} error=${stats.error} of ${posts.length}`
-      );
-      return [...acc, stats];
-    },
-    Promise.resolve([])
-  );
+  const langs = await targetLangs.reduce<Promise<WarmLangStats[]>>(async (accPromise, lang) => {
+    const acc = await accPromise;
+    const stats = await posts.reduce<Promise<WarmLangStats>>(
+      async (statPromise, post) => {
+        const running = await statPromise;
+        const outcome = await warmOne(post, lang, mode);
+        return tally(running, outcome);
+      },
+      Promise.resolve(emptyStats(lang))
+    );
+    // eslint-disable-next-line no-console
+    console.info(
+      `[warmup] ${mode} ${lang}: translated=${stats.translated} cached=${stats.cached} error=${stats.error} of ${posts.length}`
+    );
+    return [...acc, stats];
+  }, Promise.resolve([]));
 
   return {
     mode,
@@ -127,7 +124,10 @@ export function isWarmupRunning(): boolean {
  * it grinds in the background of the long-lived VDS process (no request timeout)
  * and logs its result. Intended for the admin warm endpoint, which acks 202.
  */
-export function runWarmupInBackground(onlyLang?: TranslatableLang, mode: WarmMode = 'summary'): boolean {
+export function runWarmupInBackground(
+  onlyLang?: TranslatableLang,
+  mode: WarmMode = 'summary'
+): boolean {
   if (backgroundRunning) {
     return false;
   }
