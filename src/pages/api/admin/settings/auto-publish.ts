@@ -12,7 +12,11 @@ import { requireAdmin } from '@/src/middlewares/require-admin';
 // The two auto-publish master switches this route can toggle. Kept as a local
 // allow-list (not the full FlagKey union) so this route can never flip an
 // unrelated flag like pdCollection — only the bot's auto-publish switches.
-const AUTO_PUBLISH_KEYS = ['autoPublishReleases', 'autoPublishNews'] as const;
+const AUTO_PUBLISH_KEYS = [
+  'autoPublishReleases',
+  'autoPublishNews',
+  'autoPublishTimeline',
+] as const;
 type AutoPublishKey = (typeof AUTO_PUBLISH_KEYS)[number];
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -34,7 +38,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const body = asRecord(req.body);
     if (!isAutoPublishKey(body.key)) {
-      throw new AppError(HTTP.BAD_REQUEST, 'key must be autoPublishReleases or autoPublishNews');
+      throw new AppError(
+        HTTP.BAD_REQUEST,
+        'key must be autoPublishReleases, autoPublishNews or autoPublishTimeline'
+      );
     }
     if (typeof body.enabled !== 'boolean') {
       throw new AppError(HTTP.BAD_REQUEST, 'enabled must be a boolean');

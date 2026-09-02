@@ -59,12 +59,14 @@ describe('settingsService', () => {
     await settingsService.setFlag('dogsBooking', true);
     await settingsService.setFlag('autoPublishReleases', true);
     await settingsService.setFlag('autoPublishNews', false);
+    await settingsService.setFlag('autoPublishTimeline', true);
     const flags = await settingsService.getFlags();
     expect(flags).toEqual({
       pdCollection: false,
       dogsBooking: true,
       autoPublishReleases: true,
       autoPublishNews: false,
+      autoPublishTimeline: true,
     });
   });
 

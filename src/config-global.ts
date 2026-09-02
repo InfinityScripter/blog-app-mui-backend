@@ -21,4 +21,5 @@ export const FEATURES = {
   // default so a fresh deploy never auto-publishes until explicitly enabled.
   autoPublishReleases: process.env.AUTO_PUBLISH_RELEASES_ENABLED === 'true',
   autoPublishNews: process.env.AUTO_PUBLISH_NEWS_ENABLED === 'true',
+  autoPublishTimeline: process.env.AUTO_PUBLISH_TIMELINE_ENABLED === 'true',
 } as const;
